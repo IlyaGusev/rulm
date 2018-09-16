@@ -13,14 +13,14 @@ class Vocabulary:
         self.index_to_word = list()  # type: List[str]
         self.word_to_index = dict()  # type: Dict[str, int]
         self.index_to_count = Counter()   # type: Dict[int, int]
-        self.size = 0  # type: int
+        self._size = 0  # type: int
         self._reset()
 
     def _reset(self):
         self.index_to_word = list(self.specials)  # type: List[str]
         self.word_to_index = {word: i for i, word in enumerate(self.specials)}  # type: Dict[str, int]
         self.index_to_count = Counter()  # type: Dict[int, int]
-        self.size = len(self.specials)
+        self._size = len(self.specials)
 
     def save(self, path: str):
         with open(path, "w", encoding="utf-8") as w:
@@ -29,12 +29,13 @@ class Vocabulary:
                 w.write(word + "\t" + str(count) + "\n")
 
     def load(self, path: str):
-        with open(path, "w", encoding="utf-8") as r:
+        with open(path, "r", encoding="utf-8") as r:
+            self.index_to_word = list()
+            self.word_to_index = dict()
+            self.index_to_count = Counter()
+            self._size = 0
             for line in r:
                 word, count = line.strip().split("\t")
-                self.index_to_word = list()
-                self.word_to_index = dict()
-                self.size = 0
                 self._insert_word_with_count(word, int(count))
 
     def get_unk(self) -> int:
@@ -53,20 +54,20 @@ class Vocabulary:
         word = self.word_to_index.get(word, None)
         return word if word else self.get_unk()
 
-    def get_word_by_index(self, index: int) -> str:
+    def get_word_by_index(self, index: int) -> str: 
         return self.index_to_word[index]
 
     def get_count_by_word(self, word: str) -> int:
         return self.index_to_count[self.get_index_by_word(word)]
 
-    def size(self):
-        return self.size
+    def size(self) -> int:
+        return self._size
 
     def _insert_word_with_count(self, word: str, count: int):
         self.index_to_word.append(word)
-        self.word_to_index[word] = self.size
-        self.index_to_count[self.size] = count
-        self.size += 1
+        self.word_to_index[word] = self._size
+        self.index_to_count[self._size] = count
+        self._size += 1
 
     def add_word(self, word: str) -> bool:
         index = self.word_to_index.get(word, None)
