@@ -5,11 +5,12 @@ from collections import namedtuple
 import numpy as np
 
 from rulm.vocabulary import Vocabulary
+from rulm.filter import Filter
 
 
 class LanguageModel:
     def __init__(self, vocabulary: Vocabulary,
-                 filter_func: Callable, map_func: Callable):
+                 filter_func: Filter, map_func: Callable):
         self.vocabulary = vocabulary  # type: Vocabulary
         self.filter_func = filter_func  # type: Callable
         self.map_func = map_func  # type: Callable
@@ -25,17 +26,6 @@ class LanguageModel:
         next_index_prediction = self.predict(indices)
         return {self.vocabulary.get_word_by_index(index): prob
                 for index, prob in enumerate(next_index_prediction)}
-
-    def greedy_decoding(self, inputs: List[str]) -> List[str]:
-        current_state = self._numericalize_inputs(inputs)
-        last_index = current_state[-1]
-        while last_index != self.vocabulary.get_eos():
-            next_word_prediction = self.predict(current_state)
-            best_guess = list(self._top_k(next_word_prediction).items())[0]
-            last_index = best_guess[0]
-            current_state.append(last_index)
-        outputs = self._decipher_outputs(current_state)
-        return outputs
 
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
                       max_length: int=50, length_reward: float=0.0) -> List[str]:
@@ -77,11 +67,14 @@ class LanguageModel:
         last_index = current_state[-1]
         while last_index != self.vocabulary.get_eos():
             next_word_prediction = self.predict(current_state)
+            correct_indices = list(filter(self.filter_func, range(len(next_word_prediction))))
+            next_word_prediction = next_word_prediction[correct_indices]
             top_k = self._top_k(next_word_prediction, k).items()
             probabilities = np.zeros(self.vocabulary.size(), dtype=np.float)
             for index, p in top_k:
                 probabilities[index] = p
             last_index = self._choose(probabilities)[0]
+            self.filter_func.advance(last_index)
             current_state.append(last_index)
         outputs = self._decipher_outputs(current_state)
         return outputs
@@ -104,7 +97,6 @@ class LanguageModel:
             avg_log_perplexity = avg_log_perplexity * sentence_count / (sentence_count + 1) + \
                                  sentence_log_perplexity / (sentence_count + 1)
             avg_perplexity = np.exp(avg_log_perplexity)
-            print(avg_perplexity)
             sentence_count += 1
         return avg_perplexity
 

@@ -77,9 +77,15 @@ class Vocabulary:
         self._insert_word_with_count(word, 1)
         return True
 
-    def sort(self):
+    def sort(self, n_best: int=None):
+        n_best = n_best if n_best else self.size
         word_to_count = {self.index_to_word[index]: count for index, count in self.index_to_count.items()
                          if index >= len(self.specials)}
         self._reset()
+        i = 0
         for word, count in sorted(word_to_count.items(), key=lambda x: -x[1]):
             self._insert_word_with_count(word, count)
+            i += 1
+            if i >= n_best:
+                break
+

@@ -1,5 +1,6 @@
 from rulm.vocabulary import Vocabulary
 from rulm.ngrams import NGramLanguageModel
+from rulm.filter import AlphabetOrderFilter
 from nltk import WordPunctTokenizer
 
 file_name = "rdt.example.txt"
@@ -20,7 +21,8 @@ with open(file_name, "r") as r:
     for line in r:
         words = line.strip().split()
         sentences.append(words)
-model = NGramLanguageModel(4, vocabulary)
+f = AlphabetOrderFilter(vocabulary)
+model = NGramLanguageModel(4, vocabulary, f)
 model.train(sentences)
-print(model.beam_decoding(["В"], beam_width=20))
+print(model.sample_decoding(["В"], k=5))
 #model.measure_perplexity(sentences)
