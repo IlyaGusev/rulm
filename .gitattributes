@@ -1,0 +1,2 @@
+rulm/data/vocab.rdt.example.txt filter=lfs diff=lfs merge=lfs -text
+rulm/data/rdt.example.txt filter=lfs diff=lfs merge=lfs -text

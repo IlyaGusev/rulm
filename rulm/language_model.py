@@ -1,19 +1,18 @@
-from typing import List, Callable, Dict
+from typing import List, Callable, Dict, Tuple
 import copy
+import os
 from collections import namedtuple
 
 import numpy as np
 
 from rulm.vocabulary import Vocabulary
-from rulm.filter import Filter
+from rulm.transform import Transform, TopKTransform
 
 
 class LanguageModel:
-    def __init__(self, vocabulary: Vocabulary,
-                 filter_func: Filter, map_func: Callable):
+    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
         self.vocabulary = vocabulary  # type: Vocabulary
-        self.filter_func = filter_func  # type: Callable
-        self.map_func = map_func  # type: Callable
+        self.transforms = transforms  # type: Callable
 
     def train(self, inputs: List[List[str]]):
         raise NotImplementedError()
@@ -27,11 +26,20 @@ class LanguageModel:
         return {self.vocabulary.get_word_by_index(index): prob
                 for index, prob in enumerate(next_index_prediction)}
 
+    def train_file(self, file_name):
+        assert os.path.exists(file_name)
+        sentences = []
+        with open(file_name, "r", encoding="utf-8") as r:
+            for line in r:
+                words = line.strip().split()
+                sentences.append(words)
+        self.train(sentences)
+
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
                       max_length: int=50, length_reward: float=0.0) -> List[str]:
         current_state = self._numericalize_inputs(inputs)
-        BeamState = namedtuple("BeamState", "indices log_prob")
-        all_candidates = [BeamState(current_state, 0.)]
+        BeamState = namedtuple("BeamState", "indices log_prob transforms")
+        all_candidates = [BeamState(current_state, 0., self.transforms)]
         best_guess = None
         while all_candidates:
             new_candidates = []
@@ -46,16 +54,24 @@ class LanguageModel:
                     finished_count += 1
                     continue
                 next_word_prediction = self.predict(candidate.indices)
-                top_k = self._top_k(next_word_prediction, beam_width).items()
-                for index, p in top_k:
+                for transform in candidate.transforms:
+                    next_word_prediction = transform(next_word_prediction)
+                top_k_prediction = TopKTransform(beam_width)(next_word_prediction)
+                for index, p in enumerate(top_k_prediction):
                     if p == 0.:
                         continue
                     new_indices = candidate.indices + [index]
                     new_log_prob = candidate.log_prob - np.log(p)
-                    new_state = BeamState(new_indices, new_log_prob)
+                    new_state = BeamState(new_indices, new_log_prob, candidate.transforms)
                     new_candidates.append(new_state)
             new_candidates.sort(key=lambda state: state.log_prob - len(state.indices) * length_reward)
             new_candidates = new_candidates[:beam_width]
+            for i, candidate in enumerate(new_candidates):
+                new_transforms = copy.deepcopy(candidate.transforms)
+                for transform in new_transforms:
+                    transform.advance(candidate.indices[-1])
+                new_candidates[i] = BeamState(candidate.indices, candidate.log_prob, new_transforms)
+            print(finished_count)
             if finished_count >= beam_width:
                 best_guess = new_candidates[0].indices
                 break
@@ -67,14 +83,12 @@ class LanguageModel:
         last_index = current_state[-1]
         while last_index != self.vocabulary.get_eos():
             next_word_prediction = self.predict(current_state)
-            correct_indices = list(filter(self.filter_func, range(len(next_word_prediction))))
-            next_word_prediction = next_word_prediction[correct_indices]
-            top_k = self._top_k(next_word_prediction, k).items()
-            probabilities = np.zeros(self.vocabulary.size(), dtype=np.float)
-            for index, p in top_k:
-                probabilities[index] = p
+            for transform in self.transforms:
+                next_word_prediction = transform(next_word_prediction)
+            probabilities = TopKTransform(k)(next_word_prediction)
             last_index = self._choose(probabilities)[0]
-            self.filter_func.advance(last_index)
+            for transform in self.transforms:
+                transform.advance(last_index)
             current_state.append(last_index)
         outputs = self._decipher_outputs(current_state)
         return outputs
@@ -105,11 +119,6 @@ class LanguageModel:
 
     def _decipher_outputs(self, indices: List[int]) -> List[str]:
         return [self.vocabulary.get_word_by_index(index) for index in indices[1:-1]]
-
-    @staticmethod
-    def _top_k(prediction, k: int=1):
-        indices = np.argpartition(prediction, -k)[-k:]
-        return {index: prediction[index] for index in indices}
 
     @staticmethod
     def _choose(model: np.array, k: int=1):
