@@ -71,7 +71,6 @@ class LanguageModel:
                 for transform in new_transforms:
                     transform.advance(candidate.indices[-1])
                 new_candidates[i] = BeamState(candidate.indices, candidate.log_prob, new_transforms)
-            print(finished_count)
             if finished_count >= beam_width:
                 best_guess = new_candidates[0].indices
                 break
@@ -80,7 +79,7 @@ class LanguageModel:
 
     def sample_decoding(self, inputs: List[str], k: int=5) -> List[str]:
         current_state = self._numericalize_inputs(inputs)
-        last_index = current_state[-1]
+        last_index = current_state[-1] if current_state else self.vocabulary.get_bos()
         while last_index != self.vocabulary.get_eos():
             next_word_prediction = self.predict(current_state)
             for transform in self.transforms:
@@ -101,7 +100,7 @@ class LanguageModel:
             indices.append(self.vocabulary.get_eos())
             sum_log_prob = 0.
             for i, word_index in enumerate(indices[1:]):
-                context = indices[:i + 1]
+                context = indices[:i+1]
                 prediction = self.predict(context)
                 if prediction[word_index] == 0.:
                     print(context, word_index)
@@ -111,8 +110,18 @@ class LanguageModel:
             avg_log_perplexity = avg_log_perplexity * sentence_count / (sentence_count + 1) + \
                                  sentence_log_perplexity / (sentence_count + 1)
             avg_perplexity = np.exp(avg_log_perplexity)
+            print(avg_perplexity)
             sentence_count += 1
         return avg_perplexity
+
+    def measure_perplexity_file(self, file_name):
+        assert os.path.exists(file_name)
+        sentences = []
+        with open(file_name, "r", encoding="utf-8") as r:
+            for line in r:
+                words = line.strip().split()
+                sentences.append(words)
+        return self.measure_perplexity(sentences)
 
     def _numericalize_inputs(self, words: List[str]) -> List[int]:
         return [self.vocabulary.get_bos()] + [self.vocabulary.get_index_by_word(word) for word in words]

@@ -37,7 +37,7 @@ class AlphabetOrderTransform(Transform):
     def __call__(self, probabilities: List[float]) -> List[float]:
         for index, prob in enumerate(probabilities):
             first_letter = self.vocabulary.get_word_by_index(index)[0].lower()
-            if first_letter != self.current_letter and index >= 4:
+            if first_letter != self.current_letter and not index == self.vocabulary.get_eos():
                 probabilities[index] = 0.
         return probabilities
 
