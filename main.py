@@ -13,8 +13,9 @@ vocabulary.sort(100000)
 
 f = AlphabetOrderTransform(vocabulary)
 model = NGramLanguageModel(4, vocabulary, tuple(), (1.0, 0.1, 0.01, 0.000001))
-model.train_file(file_name)
-model.save("model.arpa")
+#model.train_file(file_name)
+model.load("model.arpa")
 
-print(" ".join(model.sample_decoding([], k=5)))
+print(" ".join(model.sample_decoding([], k=10)))
+s = input()
 #print(model.measure_perplexity_file(test_file_name))

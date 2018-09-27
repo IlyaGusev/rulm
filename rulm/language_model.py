@@ -81,11 +81,11 @@ class LanguageModel:
         current_state = self._numericalize_inputs(inputs)
         last_index = current_state[-1] if current_state else self.vocabulary.get_bos()
         while last_index != self.vocabulary.get_eos():
-            next_word_prediction = self.predict(current_state)
+            next_word_probabilities = self.predict(current_state)
             for transform in self.transforms:
-                next_word_prediction = transform(next_word_prediction)
-            probabilities = TopKTransform(k)(next_word_prediction)
-            last_index = self._choose(probabilities)[0]
+                next_word_probabilities = transform(next_word_probabilities)
+            next_word_probabilities = TopKTransform(k)(next_word_probabilities)
+            last_index = self._choose(next_word_probabilities)[0]
             for transform in self.transforms:
                 transform.advance(last_index)
             current_state.append(last_index)
@@ -132,4 +132,4 @@ class LanguageModel:
     @staticmethod
     def _choose(model: np.array, k: int=1):
         norm_model = model / np.sum(model)
-        return np.random.choice(range(len(norm_model)), k, p=norm_model, replace=False)
+        return np.random.choice(range(norm_model.shape[0]), k, p=norm_model, replace=False)
