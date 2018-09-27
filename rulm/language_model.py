@@ -10,7 +10,7 @@ from rulm.transform import Transform, TopKTransform
 
 
 class LanguageModel:
-    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
+    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]):
         self.vocabulary = vocabulary  # type: Vocabulary
         self.transforms = transforms  # type: Callable
 
@@ -78,6 +78,8 @@ class LanguageModel:
         return self._decipher_outputs(best_guess)
 
     def sample_decoding(self, inputs: List[str], k: int=5) -> List[str]:
+        if k > len(self.vocabulary):
+            k = len(self.vocabulary)
         current_state = self._numericalize_inputs(inputs)
         last_index = current_state[-1] if current_state else self.vocabulary.get_bos()
         while last_index != self.vocabulary.get_eos():
@@ -133,3 +135,18 @@ class LanguageModel:
     def _choose(model: np.array, k: int=1):
         norm_model = model / np.sum(model)
         return np.random.choice(range(norm_model.shape[0]), k, p=norm_model, replace=False)
+
+
+class EquiprobableLanguageModel(LanguageModel):
+    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
+        LanguageModel.__init__(self, vocabulary, transforms)
+
+    def train(self, inputs: List[List[str]]):
+        pass
+
+    def predict(self, inputs: List[int]):
+        l = len(self.vocabulary)
+        probabilities = np.full((l,), 1./(l-2))
+        probabilities[self.vocabulary.get_bos()] = 0.
+        probabilities[self.vocabulary.get_pad()] = 0.
+        return probabilities
