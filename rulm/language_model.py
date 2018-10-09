@@ -7,7 +7,7 @@ import numpy as np
 
 from rulm.vocabulary import Vocabulary
 from rulm.transform import Transform, TopKTransform
-
+from rulm.beam import BeamSearch
 
 class LanguageModel:
     def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]):
@@ -38,43 +38,14 @@ class LanguageModel:
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
                       max_length: int=50, length_reward: float=0.0) -> List[str]:
         current_state = self._numericalize_inputs(inputs)
-        BeamState = namedtuple("BeamState", "indices log_prob transforms")
-        all_candidates = [BeamState(current_state, 0., self.transforms)]
-        best_guess = None
-        while all_candidates:
-            new_candidates = []
-            finished_count = 0
-            for candidate in all_candidates:
-                is_eos = candidate.indices[-1] == self.vocabulary.get_eos()
-                is_max_length = len(candidate.indices) >= max_length
-                if is_max_length and not is_eos:
-                    candidate.indices.append(self.vocabulary.get_eos())
-                if is_eos or is_max_length:
-                    new_candidates.append(candidate)
-                    finished_count += 1
-                    continue
-                next_word_prediction = self.predict(candidate.indices)
-                for transform in candidate.transforms:
-                    next_word_prediction = transform(next_word_prediction)
-                top_k_prediction = TopKTransform(beam_width)(next_word_prediction)
-                for index, p in enumerate(top_k_prediction):
-                    if p == 0.:
-                        continue
-                    new_indices = candidate.indices + [index]
-                    new_log_prob = candidate.log_prob - np.log(p)
-                    new_state = BeamState(new_indices, new_log_prob, candidate.transforms)
-                    new_candidates.append(new_state)
-            new_candidates.sort(key=lambda state: state.log_prob - len(state.indices) * length_reward)
-            new_candidates = new_candidates[:beam_width]
-            for i, candidate in enumerate(new_candidates):
-                new_transforms = copy.deepcopy(candidate.transforms)
-                for transform in new_transforms:
-                    transform.advance(candidate.indices[-1])
-                new_candidates[i] = BeamState(candidate.indices, candidate.log_prob, new_transforms)
-            if finished_count >= beam_width:
-                best_guess = new_candidates[0].indices
-                break
-            all_candidates = new_candidates
+        beam = BeamSearch(
+            eos_index=self.vocabulary.get_eos(),
+            predict_func=self.predict,
+            transforms=self.transforms,
+            beam_width=beam_width,
+            max_length=max_length,
+            length_reward=length_reward)
+        best_guess = beam.decode(current_state)
         return self._decipher_outputs(best_guess)
 
     def sample_decoding(self, inputs: List[str], k: int=5) -> List[str]:
@@ -97,6 +68,7 @@ class LanguageModel:
     def measure_perplexity(self, inputs: List[List[str]]):
         avg_log_perplexity = 0
         sentence_count = 0
+        zeroprobs = 0
         for sentence in inputs:
             indices = self._numericalize_inputs(sentence)
             indices.append(self.vocabulary.get_eos())
@@ -105,16 +77,16 @@ class LanguageModel:
                 context = indices[:i+1]
                 prediction = self.predict(context)
                 if prediction[word_index] == 0.:
-                    print(context, word_index)
+                    zeroprobs += 1
+                    continue
                 log_prob = -np.log(prediction[word_index])
                 sum_log_prob += log_prob
             sentence_log_perplexity = sum_log_prob/(len(indices) - 1) # <bos> excluded
             avg_log_perplexity = avg_log_perplexity * sentence_count / (sentence_count + 1) + \
                                  sentence_log_perplexity / (sentence_count + 1)
             avg_perplexity = np.exp(avg_log_perplexity)
-            print(avg_perplexity)
             sentence_count += 1
-        return avg_perplexity
+        return avg_perplexity, zeroprobs
 
     def measure_perplexity_file(self, file_name):
         assert os.path.exists(file_name)
@@ -149,4 +121,20 @@ class EquiprobableLanguageModel(LanguageModel):
         probabilities = np.full((l,), 1./(l-2))
         probabilities[self.vocabulary.get_bos()] = 0.
         probabilities[self.vocabulary.get_pad()] = 0.
+        return probabilities
+
+class VocabularyChainLanguageModel(LanguageModel):
+    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
+         LanguageModel.__init__(self, vocabulary, transforms)
+
+    def train(self, inputs: List[List[str]]):
+        pass
+
+    def predict(self, inputs: List[int]):
+        probabilities = np.zeros(len(self.vocabulary))
+        last_index = inputs[-1]
+        if last_index == self.vocabulary.get_bos():
+            probabilities[4] = 1.
+        elif last_index != len(self.vocabulary) - 1:
+            probabilities[last_index + 1] = 1.
         return probabilities

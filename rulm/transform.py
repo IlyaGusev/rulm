@@ -15,6 +15,8 @@ class TopKTransform(Transform):
         self.k = k
 
     def __call__(self, probabilities: List[float]) -> List[float]:
+        if probabilities.shape[0] < self.k:
+            return probabilities
         indices = set(np.argpartition(probabilities, -self.k)[-self.k:])
         for i in range(len(probabilities)):
             if i not in indices:
