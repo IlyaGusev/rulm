@@ -25,7 +25,6 @@ class TestNGrams(unittest.TestCase):
 
         def assert_ngrams_equal(n_grams_1, n_grams_2):
             for words, p1 in n_grams_1.items():
-                self.assertIn(words, n_grams_2)
                 p2 = n_grams_2[words]
                 self.assertEqual("{:.4f}".format(np.log10(p1)), "{:.4f}".format(np.log10(p2)))
 

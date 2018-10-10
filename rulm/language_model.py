@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict, Tuple
+ffrom marisa_trie import Trierom typing import List, Callable, Dict, Tuple
 import copy
 import os
 from collections import namedtuple
@@ -48,12 +48,12 @@ class LanguageModel:
         best_guess = beam.decode(current_state)
         return self._decipher_outputs(best_guess)
 
-    def sample_decoding(self, inputs: List[str], k: int=5) -> List[str]:
+    def sample_decoding(self, inputs: List[str], k: int=5, max_length: int=30) -> List[str]:
         if k > len(self.vocabulary):
             k = len(self.vocabulary)
         current_state = self._numericalize_inputs(inputs)
         last_index = current_state[-1] if current_state else self.vocabulary.get_bos()
-        while last_index != self.vocabulary.get_eos():
+        while last_index != self.vocabulary.get_eos() and len(current_state) < max_length:
             next_word_probabilities = self.predict(current_state)
             for transform in self.transforms:
                 next_word_probabilities = transform(next_word_probabilities)

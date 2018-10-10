@@ -1,7 +1,6 @@
 import json
 from typing import List, Dict, Counter
 
-
 class Vocabulary:
     PAD = "<pad>"
     BOS = "<bos>"
@@ -53,11 +52,15 @@ class Vocabulary:
         return index < len(self.specials)
 
     def get_index_by_word(self, word: str) -> int:
-        word = self.word_to_index.get(word, None)
-        return word if word else self.get_unk()
+        if word == "<s>":
+            word = Vocabulary.BOS
+        elif word == "</s>":
+            word = Vocabulary.EOS
+        index = self.word_to_index.get(word, None)
+        return index if index else self.get_unk()
 
     def get_word_by_index(self, index: int) -> str:
-        return self.index_to_word[index]
+        return self.index_to_word[int(index)]
 
     def get_count_by_word(self, word: str) -> int:
         return self.index_to_count[self.get_index_by_word(word)]
