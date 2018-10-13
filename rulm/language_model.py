@@ -1,4 +1,4 @@
-ffrom marisa_trie import Trierom typing import List, Callable, Dict, Tuple
+from typing import List, Callable, Dict, Tuple
 import copy
 import os
 from collections import namedtuple

@@ -4,6 +4,7 @@ import gzip
 
 import pygtrie
 import numpy as np
+import struct
 
 from rulm.language_model import  LanguageModel
 from rulm.vocabulary import Vocabulary
@@ -50,6 +51,7 @@ class DictNGramContainer(NGramContainer):
 class TrieNGramContainer(NGramContainer):
     def __init__(self):
         self.data = pygtrie.Trie()
+        self.n = None
 
     def __getitem__(self, n_gram: List[int]):
         return self.data[n_gram] if self.data.has_key(n_gram) else 0.
@@ -66,12 +68,11 @@ class TrieNGramContainer(NGramContainer):
     def items(self):
         return self.data.items()
 
-
 class NGramLanguageModel(LanguageModel):
     def __init__(self, n: int, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
                  interpolation_lambdas: Tuple[float]=None,
-                 reverse: bool=False, container: NGramContainer=DictNGramContainer):
+                 reverse: bool=False, container: NGramContainer=TrieNGramContainer):
         self.n_grams = [container() for _ in range(n+1)] # type: List[NGramContainer]
         self.n = n  # type: int
         self.interpolation_lambdas = interpolation_lambdas  # type: Tuple[float]
@@ -98,7 +99,9 @@ class NGramLanguageModel(LanguageModel):
         for n in range(self.n, 0, -1):
             current_n_grams = self.n_grams[n]
             for words, count in current_n_grams.items():
+                print(words[:-1])
                 prev_order_n_gram_count = self.n_grams[n-1][words[:-1]]
+                print(prev_order_n_gram_count)
                 current_n_grams[words] = count / prev_order_n_gram_count
         self.n_grams[0][tuple()] = 1.0
 
