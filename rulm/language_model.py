@@ -17,6 +17,9 @@ class LanguageModel:
     def train(self, inputs: List[List[str]]):
         raise NotImplementedError()
 
+    def normalize(self):
+        raise NotImplementedError()
+
     def predict(self, inputs: List[int]) -> List[float]:
         raise NotImplementedError()
 
@@ -26,14 +29,21 @@ class LanguageModel:
         return {self.vocabulary.get_word_by_index(index): prob
                 for index, prob in enumerate(next_index_prediction)}
 
-    def train_file(self, file_name):
+    def train_file(self, file_name, batch_size: int=10000):
         assert os.path.exists(file_name)
         sentences = []
+        batch_number = 0
         with open(file_name, "r", encoding="utf-8") as r:
             for line in r:
                 words = line.strip().split()
                 sentences.append(words)
-        self.train(sentences)
+                if len(sentences) == batch_size:
+                    self.train(sentences)
+                    batch_number += 1
+                    print("{} sentences processed".format(batch_number*batch_size))
+                    sentences = []
+        print("Normalizng...")
+        self.normalize()
 
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
                       max_length: int=50, length_reward: float=0.0) -> List[str]:

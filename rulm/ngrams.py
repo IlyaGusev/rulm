@@ -93,15 +93,12 @@ class NGramLanguageModel(LanguageModel):
             indices = self._numericalize_inputs(sentence)
             indices.append(self.vocabulary.get_eos())
             self._collect_n_grams(indices)
-        self._normalize()
 
-    def _normalize(self):
+    def normalize(self):
         for n in range(self.n, 0, -1):
             current_n_grams = self.n_grams[n]
             for words, count in current_n_grams.items():
-                print(words[:-1])
                 prev_order_n_gram_count = self.n_grams[n-1][words[:-1]]
-                print(prev_order_n_gram_count)
                 current_n_grams[words] = count / prev_order_n_gram_count
         self.n_grams[0][tuple()] = 1.0
 
