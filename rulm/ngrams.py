@@ -72,7 +72,7 @@ class NGramLanguageModel(LanguageModel):
     def __init__(self, n: int, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
                  interpolation_lambdas: Tuple[float]=None,
-                 reverse: bool=False, container: NGramContainer=TrieNGramContainer):
+                 reverse: bool=False, container: NGramContainer=DictNGramContainer):
         self.n_grams = [container() for _ in range(n+1)] # type: List[NGramContainer]
         self.n = n  # type: int
         self.interpolation_lambdas = interpolation_lambdas  # type: Tuple[float]
