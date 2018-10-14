@@ -98,6 +98,9 @@ class Vocabulary:
             if i >= n_best:
                 break
 
+    def pad_indices(self, indices: List[int], length: int):
+        return indices[:length] + [self.get_pad() for _ in range(length-len(indices))]
+
     def add_file(self, file_name):
         with open(file_name, "r", encoding="utf-8") as r:
             for line in r:

@@ -54,7 +54,7 @@ class TestNGrams(unittest.TestCase):
         vocabulary = Vocabulary()
         vocabulary.load(TRAIN_VOCAB_EXAMPLE)
         model = NGramLanguageModel(n=2, vocabulary=vocabulary)
-        model.train_file(TRAIN_EXAMPLE, batch_size=10000)
+        model.train_file(TRAIN_EXAMPLE)
 
         prediction = model.predict([vocabulary.get_bos()])
         non_zero_indices = list(filter(lambda x: x != 0., prediction))

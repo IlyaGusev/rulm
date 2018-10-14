@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type, Generator, Any
 import gzip
 
 import pygtrie
@@ -87,13 +87,17 @@ class NGramLanguageModel(LanguageModel):
                 n_gram = indices[i:i+n]
                 self.n_grams[n][n_gram] += 1.0
 
-    def train(self, inputs: List[List[str]]):
+    def train(self, inputs: Generator[List[str], Any, None], report_every: int=10000):
+        sentence_number = 0
         for sentence in inputs:
             if self.reverse:
                 sentence = sentence[::-1]
             indices = self._numericalize_inputs(sentence)
             indices.append(self.vocabulary.get_eos())
             self._collect_n_grams(indices)
+            sentence_number += 1
+            if sentence_number % report_every == 0:
+                print("Train: {} sentences processed".format(sentence_number))
 
     def normalize(self):
         for n in range(self.n, 0, -1):
