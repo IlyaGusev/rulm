@@ -1,5 +1,6 @@
-import json
-from typing import List, Dict, Counter
+from typing import List, Dict
+from collections import Counter
+
 
 class Vocabulary:
     PAD = "<pad>"
@@ -87,10 +88,12 @@ class Vocabulary:
 
     def sort(self, n_best: int=None):
         n_best = n_best if n_best else self.size
-        word_to_count = {self.index_to_word[index]: count for index, count in self.index_to_count.items()
+        word_to_count = {self.index_to_word[index]: count
+                         for index, count in self.index_to_count.items()
                          if index >= len(self.specials)}
         self._reset()
-        for i, (word, count) in enumerate(sorted(word_to_count.items(), key=lambda x: -x[1])):
+        sorted_counts = sorted(word_to_count.items(), key=lambda x: (-x[1], x[0]))
+        for i, (word, count) in enumerate(sorted_counts):
             self._insert_word_with_count(word, count)
             if i >= n_best:
                 break

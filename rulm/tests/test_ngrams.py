@@ -1,11 +1,13 @@
 import unittest
-import tempfile
 import os
+import time
+
 import numpy as np
 
 from rulm.vocabulary import Vocabulary
 from rulm.ngrams import NGramLanguageModel
-from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, DATA_DIR
+from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, DATA_DIR, TEST_EXAMPLE
+
 
 class TestNGrams(unittest.TestCase):
     @classmethod
@@ -16,12 +18,13 @@ class TestNGrams(unittest.TestCase):
         cls.vocabulary.add_word("ты")
         cls.model = NGramLanguageModel(n=3, vocabulary=cls.vocabulary)
         cls.model.train([["я", "не", "я"], ["ты", "не", "ты"], ["я", "не", "ты"]])
+        cls.model.normalize()
 
     def test_save_load(self):
         vocabulary = Vocabulary()
         vocabulary.load(TRAIN_VOCAB_EXAMPLE)
         model1 = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
-        model1.train_file(TRAIN_VOCAB_EXAMPLE)
+        model1.train_file(TRAIN_EXAMPLE)
 
         def assert_ngrams_equal(n_grams_1, n_grams_2):
             for words, p1 in n_grams_1.items():
@@ -51,10 +54,24 @@ class TestNGrams(unittest.TestCase):
         vocabulary = Vocabulary()
         vocabulary.load(TRAIN_VOCAB_EXAMPLE)
         model = NGramLanguageModel(n=2, vocabulary=vocabulary)
-        model.train_file(TRAIN_EXAMPLE)
+        model.train_file(TRAIN_EXAMPLE, batch_size=10000)
+
         prediction = model.predict([vocabulary.get_bos()])
         non_zero_indices = list(filter(lambda x: x != 0., prediction))
-        self.assertEqual(len(non_zero_indices), 19457)
+        self.assertEqual(len(non_zero_indices), 3345)
+
+    def test_predict_time(self):
+        vocabulary = Vocabulary()
+        vocabulary.load(TRAIN_VOCAB_EXAMPLE)
+        vocabulary.sort(15000)
+        model = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
+        model.train_file(TRAIN_EXAMPLE)
+
+        ts = time.time()
+        for i in range(10):
+            model.predict([7, 28])
+        te = time.time()
+        self.assertLess(te - ts, 1.0)
 
     def test_train(self):
         def assert_n_gram_prob(n_gram, p):
@@ -80,3 +97,12 @@ class TestNGrams(unittest.TestCase):
         assert_prediction((Vocabulary.BOS, "я"), [0., 0., 0., 0., 0., 1., 0.])
         assert_prediction(("я", "не"), [0., 0., 0., 0., 0.5, 0., 0.5])
         assert_prediction(("не", "ты"), [0., 0., 1., 0., 0., 0., 0.])
+
+    def test_perplexity(self):
+        vocabulary = Vocabulary()
+        vocabulary.load(TRAIN_VOCAB_EXAMPLE)
+        vocabulary.sort(1000)
+        model = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
+        model.train_file(TRAIN_EXAMPLE)
+        ppl_state = model.measure_perplexity_file(TEST_EXAMPLE)
+        self.assertLess(np.exp(ppl_state.avg_log_perplexity), 30.)

@@ -3,7 +3,8 @@ import unittest
 import numpy as np
 
 from rulm.vocabulary import Vocabulary
-from rulm.language_model import EquiprobableLanguageModel, VocabularyChainLanguageModel
+from rulm.language_model import EquiprobableLanguageModel, VocabularyChainLanguageModel, PerplexityState
+
 
 class TestLanguageModel(unittest.TestCase):
     @classmethod
@@ -16,12 +17,15 @@ class TestLanguageModel(unittest.TestCase):
         cls.chain_model = VocabularyChainLanguageModel(cls.vocabulary)
 
     def test_measure_perplexity(self):
-        eq_ppl, eq_zeroprobs = self.eq_model.measure_perplexity([["я", "не", "ты"]])
-        self.assertAlmostEqual(eq_ppl, 5.)
-        self.assertEqual(eq_zeroprobs, 0)
-        chain_ppl, chain_zeroprobs = self.chain_model.measure_perplexity([["я", "не", "ты"]])
-        self.assertAlmostEqual(chain_ppl, 1.)
-        self.assertEqual(chain_zeroprobs, 1)
+        eq_state = PerplexityState()
+        eq_state = self.eq_model.measure_perplexity([["я", "не", "ты"]], eq_state)
+        self.assertAlmostEqual(np.exp(eq_state.avg_log_perplexity), 5.)
+        self.assertEqual(eq_state.zeroprobs_count, 0)
+
+        chain_state = PerplexityState()
+        chain_state = self.chain_model.measure_perplexity([["я", "не", "ты"]], chain_state)
+        self.assertEqual(chain_state.zeroprobs_count, 1)
+        self.assertAlmostEqual(np.exp(chain_state.avg_log_perplexity), 1.)
 
     def test_query(self):
         predictions = self.eq_model.query([])

@@ -1,7 +1,5 @@
-from typing import List, Callable, Dict, Tuple
-import copy
+from typing import List, Dict, Tuple
 import os
-from collections import namedtuple
 
 import numpy as np
 
@@ -9,10 +7,43 @@ from rulm.vocabulary import Vocabulary
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
 
+
+class PerplexityState:
+    def __init__(self):
+        self.word_count = 0
+        self.zeroprobs_count = 0
+        self.unknown_count = 0
+        self.avg_log_perplexity = 0.
+
+    def add(self, word_index: int, probability: float, is_including_unk: bool, unk_index: int) -> None:
+        old_word_count = self.word_count - self.zeroprobs_count - (self.unknown_count if not is_including_unk else 0)
+        self.word_count += 1
+
+        if word_index == unk_index:
+            self.unknown_count += 1
+            if not is_including_unk:
+                return
+
+        if probability == 0.:
+            self.zeroprobs_count += 1
+            return
+
+        log_prob = -np.log(probability)
+        true_word_count = self.word_count - self.zeroprobs_count - (self.unknown_count if not is_including_unk else 0)
+
+        prev_avg = self.avg_log_perplexity * old_word_count / true_word_count
+        self.avg_log_perplexity = prev_avg + log_prob / true_word_count
+        return
+
+    def __repr__(self):
+        return "Avg ppl: {}, zeroprobs: {}, unk: {}".format(
+            np.exp(self.avg_log_perplexity), self.zeroprobs_count, self.unknown_count)
+
+
 class LanguageModel:
     def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]):
         self.vocabulary = vocabulary  # type: Vocabulary
-        self.transforms = transforms  # type: Callable
+        self.transforms = transforms  # type: List[Transform]
 
     def train(self, inputs: List[List[str]]):
         raise NotImplementedError()
@@ -40,9 +71,12 @@ class LanguageModel:
                 if len(sentences) == batch_size:
                     self.train(sentences)
                     batch_number += 1
-                    print("{} sentences processed".format(batch_number*batch_size))
+                    print("Train: {} sentences processed".format(batch_number*batch_size))
                     sentences = []
-        print("Normalizng...")
+        if sentences:
+            self.train(sentences)
+            print("Train: {} sentences processed".format(batch_number * batch_size + len(sentences)))
+        print("Train: normalizng...")
         self.normalize()
 
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
@@ -75,37 +109,36 @@ class LanguageModel:
         outputs = self._decipher_outputs(current_state)
         return outputs
 
-    def measure_perplexity(self, inputs: List[List[str]]):
-        avg_log_perplexity = 0
-        sentence_count = 0
-        zeroprobs = 0
+    def measure_perplexity(self, inputs: List[List[str]], state: PerplexityState,
+                           is_including_unk: bool=True) -> PerplexityState:
         for sentence in inputs:
             indices = self._numericalize_inputs(sentence)
             indices.append(self.vocabulary.get_eos())
-            sum_log_prob = 0.
             for i, word_index in enumerate(indices[1:]):
                 context = indices[:i+1]
-                prediction = self.predict(context)
-                if prediction[word_index] == 0.:
-                    zeroprobs += 1
-                    continue
-                log_prob = -np.log(prediction[word_index])
-                sum_log_prob += log_prob
-            sentence_log_perplexity = sum_log_prob/(len(indices) - 1) # <bos> excluded
-            avg_log_perplexity = avg_log_perplexity * sentence_count / (sentence_count + 1) + \
-                                 sentence_log_perplexity / (sentence_count + 1)
-            avg_perplexity = np.exp(avg_log_perplexity)
-            sentence_count += 1
-        return avg_perplexity, zeroprobs
 
-    def measure_perplexity_file(self, file_name):
+                prediction = self.predict(context)
+                state.add(word_index, prediction[word_index], is_including_unk, self.vocabulary.get_unk())
+        return state
+
+    def measure_perplexity_file(self, file_name, batch_size: int=100):
         assert os.path.exists(file_name)
         sentences = []
+        ppl_state = PerplexityState()
+        batch_number = 0
         with open(file_name, "r", encoding="utf-8") as r:
             for line in r:
                 words = line.strip().split()
                 sentences.append(words)
-        return self.measure_perplexity(sentences)
+                if len(sentences) == batch_size:
+                    ppl_state = self.measure_perplexity(sentences, ppl_state)
+                    batch_number += 1
+                    print("Measure_perplexity: {} sentences processed, {}".format(
+                        batch_number * batch_size, ppl_state))
+                    sentences = []
+            if sentences:
+                ppl_state = self.measure_perplexity(sentences, ppl_state)
+        return ppl_state
 
     def _numericalize_inputs(self, words: List[str]) -> List[int]:
         return [self.vocabulary.get_bos()] + [self.vocabulary.get_index_by_word(word) for word in words]
@@ -126,18 +159,25 @@ class EquiprobableLanguageModel(LanguageModel):
     def train(self, inputs: List[List[str]]):
         pass
 
+    def normalize(self):
+        pass
+
     def predict(self, inputs: List[int]):
-        l = len(self.vocabulary)
-        probabilities = np.full((l,), 1./(l-2))
+        vocab_size = len(self.vocabulary)
+        probabilities = np.full((vocab_size,), 1./(vocab_size-2))
         probabilities[self.vocabulary.get_bos()] = 0.
         probabilities[self.vocabulary.get_pad()] = 0.
         return probabilities
 
+
 class VocabularyChainLanguageModel(LanguageModel):
     def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
-         LanguageModel.__init__(self, vocabulary, transforms)
+        LanguageModel.__init__(self, vocabulary, transforms)
 
     def train(self, inputs: List[List[str]]):
+        pass
+
+    def normalize(self):
         pass
 
     def predict(self, inputs: List[int]):

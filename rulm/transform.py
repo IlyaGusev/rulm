@@ -1,7 +1,8 @@
 import numpy as np
-from typing import Tuple, List
+from typing import List
 
 from rulm.vocabulary import Vocabulary
+
 
 class Transform:
     def __call__(self, probabilities: List[float]):
@@ -10,11 +11,12 @@ class Transform:
     def advance(self, index: int):
         raise NotImplementedError()
 
+
 class TopKTransform(Transform):
     def __init__(self, k):
         self.k = k
 
-    def __call__(self, probabilities: List[float]) -> List[float]:
+    def __call__(self, probabilities: np.array) -> List[float]:
         if probabilities.shape[0] < self.k:
             return probabilities
         indices = set(np.argpartition(probabilities, -self.k)[-self.k:])
@@ -26,6 +28,7 @@ class TopKTransform(Transform):
     def advance(self, index: int):
         pass
 
+
 class AlphabetOrderTransform(Transform):
     def __init__(self, vocabulary: Vocabulary, language: str="ru"):
         assert language in ("ru", "en"), "Bad language for filter"
@@ -36,7 +39,7 @@ class AlphabetOrderTransform(Transform):
             self.current_letter = "a"
         self.vocabulary = vocabulary
 
-    def __call__(self, probabilities: List[float]) -> List[float]:
+    def __call__(self, probabilities: np.array) -> List[float]:
         for index, prob in enumerate(probabilities):
             first_letter = self.vocabulary.get_word_by_index(index)[0].lower()
             if first_letter != self.current_letter and not index == self.vocabulary.get_eos():

@@ -1,9 +1,10 @@
 import copy
-from typing import Callable, List, Tuple
+from typing import Callable, List
 
 import numpy as np
 
 from rulm.transform import Transform, TopKTransform
+
 
 class BeamState:
     def __init__(self, indices, log_prob, transforms):
@@ -18,6 +19,7 @@ class BeamState:
     def __repr__(self):
         return "Indices: {}".format(self.indices)
 
+
 class BeamSearch:
     def __init__(self,
                  eos_index: int,
@@ -26,12 +28,12 @@ class BeamSearch:
                  beam_width: int=5,
                  max_length: int=50,
                  length_reward: float=0.):
-        self.predict = predict_func
-        self.eos_index = eos_index
-        self.transforms = transforms
-        self.beam_width = beam_width
-        self.max_length = max_length
-        self.length_reward = length_reward
+        self.predict = predict_func  # type: Callable
+        self.eos_index = eos_index  # type: int
+        self.transforms = transforms  # type: List[Transform]
+        self.beam_width = beam_width  # type: int
+        self.max_length = max_length  # type: int
+        self.length_reward = length_reward  # type: float
 
     def decode(self, inputs: List[int]) -> List[int]:
         candidates = [BeamState(inputs, 0., self.transforms)]
@@ -47,7 +49,7 @@ class BeamSearch:
                 else:
                     new_candidates += self._beam_process_candidate(candidate)
 
-            new_candidates.sort(key=lambda x : x.score(self.length_reward))
+            new_candidates.sort(key=lambda x: x.score(self.length_reward))
             new_candidates = new_candidates[:self.beam_width]
             for i, candidate in enumerate(new_candidates):
                 if candidate.is_finished:

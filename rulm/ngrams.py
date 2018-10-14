@@ -1,10 +1,9 @@
 from collections import defaultdict
-from typing import List, Callable, Counter, Dict, Tuple
+from typing import List, Tuple, Type
 import gzip
 
 import pygtrie
 import numpy as np
-import struct
 
 from rulm.language_model import  LanguageModel
 from rulm.vocabulary import Vocabulary
@@ -33,10 +32,10 @@ class DictNGramContainer(NGramContainer):
         self.data = defaultdict(float)
 
     def __getitem__(self, n_gram: List[int]):
-        return self.data[n_gram]
+        return self.data[tuple(n_gram)]
 
     def __setitem__(self, n_gram: List[int], value: float):
-        self.data[n_gram] = value
+        self.data[tuple(n_gram)] = value
 
     def __len__(self):
         return len(self.data)
@@ -54,10 +53,10 @@ class TrieNGramContainer(NGramContainer):
         self.n = None
 
     def __getitem__(self, n_gram: List[int]):
-        return self.data[n_gram] if self.data.has_key(n_gram) else 0.
+        return self.data[tuple(n_gram)] if n_gram in self.data else 0.
 
     def __setitem__(self, n_gram: List[int], value: float):
-        self.data[n_gram] = value
+        self.data[tuple(n_gram)] = value
 
     def __len__(self):
         return len(self.data)
@@ -68,12 +67,14 @@ class TrieNGramContainer(NGramContainer):
     def items(self):
         return self.data.items()
 
+
 class NGramLanguageModel(LanguageModel):
     def __init__(self, n: int, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
-                 interpolation_lambdas: Tuple[float]=None,
-                 reverse: bool=False, container: NGramContainer=DictNGramContainer):
-        self.n_grams = [container() for _ in range(n+1)] # type: List[NGramContainer]
+                 interpolation_lambdas: Tuple[float, ...]=None,
+                 reverse: bool=False, container: Type[NGramContainer]=DictNGramContainer):
+        assert not interpolation_lambdas or n == len(interpolation_lambdas)
+        self.n_grams = [container() for _ in range(n+1)]  # type: List[NGramContainer]
         self.n = n  # type: int
         self.interpolation_lambdas = interpolation_lambdas  # type: Tuple[float]
         self.reverse = reverse  # type: bool
@@ -83,7 +84,7 @@ class NGramLanguageModel(LanguageModel):
         l = len(indices)
         for n in range(self.n + 1):
             for i in range(min(l - n + 1, l)):
-                n_gram = tuple(indices[i:i+n])
+                n_gram = indices[i:i+n]
                 self.n_grams[n][n_gram] += 1.0
 
     def train(self, inputs: List[List[str]]):
@@ -102,7 +103,7 @@ class NGramLanguageModel(LanguageModel):
                 current_n_grams[words] = count / prev_order_n_gram_count
         self.n_grams[0][tuple()] = 1.0
 
-    def predict(self, indices: List[int]) -> List[float]:
+    def predict(self, indices: List[int]) -> np.ndarray:
         probabilities = np.zeros(len(self.vocabulary), dtype=np.float64)
         if not self.interpolation_lambdas:
             self.interpolation_lambdas = (1.0, ) + tuple((0. for _ in range(self.n-1)))
@@ -115,12 +116,12 @@ class NGramLanguageModel(LanguageModel):
             context = tuple(context[difference:])
             n = len(context) + 1
             for index in range(probabilities.shape[0]):
-                n_gram = tuple(context + (index,))
+                n_gram = context + (index,)
                 p = self.n_grams[n][n_gram]
                 probabilities[index] += p * self.interpolation_lambdas[shift]
         return probabilities
 
-    def save(self, path:str) -> None:
+    def save(self, path: str) -> None:
         assert path.endswith(".arpa") or path.endswith(".arpa.gzip")
         file_open = gzip.open if path.endswith(".gzip") else open
         with file_open(path, "wt", encoding="utf-8") as w:
