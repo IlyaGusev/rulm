@@ -1,3 +1,4 @@
+import os
 from typing import List, Tuple, Generator, Any
 
 import torch
@@ -66,21 +67,30 @@ class RNNLanguageModel(LanguageModel):
                  n_layers: int=2, dropout: float=0.3):
         self.reverse = reverse  # type: bool
         LanguageModel.__init__(self, vocabulary, transforms)
+
         self.model = RNNModule(len(self.vocabulary), emb_size, rnn_size, n_layers, dropout)
         use_cuda = torch.cuda.is_available()
         self.model.cuda() if use_cuda else self.model
 
-    def train(self, inputs: Generator[List[str], Any, None], epochs: int=20, batch_size: int=64,
+        self.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=0.001)
+
+    def train(self, inputs: Generator[List[str], Any, None], batch_size: int=64,
               max_length: int=50, report_every: int=50):
-        inputs = list(inputs)
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=0.001)
+        gen = self._get_batch(inputs, batch_size, max_length)
+        for step, batch in enumerate(gen):
+            loss = self._process_batch(batch, self.optimizer)
+            if step % 10 == 0:
+                print("Step: {}, loss: {}".format(step, loss))
+        self.save("model.pt")
+
+    def train_file(self, file_name, epochs: int=20, batch_size: int=64,
+                   max_length: int=50, report_every: int=50):
+        assert os.path.exists(file_name)
         for epoch in range(epochs):
-            gen = self._get_batch(inputs, batch_size, max_length)
-            for step, batch in enumerate(gen):
-                loss = self._process_batch(batch, optimizer)
-                if step % 10 == 0:
-                    print("Epoch: {}, step: {}, loss: {}".format(epoch, step, loss))
-            self.save("model.pt")
+            print("Big epoch: {}".format(epoch))
+            sentences = self._parse_file_for_train(file_name)
+            self.train(sentences, batch_size=batch_size,
+                       max_length=max_length, report_every=report_every)
 
     def normalize(self):
         pass
