@@ -97,7 +97,10 @@ class RNNLanguageModel(LanguageModel):
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
-        indices = torch.cuda.LongTensor(indices)
+        use_cuda = torch.cuda.is_available()
+        LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
+
+        indices = LongTensor(indices)
         indices = torch.unsqueeze(indices, 1)
         result = self.model.forward(indices, [len(indices)])
         result = torch.exp(torch.squeeze(result, 1)[-1]).cpu().detach().numpy()

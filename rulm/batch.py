@@ -44,7 +44,6 @@ class VarBatch:
     def __init__(self, batch: Batch):
         use_cuda = torch.cuda.is_available()
         LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
-        # LongTensor = torch.LongTensor
 
         batch.pad()
         batch.sort_by_length()
