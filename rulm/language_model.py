@@ -16,7 +16,8 @@ class PerplexityState:
         self.avg_log_perplexity = 0.
 
     def add(self, word_index: int, probability: float, is_including_unk: bool, unk_index: int) -> None:
-        old_word_count = self.word_count - self.zeroprobs_count - (self.unknown_count if not is_including_unk else 0)
+        old_word_count = self.word_count - self.zeroprobs_count - \
+            (self.unknown_count if not is_including_unk else 0)
         self.word_count += 1
 
         if word_index == unk_index:
@@ -29,7 +30,8 @@ class PerplexityState:
             return
 
         log_prob = -np.log(probability)
-        true_word_count = self.word_count - self.zeroprobs_count - (self.unknown_count if not is_including_unk else 0)
+        true_word_count = self.word_count - self.zeroprobs_count - \
+            (self.unknown_count if not is_including_unk else 0)
 
         prev_avg = self.avg_log_perplexity * old_word_count / true_word_count
         self.avg_log_perplexity = prev_avg + log_prob / true_word_count
@@ -41,14 +43,15 @@ class PerplexityState:
 
 
 class LanguageModel:
-    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]):
+    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform], reverse: bool=False):
         self.vocabulary = vocabulary  # type: Vocabulary
         self.transforms = transforms  # type: List[Transform]
+        self.reverse = reverse  # type : bool
 
     def train(self, inputs: Generator[List[str], Any, None]):
         raise NotImplementedError()
 
-    def normalize(self):
+    def train_file(self, file_name: str):
         raise NotImplementedError()
 
     def predict(self, inputs: List[int]) -> List[float]:
@@ -59,22 +62,6 @@ class LanguageModel:
         next_index_prediction = self.predict(indices)
         return {self.vocabulary.get_word_by_index(index): prob
                 for index, prob in enumerate(next_index_prediction)}
-
-    def train_file(self, file_name):
-        assert os.path.exists(file_name)
-        sentences = self._parse_file_for_train(file_name)
-        self.train(sentences)
-        print("Train: normalizng...")
-        self.normalize()
-
-    @staticmethod
-    def _parse_file_for_train(file_name):
-        assert os.path.exists(file_name)
-        with open(file_name, "r", encoding="utf-8") as r:
-            for line in r:
-                words = line.strip().split()
-                yield words
-        return
 
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
                       max_length: int=50, length_reward: float=0.0) -> List[str]:
@@ -137,7 +124,17 @@ class LanguageModel:
                 ppl_state = self.measure_perplexity(sentences, ppl_state)
         return ppl_state
 
+    @staticmethod
+    def _parse_file_for_train(file_name):
+        assert os.path.exists(file_name)
+        with open(file_name, "r", encoding="utf-8") as r:
+            for line in r:
+                words = line.strip().split()
+                yield words
+
     def _numericalize_inputs(self, words: List[str]) -> List[int]:
+        if self.reverse:
+            words = words[::-1]
         return [self.vocabulary.get_bos()] + [self.vocabulary.get_index_by_word(word) for word in words]
 
     def _decipher_outputs(self, indices: List[int]) -> List[str]:

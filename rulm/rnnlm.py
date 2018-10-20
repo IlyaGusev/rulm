@@ -5,38 +5,68 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
+from torch.utils.data import Dataset
 
 from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
 from rulm.language_model import LanguageModel
 from rulm.batch import Batch, VarBatch
 
+class NNConfig:
+    def save(self, file_name):
+        assert file_name.endswith(".json")
+        with open(file_name, 'w', encoding="utf-8") as f:
+            d = copy.deepcopy(self.__dict__)
+            f.write(json.dumps(d, sort_keys=True, indent=4) + '\n')
+
+    def load(self, file_name):
+        assert file_name.endswith(".json")
+        with open(filename, 'r', encoding='utf-8') as f:
+            d = json.loads(f.read())
+            self.__dict__.update(d)
+
+
+class RNNModuleConfig(NNConfig):
+    def __init__(self):
+        self.is_binding_embeddings = True
+        self.vocabulary_size = 50000
+        self.embedding_size = 300
+        self.embedding_dropout_p = 0.3
+        self.rnn_hidden_size = 300
+        self.rnn_dropout_p = 0.3
+        self.n_layers = 3
+        self.projection_dropout_p = 0.3
+
 
 class RNNModule(nn.Module):
-    def __init__(self, vocab_size, emb_size, rnn_size, n_layers=3, dropout=0.3):
+    def __init__(self, config: RNNModuleConfig):
         super(RNNModule, self).__init__()
 
-        self.vocab_size = vocab_size
-        self.emb_size = emb_size
-        self.rnn_size = rnn_size
-        self.n_layers = n_layers
-        self.dropout = dropout
+        self.config = config
 
-        self.embedding_layer = nn.Embedding(vocab_size, emb_size)
-        self.embedding_dropout_layer = nn.Dropout(dropout)
+        vocabulary_size = self.config.vocabulary_size
+        embedding_size = self.config.embedding_size
+        self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size)
+        self.embedding_dropout_layer = nn.Dropout(self.config.embedding_dropout_p)
 
-        rnns = [nn.LSTM(emb_size, rnn_size, 1), nn.Dropout(dropout)]
-        for _ in range(n_layers - 1):
-            rnns.append(nn.LSTM(rnn_size, rnn_size, 1))
-            rnns.append(nn.Dropout(dropout))
+        # TODO: Consider 2 ModuleLists
+        # TODO: Not default n_layers param of LSTM because of upcoming residiual connections
+        rnn_hidden_size = self.config.rnn_hidden_size
+        rnn_dropout_p = self.config.rnn_dropout_p
+        rnns = [nn.LSTM(self.config.embedding_size, rnn_hidden_size, 1),
+                nn.Dropout(rnn_dropout_p)]
+        for _ in range(self.config.n_layers - 1):
+            rnns.append(nn.LSTM(rnn_hidden_size, rnn_hidden_size, 1))
+            rnns.append(nn.Dropout(rnn_dropout_p))
         self.rnn_layers = nn.ModuleList(rnns)
 
-        self.projection_layer = nn.Linear(rnn_size, emb_size)
+        self.projection_layer = nn.Linear(rnn_hidden_size, embedding_size)
         self.projection_relu_layer = nn.ReLU()
-        self.projection_dropout_layer = nn.Dropout(dropout)
+        self.projection_dropout_layer = nn.Dropout(self.config.projection_dropout_p)
 
-        self.output_dense_layer = nn.Linear(emb_size, vocab_size)
-        self.output_dense_layer.weight = self.embedding_layer.weight
+        self.output_dense_layer = nn.Linear(embedding_size, vocabulary_size)
+        if self.config.is_binding_embeddings:
+            self.output_dense_layer.weight = self.embedding_layer.weight
 
         self.softmax = nn.LogSoftmax(dim=2)
 
@@ -44,7 +74,7 @@ class RNNModule(nn.Module):
         inputs = self.embedding_layer(input_seqs)
         inputs = self.embedding_dropout_layer(inputs)
 
-        for i in range(self.n_layers):
+        for i in range(self.config.n_layers):
             inputs_packed = pack(inputs, lengths)
             outputs_packed, _ = self.rnn_layers[i * 2](inputs_packed, None)
             outputs, lengths = unpack(outputs_packed)
@@ -60,15 +90,22 @@ class RNNModule(nn.Module):
         return result
 
 
-class RNNLanguageModel(LanguageModel):
+class NNLanguageModel(LanguageModel):
     def __init__(self, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
-                 reverse: bool=False, emb_size: int=300, rnn_size: int=300,
-                 n_layers: int=2, dropout: float=0.3):
-        self.reverse = reverse  # type: bool
-        LanguageModel.__init__(self, vocabulary, transforms)
+                 reverse: bool=False, config: NNConfig=NNConfig()):
+        LanguageModel.__init__(self, vocabulary, transforms, reverse)
+        self.config = config
 
-        self.model = RNNModule(len(self.vocabulary), emb_size, rnn_size, n_layers, dropout)
+
+class RNNLanguageModel(NNLanguageModel):
+    def __init__(self, vocabulary: Vocabulary,
+                 transforms: Tuple[Transform]=tuple(),
+                 reverse: bool=False, config: NNConfig=RNNModuleConfig()):
+        NNLanguageModel.__init__(self, vocabulary, transforms, reverse, config)
+
+        self.config.vocabulary_size = min(self.config.vocabulary_size, len(vocabulary))
+        self.model = RNNModule(self.config)
         use_cuda = torch.cuda.is_available()
         self.model.cuda() if use_cuda else self.model
 
@@ -91,9 +128,6 @@ class RNNLanguageModel(LanguageModel):
             sentences = self._parse_file_for_train(file_name)
             self.train(sentences, batch_size=batch_size,
                        max_length=max_length, report_every=report_every)
-
-    def normalize(self):
-        pass
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()

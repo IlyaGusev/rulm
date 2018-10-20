@@ -5,6 +5,7 @@ import numpy as np
 from rulm.vocabulary import Vocabulary
 from rulm.language_model import EquiprobableLanguageModel, VocabularyChainLanguageModel, PerplexityState
 
+# TODO: test reverse
 
 class TestLanguageModel(unittest.TestCase):
     @classmethod

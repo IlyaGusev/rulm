@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from typing import List, Tuple, Type, Generator, Any
 import gzip
@@ -71,14 +72,14 @@ class TrieNGramContainer(NGramContainer):
 class NGramLanguageModel(LanguageModel):
     def __init__(self, n: int, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
+                 reverse: bool=False,
                  interpolation_lambdas: Tuple[float, ...]=None,
-                 reverse: bool=False, container: Type[NGramContainer]=DictNGramContainer):
+                 container: Type[NGramContainer]=DictNGramContainer):
         assert not interpolation_lambdas or n == len(interpolation_lambdas)
         self.n_grams = [container() for _ in range(n+1)]  # type: List[NGramContainer]
         self.n = n  # type: int
         self.interpolation_lambdas = interpolation_lambdas  # type: Tuple[float]
-        self.reverse = reverse  # type: bool
-        LanguageModel.__init__(self, vocabulary, transforms)
+        LanguageModel.__init__(self, vocabulary, transforms, reverse)
 
     def _collect_n_grams(self, indices: List[int]) -> None:
         l = len(indices)
@@ -90,14 +91,19 @@ class NGramLanguageModel(LanguageModel):
     def train(self, inputs: Generator[List[str], Any, None], report_every: int=10000):
         sentence_number = 0
         for sentence in inputs:
-            if self.reverse:
-                sentence = sentence[::-1]
             indices = self._numericalize_inputs(sentence)
             indices.append(self.vocabulary.get_eos())
             self._collect_n_grams(indices)
             sentence_number += 1
             if sentence_number % report_every == 0:
                 print("Train: {} sentences processed".format(sentence_number))
+
+    def train_file(self, file_name):
+        assert os.path.exists(file_name)
+        sentences = self._parse_file_for_train(file_name)
+        self.train(sentences)
+        print("Train: normalizng...")
+        self.normalize()
 
     def normalize(self):
         for n in range(self.n, 0, -1):
