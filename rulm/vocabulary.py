@@ -98,7 +98,12 @@ class Vocabulary:
             if i >= n_best:
                 break
 
-    def pad_indices(self, indices: List[int], length: int):
+    def numericalize_inputs(self, words: List[str], reverse: bool=False) -> List[int]:
+        if reverse:
+            words = words[::-1]
+        return [self.get_bos()] + [self.get_index_by_word(word) for word in words]
+
+    def pad_indices(self, indices: List[int], length: int) -> List[int]:
         return indices[:length] + [self.get_pad() for _ in range(length-len(indices))]
 
     def add_file(self, file_name):

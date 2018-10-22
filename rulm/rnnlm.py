@@ -89,14 +89,12 @@ class RNNModule(nn.Module):
         result = self.softmax(self.output_dense_layer(outputs))
         return result
 
-
 class NNLanguageModel(LanguageModel):
     def __init__(self, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
                  reverse: bool=False, config: NNConfig=NNConfig()):
         LanguageModel.__init__(self, vocabulary, transforms, reverse)
         self.config = config
-
 
 class RNNLanguageModel(NNLanguageModel):
     def __init__(self, vocabulary: Vocabulary,
