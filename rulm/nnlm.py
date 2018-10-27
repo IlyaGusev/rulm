@@ -5,6 +5,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader, default_collate
+from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
+from ignite.metrics import CategoricalAccuracy, Loss
+from ignite.handlers import ModelCheckpoint
 
 from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
@@ -16,9 +19,9 @@ use_cuda = torch.cuda.is_available()
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 
 
-def process_line(line, vocabulary, max_length):
+def process_line(line, vocabulary, max_length, reverse):
     words = line.strip().split()
-    indices = vocabulary.numericalize_inputs(words)
+    indices = vocabulary.numericalize_inputs(words, reverse=reverse)
     indices += [vocabulary.get_eos()]
     indices = vocabulary.pad_indices(indices, max_length)
     return np.array(indices, dtype="int32")
@@ -37,12 +40,8 @@ def preprocess_batch(batch):
     y[:, :-1] = batch[:, 1:]
 
     batch = torch.transpose(LongTensor(batch), 0, 1)
-    y = torch.transpose(LongTensor(y), 0, 1)
-    return {
-        'x': batch,
-        'y': y,
-        'lengths': lengths
-    }
+    y = LongTensor(y)
+    return batch, y
 
 
 class NNLanguageModel(LanguageModel):
@@ -52,29 +51,46 @@ class NNLanguageModel(LanguageModel):
         LanguageModel.__init__(self, vocabulary, transforms, reverse)
 
         self.model = None
-        self.optimizer = None
-
-    def train(self, data: DataLoader, report_every: int=50):
-        assert self.model
-        for step, batch in enumerate(data):
-            loss = self._process_batch(batch, self.optimizer)
-            if step % 10 == 0:
-                print("Step: {}, loss: {}".format(step, loss))
-        self.save("model.pt")
 
     def train_file(self, file_name: str, intermediate_dir: str="./chunks",
                    epochs: int=20, batch_size: int=64,
-                   max_length: int=50, report_every: int=50):
+                   checkpoint_dir: str=None, checkpoint_every: int=1,
+                   max_length: int=50, report_every: int=50, validate_every: int=1):
         assert os.path.exists(file_name)
-        for epoch in range(epochs):
-            print("Big epoch: {}".format(epoch))
-            def closed_process_line(line):
-                return process_line(line, self.vocabulary, max_length)
-            dataset = StreamDataset([file_name], closed_process_line)
-            # dataset = ChunkDataset([file_name], closed_process_line,
-            #     intermediate_dir, max_sample_length=max_length, chunk_size=1000000)
-            loader = DataLoader(dataset, batch_size=batch_size, collate_fn=preprocess_batch)
-            self.train(loader, report_every=report_every)
+
+        def closed_process_line(line):
+            return process_line(line, self.vocabulary, max_length, self.reverse)
+
+        dataset = StreamDataset([file_name], closed_process_line)
+        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=preprocess_batch)
+
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=0.001)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        criterion = nn.NLLLoss()
+
+        trainer = create_supervised_trainer(self.model, optimizer, criterion, device=device)
+        evaluator = create_supervised_evaluator(self.model, metrics={
+            'loss': Loss(criterion),
+            'accuracy': CategoricalAccuracy()
+        })
+
+        if checkpoint_dir:
+            checkpointer = ModelCheckpoint(checkpoint_dir, "model",
+                                           save_interval=checkpoint_every, create_dir=True)
+            trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {"model": self.model})
+
+        @trainer.on(Events.ITERATION_COMPLETED)
+        def validate(trainer):
+            if trainer.state.iteration % validate_every == 0:
+                evaluator.run(loader)
+                metrics = evaluator.state.metrics
+                print("Epoch: {}, iteration: {}, loss: {}, accuracy: {}".format(
+                    trainer.state.epoch,
+                    trainer.state.iteration,
+                    metrics["loss"],
+                    metrics['accuracy']))
+
+        trainer.run(loader, max_epochs=epochs)
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
@@ -83,7 +99,8 @@ class NNLanguageModel(LanguageModel):
 
         indices = LongTensor(indices)
         indices = torch.unsqueeze(indices, 1)
-        result = self.model.forward(indices, [len(indices)])
+        result = self.model.forward(indices)
+        result = result.transpose(1, 2).transpose(0, 1)
         result = torch.exp(torch.squeeze(result, 1)[-1]).cpu().detach().numpy()
         return result
 
@@ -93,25 +110,3 @@ class NNLanguageModel(LanguageModel):
     def load(self, file_name):
         self.model = torch.load(file_name)
 
-    def _process_batch(self, batch, optimizer=None):
-        if optimizer is not None:
-            optimizer.zero_grad()
-
-        result = self.model.forward(batch['x'], batch['lengths'])
-        result = torch.transpose(result, 0, 1)
-        result = torch.transpose(result, 1, 2)
-        result = torch.unsqueeze(result, 2)
-
-        target = batch['y']
-        target = torch.t(target)
-        target = torch.unsqueeze(target, 1)
-
-        criterion = nn.NLLLoss()
-        loss = criterion(result, target)
-
-        if optimizer is not None:
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
-            optimizer.step()
-
-        return loss.data.item()

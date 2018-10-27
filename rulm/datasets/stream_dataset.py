@@ -18,6 +18,7 @@ class StreamDataset(TextDataset):
     def __getitem__(self, index):
         if index < self.current_line_number:
             self.lines_gen = self._get_lines_gen()
+            self.current_line_number = -1
         for line in self.lines_gen:
             sample = self.process_line(line)
             self.current_line_number += 1
