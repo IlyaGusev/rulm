@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence as pack
+from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
 from rulm.nnconfig import NNConfig
 
@@ -48,12 +50,15 @@ class RNNModule(nn.Module):
 
         self.softmax = nn.LogSoftmax(dim=2)
 
-    def forward(self, batch):
+    def forward(self, batch, lengths=None):
         inputs = self.embedding_layer(batch)
         inputs = self.embedding_dropout_layer(inputs)
 
         for i in range(self.config.n_layers):
-            outputs, _  = self.rnn_layers[i * 2](inputs)
+            inputs_packed = pack(inputs, lengths) if lengths is not None else inputs
+            outputs, _  = self.rnn_layers[i * 2](inputs_packed, None)
+            if lengths is not None:
+                outputs, lengths = unpack(outputs)
             outputs = self.rnn_layers[i * 2 + 1](outputs)
             inputs = torch.add(outputs, inputs) if i != 0 else outputs
         outputs = inputs

@@ -1,11 +1,12 @@
 import os
 from typing import List, Tuple
+from datetime import datetime
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader, default_collate
-from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
+from ignite.engine import Engine, Events
 from ignite.metrics import CategoricalAccuracy, Loss
 from ignite.handlers import ModelCheckpoint
 
@@ -41,7 +42,44 @@ def preprocess_batch(batch):
 
     batch = torch.transpose(LongTensor(batch), 0, 1)
     y = LongTensor(y)
-    return batch, y
+    return {"x": batch, "y": y}
+
+
+def create_lm_trainer(model, optimizer, loss_fn, device=None, grad_clipping: int=5.):
+    if device:
+        model.to(device)
+
+    def _update(engine, batch):
+        model.train()
+        optimizer.zero_grad()
+        x, y = batch["x"], batch["y"]
+        lengths = batch["lengths"] if "lengths" in batch else None
+        y_pred = model(x, lengths) if lengths else model(x)
+        loss = loss_fn(y_pred, y)
+        loss.backward()
+        if grad_clipping:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clipping)
+        optimizer.step()
+        return loss.item()
+
+    return Engine(_update)
+
+def create_lm_evaluator(model, metrics={}, device=None):
+    if device:
+        model.to(device)
+
+    def _inference(engine, batch):
+        model.eval()
+        with torch.no_grad():
+            x, y = batch["x"], batch["y"]
+            lengths = batch["lengths"] if "lengths" in batch else None
+            y_pred = model(x, lengths) if lengths else model(x)
+            return y_pred, y
+
+    engine = Engine(_inference)
+    for name, metric in metrics.items():
+        metric.attach(engine, name)
+    return engine
 
 
 class NNLanguageModel(LanguageModel):
@@ -68,8 +106,8 @@ class NNLanguageModel(LanguageModel):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         criterion = nn.NLLLoss()
 
-        trainer = create_supervised_trainer(self.model, optimizer, criterion, device=device)
-        evaluator = create_supervised_evaluator(self.model, metrics={
+        trainer = create_lm_trainer(self.model, optimizer, criterion, device=device)
+        evaluator = create_lm_evaluator(self.model, metrics={
             'loss': Loss(criterion),
             'accuracy': CategoricalAccuracy()
         })
@@ -78,15 +116,17 @@ class NNLanguageModel(LanguageModel):
             checkpointer = ModelCheckpoint(checkpoint_dir, "model",
                                            save_interval=checkpoint_every, create_dir=True)
             trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {"model": self.model})
+        start_time = datetime.now()
 
         @trainer.on(Events.ITERATION_COMPLETED)
         def validate(trainer):
             if trainer.state.iteration % validate_every == 0:
                 evaluator.run(loader)
                 metrics = evaluator.state.metrics
-                print("Epoch: {}, iteration: {}, loss: {}, accuracy: {}".format(
+                print("Epoch: {}, iteration: {}, time: {}, loss: {}, accuracy: {}".format(
                     trainer.state.epoch,
                     trainer.state.iteration,
+                    datetime.now()-start_time,
                     metrics["loss"],
                     metrics['accuracy']))
 
