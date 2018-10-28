@@ -1,6 +1,7 @@
 import unittest
 import os
 import time
+from tempfile import NamedTemporaryFile
 
 import numpy as np
 
@@ -36,19 +37,19 @@ class TestNGrams(unittest.TestCase):
             for n in range(1, m1.n+1):
                 assert_ngrams_equal(m1.n_grams[n], m2.n_grams[n])
 
-        model_path_text = os.path.join(DATA_DIR, "model.arpa")
-        model1.save(model_path_text)
+        model1_file = NamedTemporaryFile(delete=False, suffix=".arpa")
+        model1.save(model1_file.name)
         model2 = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
-        model2.load(model_path_text)
+        model2.load(model1_file.name)
         assert_models_equal(model1, model2)
-        os.remove(model_path_text)
+        os.unlink(model1_file.name)
 
-        model_path_gzip = os.path.join(DATA_DIR, "model.arpa.gzip")
-        model1.save(model_path_gzip)
+        model1_file_gzip = NamedTemporaryFile(delete=False, suffix=".arpa.gzip")
+        model1.save(model1_file_gzip.name)
         model3 = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
-        model3.load(model_path_gzip)
+        model3.load(model1_file_gzip.name)
         assert_models_equal(model1, model3)
-        os.remove(model_path_gzip)
+        os.unlink(model1_file_gzip.name)
 
     def test_predict_big(self):
         vocabulary = Vocabulary()

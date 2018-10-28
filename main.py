@@ -1,6 +1,6 @@
 from rulm.vocabulary import Vocabulary
 from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE, RNNLM_REMEMBER_EXAMPLE
-from rulm.rnnlm import RNNLanguageModel
+from rulm.nn.rnn_language_model import RNNLanguageModel
 
 vocabulary = Vocabulary()
 vocabulary.load(TRAIN_VOCAB_EXAMPLE)

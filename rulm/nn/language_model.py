@@ -6,10 +6,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader, default_collate
-from ignite.engine import Engine, Events
-from ignite.metrics import CategoricalAccuracy, Loss
+from ignite.engine import Events
+from ignite.metrics import Loss
 from ignite.handlers import ModelCheckpoint
 
+from rulm.utils import process_line
+from rulm.nn.utils import create_lm_evaluator, create_lm_trainer, MaskedCategoricalAccuracy
 from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
 from rulm.language_model import LanguageModel
@@ -18,14 +20,6 @@ from rulm.datasets.stream_dataset import StreamDataset
 
 use_cuda = torch.cuda.is_available()
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
-
-
-def process_line(line, vocabulary, max_length, reverse):
-    words = line.strip().split()
-    indices = vocabulary.numericalize_inputs(words, reverse=reverse)
-    indices += [vocabulary.get_eos()]
-    indices = vocabulary.pad_indices(indices, max_length)
-    return np.array(indices, dtype="int32")
 
 
 def preprocess_batch(batch):
@@ -42,44 +36,7 @@ def preprocess_batch(batch):
 
     batch = torch.transpose(LongTensor(batch), 0, 1)
     y = LongTensor(y)
-    return {"x": batch, "y": y}
-
-
-def create_lm_trainer(model, optimizer, loss_fn, device=None, grad_clipping: int=5.):
-    if device:
-        model.to(device)
-
-    def _update(engine, batch):
-        model.train()
-        optimizer.zero_grad()
-        x, y = batch["x"], batch["y"]
-        lengths = batch["lengths"] if "lengths" in batch else None
-        y_pred = model(x, lengths) if lengths else model(x)
-        loss = loss_fn(y_pred, y)
-        loss.backward()
-        if grad_clipping:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clipping)
-        optimizer.step()
-        return loss.item()
-
-    return Engine(_update)
-
-def create_lm_evaluator(model, metrics={}, device=None):
-    if device:
-        model.to(device)
-
-    def _inference(engine, batch):
-        model.eval()
-        with torch.no_grad():
-            x, y = batch["x"], batch["y"]
-            lengths = batch["lengths"] if "lengths" in batch else None
-            y_pred = model(x, lengths) if lengths else model(x)
-            return y_pred, y
-
-    engine = Engine(_inference)
-    for name, metric in metrics.items():
-        metric.attach(engine, name)
-    return engine
+    return {"x": batch, "y": y, "lengths": lengths}
 
 
 class NNLanguageModel(LanguageModel):
@@ -104,12 +61,12 @@ class NNLanguageModel(LanguageModel):
 
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=0.001)
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        criterion = nn.NLLLoss()
+        criterion = nn.NLLLoss(ignore_index=self.vocabulary.get_pad())
 
         trainer = create_lm_trainer(self.model, optimizer, criterion, device=device)
         evaluator = create_lm_evaluator(self.model, metrics={
             'loss': Loss(criterion),
-            'accuracy': CategoricalAccuracy()
+            'accuracy': MaskedCategoricalAccuracy()
         })
 
         if checkpoint_dir:

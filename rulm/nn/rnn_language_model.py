@@ -4,7 +4,7 @@ import torch
 
 from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
-from rulm.nnlm import NNLanguageModel
+from rulm.nn.language_model import NNLanguageModel
 from rulm.models.rnn import RNNModule, RNNModuleConfig
 
 class RNNLanguageModel(NNLanguageModel):

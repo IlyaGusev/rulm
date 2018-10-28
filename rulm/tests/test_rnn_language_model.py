@@ -1,7 +1,9 @@
 import unittest
+import os
+from tempfile import NamedTemporaryFile
 
 from rulm.vocabulary import Vocabulary
-from rulm.rnnlm import RNNLanguageModel
+from rulm.nn.rnn_language_model import RNNLanguageModel
 from rulm.settings import RNNLM_REMEMBER_EXAMPLE
 
 
@@ -24,3 +26,12 @@ class TestRNNLM(unittest.TestCase):
                     continue
                 context = sentence[:i]
                 self.assertListEqual(self.model.sample_decoding(context, k=1), sentence)
+
+    def test_save_load(self):
+        f = NamedTemporaryFile(delete=False)
+        self.model.save(f.name)
+        loaded_model = RNNLanguageModel(self.vocabulary)
+        loaded_model.load(f.name)
+        os.unlink(f.name)
+        self.assertFalse(os.path.exists(f.name))
+
