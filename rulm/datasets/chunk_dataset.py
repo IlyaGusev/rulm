@@ -4,7 +4,10 @@ from typing import List, Callable
 import numpy as np
 import torch
 
-from rulm.datasets.text_dataset import TextDataset
+from torch.utils.data import Dataset
+
+from rulm.datasets.files_mixin import FilesMixin
+
 
 class PreprocessingState:
     def __init__(self, default_chunk_shape, dtype):
@@ -32,7 +35,7 @@ class PreprocessingState:
         self.chunk = np.zeros(self.default_chunk_shape, dtype=self.chunk_dtype)
 
 
-class ChunkDataset(TextDataset):
+class ChunkDataset(Dataset, FilesMixin):
     dtype = "int32"
 
     def __init__(self,
@@ -42,8 +45,9 @@ class ChunkDataset(TextDataset):
                  max_sample_length: int=50,
                  encoding: str='utf-8',
                  chunk_size: int=1000000):
-        TextDataset.__init__(self, input_files, process_line, encoding)
+        FilesMixin.__init__(self, input_files, encoding)
 
+        self.process_line = process_line
         self.intermediate_directory = intermediate_directory
         self.max_sample_length = max_sample_length
         self.chunk_size= chunk_size

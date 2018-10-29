@@ -1,10 +1,11 @@
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Generator, Any
 from datetime import datetime
 
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader, default_collate
 from ignite.engine import Events
 from ignite.metrics import Loss
@@ -16,20 +17,17 @@ from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
 from rulm.language_model import LanguageModel
 from rulm.datasets.chunk_dataset import ChunkDataset
-from rulm.datasets.stream_dataset import StreamDataset
+from rulm.datasets.stream_dataset import StreamDataset, StreamFilesDataset
 
 use_cuda = torch.cuda.is_available()
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 
 
 def preprocess_batch(batch):
-    lengths = [len([elem for elem in sample if elem != 0]) for sample in batch]
-    max_length = max(lengths)
-    pairs = sorted(zip(batch, lengths), key=lambda x: x[1], reverse=True)
-    batch = [sample[:max_length] for sample, _ in pairs]
-    lengths.sort(reverse=True)
-    batch = default_collate(batch)
-    batch = batch.numpy()
+    lengths = [np.count_nonzero(sample) for sample in batch]
+    batch, lengths  = zip(*sorted(zip(batch, lengths), key=lambda x: x[1], reverse=True))
+    batch = np.array(batch)[:, :max(lengths)]
+    lengths = list(lengths)
 
     y = np.zeros((batch.shape[0], batch.shape[1]), dtype=batch.dtype)
     y[:, :-1] = batch[:, 1:]
@@ -39,27 +37,47 @@ def preprocess_batch(batch):
     return {"x": batch, "y": y, "lengths": lengths}
 
 
+class TrainConfig:
+    def __init__(self, intermediate_dir: str="./chunks",
+                 epochs: int=20, batch_size: int=64,
+                 checkpoint_dir: str=None, checkpoint_every: int=1,
+                 report_every: int=50, validate_every: int=1,
+                 lr: float=0.001):
+        self.intermediate_dir = intermediate_dir
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.checkpoint_dir = checkpoint_dir
+        self.checkpoint_every = checkpoint_every
+        self.report_every = report_every
+        self.validate_every = validate_every
+        self.lr = lr
+
+
 class NNLanguageModel(LanguageModel):
     def __init__(self, vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
-                 reverse: bool=False):
+                 reverse: bool=False, max_length: int=50):
         LanguageModel.__init__(self, vocabulary, transforms, reverse)
 
+        self.max_length = max_length
         self.model = None
 
-    def train_file(self, file_name: str, intermediate_dir: str="./chunks",
-                   epochs: int=20, batch_size: int=64,
-                   checkpoint_dir: str=None, checkpoint_every: int=1,
-                   max_length: int=50, report_every: int=50, validate_every: int=1):
+
+    def train(self, inputs: Generator[List[str], Any, None], config: TrainConfig=TrainConfig()):
+        dataset = StreamDataset(self._closed_process_line, inputs)
+        self._train_on_dataset(dataset, config)
+
+    def train_file(self, file_name: str, config: TrainConfig=TrainConfig()):
         assert os.path.exists(file_name)
+        dataset = StreamFilesDataset([file_name], self._closed_process_line)
+        self._train_on_dataset(dataset, config)
 
-        def closed_process_line(line):
-            return process_line(line, self.vocabulary, max_length, self.reverse)
+    def _closed_process_line(self, line):
+        return process_line(line, self.vocabulary, self.max_length, self.reverse)
 
-        dataset = StreamDataset([file_name], closed_process_line)
-        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=preprocess_batch)
-
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=0.001)
+    def _train_on_dataset(self, dataset: Dataset, config: TrainConfig):
+        loader = DataLoader(dataset, batch_size=config.batch_size, collate_fn=preprocess_batch)
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=config.lr)
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         criterion = nn.NLLLoss(ignore_index=self.vocabulary.get_pad())
 
@@ -69,15 +87,15 @@ class NNLanguageModel(LanguageModel):
             'accuracy': MaskedCategoricalAccuracy()
         })
 
-        if checkpoint_dir:
-            checkpointer = ModelCheckpoint(checkpoint_dir, "model",
-                                           save_interval=checkpoint_every, create_dir=True)
+        if config.checkpoint_dir:
+            checkpointer = ModelCheckpoint(config.checkpoint_dir, "model",
+                                           save_interval=config.checkpoint_every, create_dir=True)
             trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {"model": self.model})
         start_time = datetime.now()
 
         @trainer.on(Events.ITERATION_COMPLETED)
         def validate(trainer):
-            if trainer.state.iteration % validate_every == 0:
+            if trainer.state.iteration % config.validate_every == 0:
                 evaluator.run(loader)
                 metrics = evaluator.state.metrics
                 print("Epoch: {}, iteration: {}, time: {}, loss: {}, accuracy: {}".format(
@@ -87,7 +105,7 @@ class NNLanguageModel(LanguageModel):
                     metrics["loss"],
                     metrics['accuracy']))
 
-        trainer.run(loader, max_epochs=epochs)
+        trainer.run(loader, max_epochs=config.epochs)
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()

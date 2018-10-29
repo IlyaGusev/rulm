@@ -3,6 +3,7 @@ import os
 from tempfile import NamedTemporaryFile
 
 from rulm.vocabulary import Vocabulary
+from rulm.nn.language_model import TrainConfig
 from rulm.nn.rnn_language_model import RNNLanguageModel
 from rulm.settings import RNNLM_REMEMBER_EXAMPLE
 
@@ -12,8 +13,14 @@ class TestRNNLM(unittest.TestCase):
     def setUpClass(cls):
         cls.vocabulary = Vocabulary()
         cls.vocabulary.add_file(RNNLM_REMEMBER_EXAMPLE)
+        cls.config = TrainConfig()
+        cls.config.epochs = 20
+
         cls.model = RNNLanguageModel(cls.vocabulary)
-        cls.model.train_file(RNNLM_REMEMBER_EXAMPLE, epochs=20)
+        cls.model.train_file(RNNLM_REMEMBER_EXAMPLE, cls.config)
+
+        cls.model2 = RNNLanguageModel(cls.vocabulary)
+        cls.model2.train(open(RNNLM_REMEMBER_EXAMPLE), cls.config)
 
     def test_print(self):
         sentences = []
@@ -26,6 +33,7 @@ class TestRNNLM(unittest.TestCase):
                     continue
                 context = sentence[:i]
                 self.assertListEqual(self.model.sample_decoding(context, k=1), sentence)
+                self.assertListEqual(self.model2.sample_decoding(context, k=1), sentence)
 
     def test_save_load(self):
         f = NamedTemporaryFile(delete=False)

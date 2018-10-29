@@ -1,15 +1,12 @@
 import os
 from typing import List, Callable
 
-from torch.utils.data import Dataset
-
-class TextDataset(Dataset):
+class FilesMixin:
     def __init__(self,
                  input_files: List[str],
                  process_line: Callable,
                  encoding: str='utf-8'):
         self.input_files = input_files
-        self.process_line = process_line
         self.encoding = encoding
         assert len(self.input_files) != 0
 
