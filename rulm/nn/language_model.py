@@ -111,6 +111,10 @@ class NNLanguageModel(LanguageModel):
                     metrics["loss"],
                     metrics['accuracy']))
 
+        print("Model:")
+        print(self.model)
+        print("Params count: ", sum(p.numel() for p in self.model.parameters()))
+        print("Trainable params count: ", sum(p.numel() for p in self.model.parameters() if p.requires_grad))
         trainer.run(loader, max_epochs=config.epochs)
 
     def predict(self, indices: List[int]) -> List[float]:

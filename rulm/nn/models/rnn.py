@@ -10,12 +10,12 @@ class RNNModuleConfig(NNConfig):
     def __init__(self):
         self.is_binding_embeddings = True
         self.vocabulary_size = 50000
-        self.embedding_size = 300
-        self.embedding_dropout_p = 0.3
-        self.rnn_hidden_size = 300
-        self.rnn_dropout_p = 0.3
-        self.n_layers = 3
-        self.projection_dropout_p = 0.3
+        self.embedding_size = 200
+        self.embedding_dropout_p = 0.2
+        self.rnn_hidden_size = 200
+        self.rnn_dropout_p = 0.2
+        self.n_layers = 2
+        self.projection_dropout_p = 0.2
 
 
 class RNNModule(nn.Module):
