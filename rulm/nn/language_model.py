@@ -38,10 +38,14 @@ def preprocess_batch(batch):
 
 
 class TrainConfig:
-    def __init__(self, intermediate_dir: str="./chunks",
-                 epochs: int=20, batch_size: int=64,
-                 checkpoint_dir: str=None, checkpoint_every: int=1,
-                 report_every: int=50, validate_every: int=1,
+    def __init__(self,
+                 intermediate_dir: str="./chunks",
+                 epochs: int=20,
+                 batch_size: int=64,
+                 checkpoint_dir: str=None,
+                 checkpoint_every: int=1,
+                 report_every: int=50,
+                 validate_every: int=1,
                  lr: float=0.001):
         self.intermediate_dir = intermediate_dir
         self.epochs = epochs
@@ -54,9 +58,11 @@ class TrainConfig:
 
 
 class NNLanguageModel(LanguageModel):
-    def __init__(self, vocabulary: Vocabulary,
+    def __init__(self,
+                 vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
-                 reverse: bool=False, max_length: int=50):
+                 reverse: bool=False,
+                 max_length: int=50):
         LanguageModel.__init__(self, vocabulary, transforms, reverse)
 
         self.max_length = max_length

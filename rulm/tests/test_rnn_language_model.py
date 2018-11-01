@@ -16,28 +16,40 @@ class TestRNNLM(unittest.TestCase):
         cls.config = TrainConfig()
         cls.config.epochs = 20
 
-        cls.model = RNNLanguageModel(cls.vocabulary)
-        cls.model.train_file(RNNLM_REMEMBER_EXAMPLE, cls.config)
+        cls.model1 = RNNLanguageModel(cls.vocabulary)
+        cls.model1.train_file(RNNLM_REMEMBER_EXAMPLE, cls.config)
+
+        cls.model_reversed = RNNLanguageModel(cls.vocabulary, reverse=True)
+        cls.model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE, cls.config)
 
         cls.model2 = RNNLanguageModel(cls.vocabulary)
-        cls.model2.train(open(RNNLM_REMEMBER_EXAMPLE), cls.config)
+        with open(RNNLM_REMEMBER_EXAMPLE, encoding="utf-8") as r:
+            lines = list(map(lambda x: x.strip(), r.readlines()))
+            cls.model2.train(lines, cls.config)
 
     def test_print(self):
         sentences = []
-        with open(RNNLM_REMEMBER_EXAMPLE, "r", encoding="utf-8") as r:
-            for line in r:
-                sentences.append(line.strip().split())
+        for model in (self.model1, self.model2):
+            with open(RNNLM_REMEMBER_EXAMPLE, "r", encoding="utf-8") as r:
+                for line in r:
+                    sentences.append(line.strip().split())
+            for sentence in sentences:
+                for i in range(1, len(sentence)-1):
+                    if i == 1 and sentence[0] == "Я":
+                        continue
+                    context = sentence[:i]
+                    self.assertListEqual(model.sample_decoding(context, k=1), sentence)
         for sentence in sentences:
-            for i in range(1, len(sentence)-1):
-                if i == 1 and sentence[0] == "Я":
-                    continue
-                context = sentence[:i]
-                self.assertListEqual(self.model.sample_decoding(context, k=1), sentence)
-                self.assertListEqual(self.model2.sample_decoding(context, k=1), sentence)
+            if sentence[-1] != '!':
+                continue
+            for i in range(len(sentence)-1, -1, -1):
+                context = sentence[i:]
+                self.assertListEqual(self.model_reversed.sample_decoding(context, k=1), sentence[::-1])
+
 
     def test_save_load(self):
         f = NamedTemporaryFile(delete=False)
-        self.model.save(f.name)
+        self.model1.save(f.name)
         loaded_model = RNNLanguageModel(self.vocabulary)
         loaded_model.load(f.name)
         os.unlink(f.name)
