@@ -62,8 +62,12 @@ class NNLanguageModel(LanguageModel):
                  vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
                  reverse: bool=False,
-                 max_length: int=50):
+                 max_length: int=50,
+                 seed: int=42):
         LanguageModel.__init__(self, vocabulary, transforms, reverse)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        torch.backends.cudnn.set_flags(True, False, True, True)
 
         self.max_length = max_length
         self.model = None
