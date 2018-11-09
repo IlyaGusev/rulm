@@ -59,12 +59,12 @@ class TestNGrams(unittest.TestCase):
 
         prediction = model.predict([vocabulary.get_bos()])
         non_zero_indices = list(filter(lambda x: x != 0., prediction))
-        self.assertEqual(len(non_zero_indices), 3345)
+        self.assertEqual(len(non_zero_indices), 502)
 
     def test_predict_time(self):
         vocabulary = Vocabulary()
         vocabulary.load(TRAIN_VOCAB_EXAMPLE)
-        vocabulary.sort(15000)
+        vocabulary.sort(3000)
         model = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
         model.train_file(TRAIN_EXAMPLE)
 
@@ -102,7 +102,7 @@ class TestNGrams(unittest.TestCase):
     def test_perplexity(self):
         vocabulary = Vocabulary()
         vocabulary.load(TRAIN_VOCAB_EXAMPLE)
-        vocabulary.sort(1000)
+        vocabulary.sort(500)
         model = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
         model.train_file(TRAIN_EXAMPLE)
         ppl_state = model.measure_perplexity_file(TEST_EXAMPLE)
