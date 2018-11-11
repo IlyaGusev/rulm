@@ -1,12 +1,11 @@
-from typing import List, Callable, Generator, Any
+from typing import List, Callable, Iterable
 
-from torch.utils.data import Dataset
-
+from rulm.datasets.dataset import Dataset
 from rulm.datasets.files_mixin import FilesMixin
 
 
 class StreamDataset(Dataset):
-    def __init__(self, process_line: Callable, lines_gen: Generator[List[str], Any, None]=tuple()):
+    def __init__(self, process_line: Callable, lines_gen: Iterable[List[str]]=tuple()):
         self.overall_count = 0
         self.current_line_number = -1
         self.process_line = process_line
@@ -36,6 +35,7 @@ class StreamDataset(Dataset):
         return self.overall_count
 
 
+@Dataset.register("stream")
 class StreamFilesDataset(StreamDataset, FilesMixin):
     def __init__(self, input_files: List[str], process_line: Callable, encoding="utf-8"):
         FilesMixin.__init__(self, input_files, encoding)

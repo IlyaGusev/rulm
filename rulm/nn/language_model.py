@@ -5,19 +5,21 @@ from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from ignite.engine import Events
 from ignite.metrics import Loss
 from ignite.handlers import ModelCheckpoint
 from allennlp.common.params import Params
+from allennlp.training.optimizers import Optimizer
 
 from rulm.utils import process_line
 from rulm.nn.utils import create_lm_evaluator, create_lm_trainer, MaskedCategoricalAccuracy
 from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
 from rulm.language_model import LanguageModel
+from rulm.datasets.dataset import Dataset
 from rulm.datasets.stream_dataset import StreamDataset, StreamFilesDataset
+from rulm.datasets.chunk_dataset import ChunkDataset
 from rulm.nn.models.lm import LMModule
 
 use_cuda = torch.cuda.is_available()
@@ -38,30 +40,10 @@ def preprocess_batch(batch):
     return {"x": batch, "y": y, "lengths": lengths}
 
 
-class TrainConfig:
-    def __init__(self,
-                 intermediate_dir: str="./chunks",
-                 epochs: int=20,
-                 batch_size: int=64,
-                 checkpoint_dir: str=None,
-                 checkpoint_every: int=1,
-                 report_every: int=50,
-                 validate_every: int=1,
-                 lr: float=0.001):
-        self.intermediate_dir = intermediate_dir
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.checkpoint_dir = checkpoint_dir
-        self.checkpoint_every = checkpoint_every
-        self.report_every = report_every
-        self.validate_every = validate_every
-        self.lr = lr
-
-
 class NNLanguageModel(LanguageModel):
     def __init__(self,
                  vocabulary: Vocabulary,
-                 params: Params,
+                 model_params: Params,
                  transforms: Tuple[Transform]=tuple(),
                  reverse: bool=False,
                  max_length: int=50,
@@ -73,41 +55,52 @@ class NNLanguageModel(LanguageModel):
 
         self.max_length = max_length
         vocabulary_size = len(vocabulary)
-        self.model = LMModule.from_params(params, vocabulary_size=vocabulary_size)
+        self.model = LMModule.from_params(model_params, vocabulary_size=vocabulary_size)
 
     def train(self, inputs: Iterable[List[str]], params: Params):
+        params.pop("dataset")
         dataset = StreamDataset(self.process_line, inputs)
         self._train_on_dataset(dataset, params)
 
     def train_file(self, file_name: str, params: Params):
         assert os.path.exists(file_name)
-        dataset = StreamFilesDataset([file_name], self.process_line)
+        dataset = Dataset.from_params(params.pop("dataset"), input_files=[file_name],
+                                      process_line=self.process_line)
         self._train_on_dataset(dataset, params)
 
     def process_line(self, line):
         return process_line(line, self.vocabulary, self.max_length, self.reverse)
 
-    def _train_on_dataset(self, dataset: Dataset, config: TrainConfig):
-        loader = DataLoader(dataset, batch_size=config.batch_size, collate_fn=preprocess_batch)
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=config.lr)
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    def _train_on_dataset(self, dataset: Dataset, params: Params):
+        batch_size = params.pop("batch_size")
+        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=preprocess_batch)
+
+        model_parameters = [[n, p] for n, p in self.model.named_parameters() if p.requires_grad]
+        optimizer = Optimizer.from_params(model_parameters, params.pop("optimizer"))
         criterion = nn.NLLLoss(ignore_index=self.vocabulary.get_pad())
 
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         trainer = create_lm_trainer(self.model, optimizer, criterion, device=device)
         evaluator = create_lm_evaluator(self.model, metrics={
             'loss': Loss(criterion),
             'accuracy': MaskedCategoricalAccuracy()
         })
 
-        if config.checkpoint_dir:
-            checkpointer = ModelCheckpoint(config.checkpoint_dir, "model",
-                                           save_interval=config.checkpoint_every, create_dir=True)
-            trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {"model": self.model})
+        serialization_dir = params.pop("serialization_dir")
+        model_name = "model"
+        checkpoint_every = params.get("checkpoint_every", None)
+        if checkpoint_every:
+            checkpoint_every = params.pop("checkpoint_every")
+            checkpointer = ModelCheckpoint(serialization_dir, model_name,
+                                           save_interval=checkpoint_every, create_dir=True)
+            trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {model_name: self.model})
         start_time = datetime.now()
+
+        validate_every = params.pop("validate_every")
 
         @trainer.on(Events.ITERATION_COMPLETED)
         def validate(trainer):
-            if trainer.state.iteration % config.validate_every == 0:
+            if trainer.state.iteration % validate_every == 0:
                 evaluator.run(loader)
                 metrics = evaluator.state.metrics
                 print("Epoch: {}, iteration: {}, time: {}, loss: {}, accuracy: {}".format(
@@ -121,7 +114,9 @@ class NNLanguageModel(LanguageModel):
         print(self.model)
         print("Params count: ", sum(p.numel() for p in self.model.parameters()))
         print("Trainable params count: ", sum(p.numel() for p in self.model.parameters() if p.requires_grad))
-        trainer.run(loader, max_epochs=config.epochs)
+        epochs = params.pop("epochs")
+        params.assert_empty("train")
+        trainer.run(loader, max_epochs=epochs)
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()

@@ -3,8 +3,7 @@ from typing import List, Callable
 
 import numpy as np
 
-from torch.utils.data import Dataset
-
+from rulm.datasets.dataset import Dataset
 from rulm.datasets.files_mixin import FilesMixin
 
 
@@ -34,6 +33,7 @@ class PreprocessingState:
         self.chunk = np.zeros(self.default_chunk_shape, dtype=self.chunk_dtype)
 
 
+@Dataset.register("chunk")
 class ChunkDataset(Dataset, FilesMixin):
     dtype = "int32"
 
