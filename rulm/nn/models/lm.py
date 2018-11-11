@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict
 
 import torch
 from torch.nn import Dropout, Linear, LogSoftmax

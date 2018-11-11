@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Generator, Any
+from typing import List, Dict, Tuple, Iterable
 import os
 
 import numpy as np
@@ -48,7 +48,7 @@ class LanguageModel:
         self.transforms = transforms  # type: List[Transform]
         self.reverse = reverse  # type : bool
 
-    def train(self, inputs: Generator[List[str], Any, None]):
+    def train(self, inputs: Iterable[List[str]]):
         raise NotImplementedError()
 
     def train_file(self, file_name: str):

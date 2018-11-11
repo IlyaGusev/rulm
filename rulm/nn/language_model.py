@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Generator, Any
+from typing import List, Tuple, Iterable
 from datetime import datetime
 
 import numpy as np
@@ -75,16 +75,16 @@ class NNLanguageModel(LanguageModel):
         vocabulary_size = len(vocabulary)
         self.model = LMModule.from_params(params, vocabulary_size=vocabulary_size)
 
-    def train(self, inputs: Generator[List[str], Any, None], config: TrainConfig=TrainConfig()):
-        dataset = StreamDataset(self._closed_process_line, inputs)
-        self._train_on_dataset(dataset, config)
+    def train(self, inputs: Iterable[List[str]], params: Params):
+        dataset = StreamDataset(self.process_line, inputs)
+        self._train_on_dataset(dataset, params)
 
-    def train_file(self, file_name: str, config: TrainConfig=TrainConfig()):
+    def train_file(self, file_name: str, params: Params):
         assert os.path.exists(file_name)
-        dataset = StreamFilesDataset([file_name], self._closed_process_line)
-        self._train_on_dataset(dataset, config)
+        dataset = StreamFilesDataset([file_name], self.process_line)
+        self._train_on_dataset(dataset, params)
 
-    def _closed_process_line(self, line):
+    def process_line(self, line):
         return process_line(line, self.vocabulary, self.max_length, self.reverse)
 
     def _train_on_dataset(self, dataset: Dataset, config: TrainConfig):
