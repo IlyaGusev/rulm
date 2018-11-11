@@ -1,10 +1,8 @@
 import unittest
 
-from torch.utils.data.dataloader import DataLoader
-
-from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE
+from rulm.settings import TRAIN_EXAMPLE
 from rulm.datasets.stream_dataset import StreamFilesDataset
-from rulm.vocabulary import Vocabulary
+
 
 class TestStreamDataset(unittest.TestCase):
     def test_one_file(self):

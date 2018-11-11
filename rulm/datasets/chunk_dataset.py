@@ -2,7 +2,6 @@ import os
 from typing import List, Callable
 
 import numpy as np
-import torch
 
 from torch.utils.data import Dataset
 

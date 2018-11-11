@@ -3,12 +3,12 @@ import os
 from tempfile import NamedTemporaryFile
 
 import numpy as np
+from allennlp.common.params import Params
 
 from rulm.vocabulary import Vocabulary
 from rulm.nn.language_model import TrainConfig, NNLanguageModel
 from rulm.settings import RNNLM_REMEMBER_EXAMPLE, RNNLM_MODEL_PARAMS
 
-from allennlp.common.params import Params
 
 class TestRNNLM(unittest.TestCase):
     @classmethod
@@ -43,7 +43,8 @@ class TestRNNLM(unittest.TestCase):
                 prediction = model.sample_decoding(context, k=1)
                 self.assertListEqual(prediction, sentence)
 
-    def _test_model_equality(self, model1, model2):
+    @staticmethod
+    def _test_model_equality(model1, model2):
         old_params = list([param.detach().cpu().numpy() for param in model1.model.parameters()])
         new_params = list([param.detach().cpu().numpy() for param in model2.model.parameters()])
         for o, n in zip(old_params, new_params):

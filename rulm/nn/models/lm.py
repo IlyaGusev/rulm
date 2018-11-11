@@ -1,7 +1,7 @@
 from typing import Dict, Any
 
 import torch
-from torch.nn import Dropout, Linear, LogSoftmax, LSTM, ReLU
+from torch.nn import Dropout, Linear, LogSoftmax
 from allennlp.common.registrable import Registrable
 
 from rulm.nn.models.seq2seq_encoder import Seq2SeqEncoder
@@ -33,7 +33,6 @@ class LMModule(torch.nn.Module, Registrable):
             self._softmax_linear.weight = self._embedder.get_weight()
 
         self._softmax = LogSoftmax(dim=2)
-
 
     def forward(self, source: Dict[str, torch.LongTensor]):
         embeddings = self._embedder(source)

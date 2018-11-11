@@ -2,6 +2,7 @@ import torch
 from ignite.engine import Engine
 from ignite.metrics import CategoricalAccuracy
 
+
 def create_lm_trainer(model, optimizer, loss_fn, device=None, grad_clipping: int=5.):
     if device:
         model.to(device)
@@ -20,7 +21,7 @@ def create_lm_trainer(model, optimizer, loss_fn, device=None, grad_clipping: int
     return Engine(_update)
 
 
-def create_lm_evaluator(model, metrics={}, device=None):
+def create_lm_evaluator(model, metrics=None, device=None):
     if device:
         model.to(device)
 
@@ -31,8 +32,9 @@ def create_lm_evaluator(model, metrics={}, device=None):
             return y_pred, batch["y"]
 
     engine = Engine(_inference)
-    for name, metric in metrics.items():
-        metric.attach(engine, name)
+    if metrics:
+        for name, metric in metrics.items():
+            metric.attach(engine, name)
     return engine
 
 

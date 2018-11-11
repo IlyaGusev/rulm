@@ -7,6 +7,7 @@ from rulm.language_model import EquiprobableLanguageModel, VocabularyChainLangua
 
 # TODO: test reverse
 
+
 class TestLanguageModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

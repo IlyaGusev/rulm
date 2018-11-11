@@ -2,3 +2,4 @@ numpy >= 1.12.1
 pygtrie >= 2.2
 torch == 0.4.0
 pytorch-ignite == 0.1.0
+allennlp == 0.7.1

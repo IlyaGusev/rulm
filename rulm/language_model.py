@@ -153,6 +153,9 @@ class EquiprobableLanguageModel(LanguageModel):
     def train(self, inputs: List[List[str]]):
         pass
 
+    def train_file(self, file_name: str):
+        pass
+
     def normalize(self):
         pass
 
@@ -169,6 +172,9 @@ class VocabularyChainLanguageModel(LanguageModel):
         LanguageModel.__init__(self, vocabulary, transforms)
 
     def train(self, inputs: List[List[str]]):
+        pass
+
+    def train_file(self, file_name: str):
         pass
 
     def normalize(self):

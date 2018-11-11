@@ -1,4 +1,6 @@
 import json
+import copy
+
 
 class NNConfig:
     def save(self, file_name):
@@ -9,7 +11,7 @@ class NNConfig:
 
     def load(self, file_name):
         assert file_name.endswith(".json")
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(file_name, 'r', encoding='utf-8') as f:
             d = json.loads(f.read())
             self.__dict__.update(d)
 

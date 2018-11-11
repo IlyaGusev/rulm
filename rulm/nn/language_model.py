@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
-from torch.utils.data.dataloader import DataLoader, default_collate
+from torch.utils.data.dataloader import DataLoader
 from ignite.engine import Events
 from ignite.metrics import Loss
 from ignite.handlers import ModelCheckpoint
@@ -17,7 +17,6 @@ from rulm.nn.utils import create_lm_evaluator, create_lm_trainer, MaskedCategori
 from rulm.transform import Transform
 from rulm.vocabulary import Vocabulary
 from rulm.language_model import LanguageModel
-from rulm.datasets.chunk_dataset import ChunkDataset
 from rulm.datasets.stream_dataset import StreamDataset, StreamFilesDataset
 from rulm.nn.models.lm import LMModule
 
@@ -27,7 +26,7 @@ LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 
 def preprocess_batch(batch):
     lengths = [np.count_nonzero(sample) for sample in batch]
-    batch, lengths  = zip(*sorted(zip(batch, lengths), key=lambda x: x[1], reverse=True))
+    batch, lengths = zip(*sorted(zip(batch, lengths), key=lambda x: x[1], reverse=True))
     batch = np.array(batch)[:, :max(lengths)]
     lengths = list(lengths)
 
@@ -126,8 +125,6 @@ class NNLanguageModel(LanguageModel):
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
-        use_cuda = torch.cuda.is_available()
-        LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 
         indices = LongTensor(indices)
         indices = torch.unsqueeze(indices, 1)

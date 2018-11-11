@@ -7,7 +7,7 @@ import numpy as np
 
 from rulm.vocabulary import Vocabulary
 from rulm.ngrams import NGramLanguageModel
-from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, DATA_DIR, TEST_EXAMPLE
+from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE
 
 
 class TestNGrams(unittest.TestCase):

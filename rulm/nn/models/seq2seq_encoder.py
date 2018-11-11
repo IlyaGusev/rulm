@@ -10,6 +10,9 @@ class Seq2SeqEncoder(torch.nn.Module, Registrable):
         self._output_dim = output_dim
         self._input_dim = input_dim
 
+    def forward(self, *inputs):
+        raise NotImplementedError()
+
     def get_output_dim(self):
         return self._output_dim
 
