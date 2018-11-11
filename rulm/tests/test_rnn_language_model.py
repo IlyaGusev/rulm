@@ -5,10 +5,10 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 
 from rulm.vocabulary import Vocabulary
-from rulm.nn.language_model import TrainConfig
-from rulm.nn.rnn_language_model import RNNLanguageModel
-from rulm.settings import RNNLM_REMEMBER_EXAMPLE
+from rulm.nn.language_model import TrainConfig, NNLanguageModel
+from rulm.settings import RNNLM_REMEMBER_EXAMPLE, RNNLM_MODEL_PARAMS
 
+from allennlp.common.params import Params
 
 class TestRNNLM(unittest.TestCase):
     @classmethod
@@ -24,7 +24,9 @@ class TestRNNLM(unittest.TestCase):
         cls.config = TrainConfig()
         cls.config.epochs = 20
 
-        cls.model = RNNLanguageModel(cls.vocabulary)
+        cls.params = Params.from_file(RNNLM_MODEL_PARAMS, '{"model.embedder.input_dim": %s}' % (len(cls.vocabulary)))
+
+        cls.model = NNLanguageModel(cls.vocabulary, cls.params["model"].duplicate())
         cls.model.train_file(RNNLM_REMEMBER_EXAMPLE, cls.config)
 
     def _test_model_predictions(self, model, reverse=False):
@@ -51,20 +53,20 @@ class TestRNNLM(unittest.TestCase):
         self._test_model_predictions(self.model)
 
     def test_train_from_python(self):
-        model = RNNLanguageModel(self.vocabulary)
+        model = NNLanguageModel(self.vocabulary, self.params["model"].duplicate())
         model.train(self.sentences, self.config)
         self._test_model_predictions(model)
         self._test_model_equality(model, self.model)
 
     def test_reversed_model(self):
-        model_reversed = RNNLanguageModel(self.vocabulary, reverse=True)
+        model_reversed = NNLanguageModel(self.vocabulary, self.params["model"].duplicate(), reverse=True)
         model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE, self.config)
         self._test_model_predictions(model_reversed, reverse=True)
 
     def test_save_load(self):
         f = NamedTemporaryFile(delete=False)
         self.model.save(f.name)
-        loaded_model = RNNLanguageModel(self.vocabulary)
+        loaded_model = NNLanguageModel(self.vocabulary, self.params["model"].duplicate())
         loaded_model.load(f.name)
         os.unlink(f.name)
         self.assertFalse(os.path.exists(f.name))

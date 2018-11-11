@@ -9,10 +9,8 @@ def create_lm_trainer(model, optimizer, loss_fn, device=None, grad_clipping: int
     def _update(engine, batch):
         model.train()
         optimizer.zero_grad()
-        x, y = batch["x"], batch["y"]
-        lengths = batch["lengths"] if "lengths" in batch else None
-        y_pred = model(x, lengths) if lengths else model(x)
-        loss = loss_fn(y_pred, y)
+        y_pred = model(batch)
+        loss = loss_fn(y_pred, batch["y"])
         loss.backward()
         if grad_clipping:
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clipping)
@@ -29,10 +27,8 @@ def create_lm_evaluator(model, metrics={}, device=None):
     def _inference(engine, batch):
         model.eval()
         with torch.no_grad():
-            x, y = batch["x"], batch["y"]
-            lengths = batch["lengths"] if "lengths" in batch else None
-            y_pred = model(x, lengths) if lengths else model(x)
-            return y_pred, y
+            y_pred = model(batch)
+            return y_pred, batch["y"]
 
     engine = Engine(_inference)
     for name, metric in metrics.items():

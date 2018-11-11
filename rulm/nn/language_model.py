@@ -10,6 +10,7 @@ from torch.utils.data.dataloader import DataLoader, default_collate
 from ignite.engine import Events
 from ignite.metrics import Loss
 from ignite.handlers import ModelCheckpoint
+from allennlp.common.params import Params
 
 from rulm.utils import process_line
 from rulm.nn.utils import create_lm_evaluator, create_lm_trainer, MaskedCategoricalAccuracy
@@ -18,6 +19,7 @@ from rulm.vocabulary import Vocabulary
 from rulm.language_model import LanguageModel
 from rulm.datasets.chunk_dataset import ChunkDataset
 from rulm.datasets.stream_dataset import StreamDataset, StreamFilesDataset
+from rulm.nn.models.lm import LMModule
 
 use_cuda = torch.cuda.is_available()
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
@@ -60,6 +62,7 @@ class TrainConfig:
 class NNLanguageModel(LanguageModel):
     def __init__(self,
                  vocabulary: Vocabulary,
+                 params: Params,
                  transforms: Tuple[Transform]=tuple(),
                  reverse: bool=False,
                  max_length: int=50,
@@ -70,8 +73,8 @@ class NNLanguageModel(LanguageModel):
         torch.backends.cudnn.set_flags(True, False, True, True)
 
         self.max_length = max_length
-        self.model = None
-
+        vocabulary_size = len(vocabulary)
+        self.model = LMModule.from_params(params, vocabulary_size=vocabulary_size)
 
     def train(self, inputs: Generator[List[str], Any, None], config: TrainConfig=TrainConfig()):
         dataset = StreamDataset(self._closed_process_line, inputs)
@@ -128,7 +131,8 @@ class NNLanguageModel(LanguageModel):
 
         indices = LongTensor(indices)
         indices = torch.unsqueeze(indices, 1)
-        result = self.model.forward(indices)
+        lengths = [len(indices)]
+        result = self.model.forward({"x": indices, "lengths": lengths})
         result = result.transpose(1, 2).transpose(0, 1)
         result = torch.exp(torch.squeeze(result, 1)[-1]).cpu().detach().numpy()
         return result
