@@ -6,9 +6,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
-from ignite.engine import Events
-from ignite.metrics import Loss
-from ignite.handlers import ModelCheckpoint
 from allennlp.common.params import Params
 from allennlp.training.optimizers import Optimizer
 from allennlp.training.trainer import Trainer
@@ -23,20 +20,6 @@ from rulm.nn.models.lm import LMModule
 
 use_cuda = torch.cuda.is_available()
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
-
-
-def preprocess_batch(batch):
-    lengths = [np.count_nonzero(sample) for sample in batch]
-    batch, lengths = zip(*sorted(zip(batch, lengths), key=lambda x: x[1], reverse=True))
-    batch = np.array(batch)[:, :max(lengths)]
-    lengths = list(lengths)
-
-    y = np.zeros((batch.shape[0], batch.shape[1]), dtype=batch.dtype)
-    y[:, :-1] = batch[:, 1:]
-
-    batch = torch.transpose(LongTensor(batch), 0, 1)
-    y = LongTensor(y)
-    return {"x": batch, "y": y, "lengths": lengths}
 
 
 class NNLanguageModel(LanguageModel):
@@ -56,29 +39,17 @@ class NNLanguageModel(LanguageModel):
         self.model = LMModule.from_params(self.params.pop('model'), vocab=vocabulary)
         print(self.model)
         print("Trainable params count: ", sum(p.numel() for p in self.model.parameters() if p.requires_grad))
-        self.reader = DatasetReader.from_params(self.params.pop("dataset_reader"))
+        self.reader = DatasetReader.from_params(self.params.pop("dataset_reader"), reverse=self.reverse)
         self.iterator = DataIterator.from_params(self.params.pop("data_iterator"),
                                                  sorting_keys=[("input_tokens", "num_tokens")])
         self.iterator.index_with(self.vocabulary)
 
-    def train_file(self, file_name: str, serialization_dir: str="model"):
+    def train_file(self, file_name: str, serialization_dir: str=None):
         assert os.path.exists(file_name)
         dataset = self.reader.read(file_name)
 
         trainer_params = self.params.pop('trainer')
 
-        #self.model.train()
-        #model_parameters = [[n, p] for n, p in self.model.named_parameters() if p.requires_grad]
-        #optimizer = Optimizer.from_params(model_parameters, trainer_params.pop("optimizer"))
-        #train_generator = self.iterator(dataset)
-        #batch = next(train_generator)
-        #for epoch in range(trainer_params.pop_int("num_epochs")):
-        #    optimizer.zero_grad()
-        #    loss = self.model(**batch)["loss"]
-        #    loss.backward()
-        #    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
-        #    optimizer.step()
-        #    print("Loss: ", loss.item())
         self.trainer = Trainer.from_params(self.model, serialization_dir, self.iterator,
                                            dataset, None, trainer_params)
         self.trainer.train()

@@ -20,15 +20,16 @@
     },
     "data_iterator": {
         "type": "bucket",
-        "batch_size": 64,
-        "padding_noise": 0.0
+        "batch_size": 2,
+        "padding_noise": 0.0,
+        "cache_instances": true
     },
     "trainer": {
-        "grad_clipping": 5.0,
-        "num_epochs": 30,
+        "grad_clipping": 10.0,
+        "num_epochs": 20,
         "optimizer": {
             "type": "adam",
-            "lr": 0.01
+            "lr": 0.005
         },
         "shuffle": false
     }

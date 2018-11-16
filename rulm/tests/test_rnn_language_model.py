@@ -42,12 +42,12 @@ class TestRNNLM(unittest.TestCase):
                 prediction = model.sample_decoding(context, k=1)
                 self.assertListEqual(prediction, sentence)
 
-#    @staticmethod
-#    def _test_model_equality(model1, model2):
-#        old_params = list([param.detach().cpu().numpy() for param in model1.model.parameters()])
-#        new_params = list([param.detach().cpu().numpy() for param in model2.model.parameters()])
-#        for o, n in zip(old_params, new_params):
-#            np.testing.assert_array_almost_equal(o, n)
+    @staticmethod
+    def _test_model_equality(model1, model2):
+        old_params = list([param.detach().cpu().numpy() for param in model1.model.parameters()])
+        new_params = list([param.detach().cpu().numpy() for param in model2.model.parameters()])
+        for o, n in zip(old_params, new_params):
+            np.testing.assert_array_almost_equal(o, n)
 
     def test_model_from_file(self):
         self._test_model_predictions(self.model)
@@ -59,11 +59,11 @@ class TestRNNLM(unittest.TestCase):
 #        self._test_model_predictions(model)
 #        self._test_model_equality(model, self.model)
 
-#    def test_reversed_model(self):
-#        params = self.params.duplicate()
-#        model_reversed = NNLanguageModel(self.vocabulary, params.pop("model"), reverse=True)
-#        model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE, params.pop("train"))
-#        self._test_model_predictions(model_reversed, reverse=True)
+    def test_reversed_model(self):
+        params = self.params.duplicate()
+        model_reversed = NNLanguageModel(self.vocabulary, params, reverse=True)
+        model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE)
+        self._test_model_predictions(model_reversed, reverse=True)
 
 #    def test_save_load(self):
 #        f = NamedTemporaryFile(delete=False)

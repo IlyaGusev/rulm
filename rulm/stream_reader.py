@@ -17,10 +17,12 @@ from allennlp.data.dataset_readers.language_modeling import LanguageModelingRead
 @DatasetReader.register("stream")
 class LanguageModelingStreamReader(LanguageModelingReader):
     def __init__(self,
+                 reverse: bool = False,
                  tokens_per_instance: int = None,
                  tokenizer: Tokenizer = None,
                  token_indexers: Dict[str, TokenIndexer] = None) -> None:
         super().__init__(tokens_per_instance, tokenizer, token_indexers, True)
+        self.reverse = reverse
 
     @overrides
     def _read(self, file_path: str):
@@ -29,6 +31,8 @@ class LanguageModelingStreamReader(LanguageModelingReader):
             for line in text_file:
                 line = line.strip()
                 tokenized_line = self._tokenizer.tokenize(line)
+                if self.reverse:
+                    tokenized_line = tokenized_line[::-1]
                 tokenized_line.insert(0, Token(START_SYMBOL))
                 tokenized_line.append(Token(END_SYMBOL))
                 if self._tokens_per_instance is not None:
