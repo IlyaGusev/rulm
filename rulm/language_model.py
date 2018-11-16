@@ -3,7 +3,9 @@ import os
 
 import numpy as np
 
-from rulm.vocabulary import Vocabulary
+from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
+from allennlp.common.util import START_SYMBOL, END_SYMBOL
+
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
 
@@ -60,14 +62,14 @@ class LanguageModel:
     def query(self, inputs: List[str]) -> Dict[str, float]:
         indices = self._numericalize_inputs(inputs)
         next_index_prediction = self.predict(indices)
-        return {self.vocabulary.get_word_by_index(index): prob
+        return {self.vocabulary.get_token_from_index(index): prob
                 for index, prob in enumerate(next_index_prediction)}
 
     def beam_decoding(self, inputs: List[str], beam_width: int=5,
                       max_length: int=50, length_reward: float=0.0) -> List[str]:
         current_state = self._numericalize_inputs(inputs)
         beam = BeamSearch(
-            eos_index=self.vocabulary.get_eos(),
+            eos_index=self.vocabulary.get_token_index(END_SYMBOL),
             predict_func=self.predict,
             transforms=self.transforms,
             beam_width=beam_width,
@@ -77,11 +79,14 @@ class LanguageModel:
         return self._decipher_outputs(best_guess)
 
     def sample_decoding(self, inputs: List[str], k: int=5, max_length: int=30) -> List[str]:
-        if k > len(self.vocabulary):
-            k = len(self.vocabulary)
+        vocab_size = self.vocabulary.get_vocab_size()
+        if k > vocab_size:
+            k = vocab_size
         current_state = self._numericalize_inputs(inputs)
-        last_index = current_state[-1] if current_state else self.vocabulary.get_bos()
-        while last_index != self.vocabulary.get_eos() and len(current_state) < max_length:
+        bos_index = self.vocabulary.get_token_index(START_SYMBOL)
+        eos_index = self.vocabulary.get_token_index(END_SYMBOL)
+        last_index = current_state[-1] if current_state else bos_index
+        while last_index != eos_index and len(current_state) < max_length:
             next_word_probabilities = self.predict(current_state)
             for transform in self.transforms:
                 next_word_probabilities = transform(next_word_probabilities)
@@ -97,12 +102,15 @@ class LanguageModel:
                            is_including_unk: bool=True) -> PerplexityState:
         for sentence in inputs:
             indices = self._numericalize_inputs(sentence)
-            indices.append(self.vocabulary.get_eos())
+            indices.append(self.vocabulary.get_token_index(END_SYMBOL))
             for i, word_index in enumerate(indices[1:]):
                 context = indices[:i+1]
 
                 prediction = self.predict(context)
-                state.add(word_index, prediction[word_index], is_including_unk, self.vocabulary.get_unk())
+                unk_index = self.vocabulary.get_token_index(DEFAULT_OOV_TOKEN)
+                print(word_index, self.vocabulary.get_token_from_index(word_index))
+                state.add(word_index, prediction[word_index], is_including_unk, unk_index)
+        print("!!!!")
         return state
 
     def measure_perplexity_file(self, file_name, batch_size: int=100):
@@ -135,10 +143,11 @@ class LanguageModel:
     def _numericalize_inputs(self, words: List[str]) -> List[int]:
         if self.reverse:
             words = words[::-1]
-        return [self.vocabulary.get_bos()] + [self.vocabulary.get_index_by_word(word) for word in words]
+        words.insert(0, START_SYMBOL)
+        return [self.vocabulary.get_token_index(word) for word in words]
 
     def _decipher_outputs(self, indices: List[int]) -> List[str]:
-        return [self.vocabulary.get_word_by_index(index) for index in indices[1:-1]]
+        return [self.vocabulary.get_token_from_index(index) for index in indices[1:-1]]
 
     @staticmethod
     def _choose(model: np.array, k: int=1):
@@ -160,10 +169,11 @@ class EquiprobableLanguageModel(LanguageModel):
         pass
 
     def predict(self, inputs: List[int]):
-        vocab_size = len(self.vocabulary)
+        vocab_size = self.vocabulary.get_vocab_size()
         probabilities = np.full((vocab_size,), 1./(vocab_size-2))
-        probabilities[self.vocabulary.get_bos()] = 0.
-        probabilities[self.vocabulary.get_pad()] = 0.
+        probabilities[self.vocabulary.get_token_index(START_SYMBOL)] = 0.
+        probabilities[self.vocabulary.get_token_index(DEFAULT_PADDING_TOKEN)] = 0.
+        print(probabilities)
         return probabilities
 
 
@@ -181,10 +191,19 @@ class VocabularyChainLanguageModel(LanguageModel):
         pass
 
     def predict(self, inputs: List[int]):
-        probabilities = np.zeros(len(self.vocabulary))
+        probabilities = np.zeros(self.vocabulary.get_vocab_size())
         last_index = inputs[-1]
-        if last_index == self.vocabulary.get_bos():
-            probabilities[4] = 1.
-        elif last_index != len(self.vocabulary) - 1:
+        aux = (START_SYMBOL, END_SYMBOL, DEFAULT_OOV_TOKEN, DEFAULT_PADDING_TOKEN)
+        aux_indices = [self.vocabulary.get_token_index(s) for s in aux]
+        first_not_aux_index = 0
+        for i in range(self.vocabulary.get_vocab_size()):
+            if i in aux_indices:
+                continue
+            first_not_aux_index = i
+            break
+        bos_index = aux_indices[0]
+        if last_index == bos_index:
+            probabilities[first_not_aux_index] = 1.
+        elif last_index != self.vocabulary.get_vocab_size() - 1:
             probabilities[last_index + 1] = 1.
         return probabilities

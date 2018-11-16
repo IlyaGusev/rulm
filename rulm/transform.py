@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 
-from rulm.vocabulary import Vocabulary
+from allennlp.data.vocabulary import Vocabulary
 
 
 class Transform:

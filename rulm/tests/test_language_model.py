@@ -1,8 +1,10 @@
 import unittest
 
 import numpy as np
+from allennlp.data.vocabulary import Vocabulary
+from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
+from allennlp.common.util import START_SYMBOL, END_SYMBOL
 
-from rulm.vocabulary import Vocabulary
 from rulm.language_model import EquiprobableLanguageModel, VocabularyChainLanguageModel, PerplexityState
 
 # TODO: test reverse
@@ -12,9 +14,11 @@ class TestLanguageModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.vocabulary = Vocabulary()
-        cls.vocabulary.add_word("я")
-        cls.vocabulary.add_word("не")
-        cls.vocabulary.add_word("ты")
+        cls.vocabulary.add_token_to_namespace(START_SYMBOL)
+        cls.vocabulary.add_token_to_namespace(END_SYMBOL)
+        cls.vocabulary.add_token_to_namespace("я")
+        cls.vocabulary.add_token_to_namespace("не")
+        cls.vocabulary.add_token_to_namespace("ты")
         cls.eq_model = EquiprobableLanguageModel(cls.vocabulary)
         cls.chain_model = VocabularyChainLanguageModel(cls.vocabulary)
 
@@ -35,15 +39,15 @@ class TestLanguageModel(unittest.TestCase):
             "я": 1./5.,
             "не": 1./5.,
             "ты": 1./5.,
-            Vocabulary.UNK: 1./5.,
-            Vocabulary.EOS: 1./5.,
-            Vocabulary.PAD: 0.,
-            Vocabulary.BOS: 0.
+            DEFAULT_OOV_TOKEN: 1./5.,
+            END_SYMBOL: 1./5.,
+            DEFAULT_PADDING_TOKEN: 0.,
+            START_SYMBOL: 0.
         })
 
     def test_sample_decoding(self):
-        np.random.seed(1045966)
-        self.assertListEqual(self.eq_model.sample_decoding([], k=5), ["не", "я", "ты", "я"])
+        np.random.seed(13370)
+        self.assertListEqual(self.eq_model.sample_decoding([], k=5), ['не', 'не'])
 
     def test_beam_decoding(self):
         self.assertListEqual(self.eq_model.beam_decoding(["не"], beam_width=10), ["не"])

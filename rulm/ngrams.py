@@ -5,9 +5,10 @@ import gzip
 
 import pygtrie
 import numpy as np
+from allennlp.data.vocabulary import Vocabulary
+from allennlp.common.util import START_SYMBOL, END_SYMBOL
 
 from rulm.language_model import  LanguageModel
-from rulm.vocabulary import Vocabulary
 from rulm.transform import Transform
 
 
@@ -92,7 +93,8 @@ class NGramLanguageModel(LanguageModel):
         sentence_number = 0
         for sentence in inputs:
             indices = self._numericalize_inputs(sentence)
-            indices.append(self.vocabulary.get_eos())
+            eos_index = self.vocabulary.get_token_index(END_SYMBOL)
+            indices.append(eos_index)
             self._collect_n_grams(indices)
             sentence_number += 1
             if sentence_number % report_every == 0:
@@ -114,7 +116,7 @@ class NGramLanguageModel(LanguageModel):
         self.n_grams[0][tuple()] = 1.0
 
     def predict(self, indices: List[int]) -> np.ndarray:
-        probabilities = np.zeros(len(self.vocabulary), dtype=np.float64)
+        probabilities = np.zeros(self.vocabulary.get_vocab_size(), dtype=np.float64)
         if not self.interpolation_lambdas:
             self.interpolation_lambdas = (1.0, ) + tuple((0. for _ in range(self.n-1)))
         context = tuple(indices[-self.n+1:])
@@ -142,7 +144,7 @@ class NGramLanguageModel(LanguageModel):
             for n in range(1, self.n+1):
                 w.write("\\{}-grams:\n".format(n))
                 for words, p in self.n_grams[n].items():
-                    words = " ".join(map(self.vocabulary.get_word_by_index, words))
+                    words = " ".join(map(self.vocabulary.get_token_from_index, words))
                     w.write("{:.4f}\t{}\n".format(np.log10(p), words))
                 w.write("\n")
             w.write("\\end\\\n")
@@ -171,7 +173,7 @@ class NGramLanguageModel(LanguageModel):
                         break
                     tokens = line.strip().split()
                     p = float(tokens[0])
-                    words = tuple(map(self.vocabulary.get_index_by_word, tokens[1:n+1]))
+                    words = tuple(map(self.vocabulary.get_token_index, tokens[1:n+1]))
                     self.n_grams[n][words] = np.power(10, p)
             while not line.strip():
                 line = next(r)

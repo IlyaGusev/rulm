@@ -3,6 +3,7 @@ from typing import Dict, Any
 from torch.nn import Dropout, Linear, LSTM, ReLU
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
+from allennlp.nn.util import get_lengths_from_binary_sequence_mask
 
 from rulm.nn.models.seq2seq_encoder import Seq2SeqEncoder
 
@@ -29,13 +30,13 @@ class LstmEncoder(Seq2SeqEncoder):
         if projection_dropout:
             self._projection_dropout = Dropout(projection_dropout)
 
-    def forward(self, source: Dict[str, Any]):
-        inputs = source["x"]
-        lengths = source["lengths"]
+    def forward(self, inputs, mask):
+        lengths = get_lengths_from_binary_sequence_mask(mask)
 
-        inputs_packed = pack(inputs, lengths) if lengths is not None else inputs
+        inputs_packed = pack(inputs, lengths, batch_first=True)
         outputs, _ = self._lstm(inputs_packed, None)
-        outputs, _ = unpack(outputs)
+        outputs, _ = unpack(outputs, batch_first=True)
+
         if self.lstm_dropout:
             outputs = self._lstm_dropout(outputs)
 

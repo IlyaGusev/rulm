@@ -1,8 +1,8 @@
 {
    "model": {
-        "dropout": 0.3,
+        "dropout": 0.2,
         "embedder": {
-            "type": "random",
+            "type": "embedding",
             "embedding_dim": 250
         },
         "contextualizer": {
@@ -11,21 +11,25 @@
             "output_dim": 250,
             "n_layers": 1,
             "lstm_hidden_size": 250,
-            "lstm_dropout": 0.3,
-            "projection_dropout": 0.3
+            "lstm_dropout": 0.2,
+            "projection_dropout": 0.2
         }
     },
-    "train": {
-        "dataset": {
-            "type": "stream"
-        },
+    "dataset_reader": {
+        "type": "stream"
+    },
+    "data_iterator": {
+        "type": "bucket",
         "batch_size": 64,
-        "epochs": 20,
+        "padding_noise": 0.0
+    },
+    "trainer": {
+        "grad_clipping": 5.0,
+        "num_epochs": 30,
         "optimizer": {
             "type": "adam",
-            "lr": 0.001
+            "lr": 0.01
         },
-        "validate_every": 1,
-        "serialization_dir": "current_model"
+        "shuffle": false
     }
 }
