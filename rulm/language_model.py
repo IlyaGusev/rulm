@@ -5,6 +5,7 @@ import numpy as np
 
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
+from allennlp.common.registrable import Registrable
 
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
@@ -44,7 +45,7 @@ class PerplexityState:
             np.exp(self.avg_log_perplexity), self.zeroprobs_count, self.unknown_count)
 
 
-class LanguageModel:
+class LanguageModel(Registrable):
     def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform], reverse: bool=False):
         self.vocabulary = vocabulary  # type: Vocabulary
         self.transforms = transforms  # type: List[Transform]

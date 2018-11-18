@@ -1,6 +1,6 @@
 import unittest
 import os
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import numpy as np
 from allennlp.common.params import Params
@@ -24,9 +24,9 @@ class TestRNNLM(unittest.TestCase):
 
         cls.params = Params.from_file(RNNLM_MODEL_PARAMS)
         params = cls.params.duplicate()
-        cls.model = NNLanguageModel(cls.vocabulary, params)
-        cls.model.train_file(RNNLM_REMEMBER_EXAMPLE)
-        print("TRAIN OK")
+        train_params = params.pop("train")
+        cls.model = NNLanguageModel.from_params(params, vocab=cls.vocabulary)
+        cls.model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params)
 
     def _test_model_predictions(self, model, reverse=False):
         for sentence in self.sentences:
@@ -52,26 +52,26 @@ class TestRNNLM(unittest.TestCase):
     def test_model_from_file(self):
         self._test_model_predictions(self.model)
 
-#    def test_train_from_python(self):
-#        params = self.params.duplicate()
-#        model = NNLanguageModel(self.vocabulary, params.pop("model"))
-#        model.train(self.sentences, params.pop("train"))
-#        self._test_model_predictions(model)
-#        self._test_model_equality(model, self.model)
+    #def test_train_from_python(self):
+    #    params = self.params.duplicate()
+    #    model = NNLanguageModel(self.vocabulary, params.pop("model"))
+    #    model.train(self.sentences, params.pop("train"))
+    #    self._test_model_predictions(model)
+    #    self._test_model_equality(model, self.model)
 
     def test_reversed_model(self):
         params = self.params.duplicate()
-        model_reversed = NNLanguageModel(self.vocabulary, params, reverse=True)
-        model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE)
+        train_params = params.pop('train')
+        model_reversed = NNLanguageModel.from_params(params, vocab=self.vocabulary, reverse=True)
+        model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE, train_params)
         self._test_model_predictions(model_reversed, reverse=True)
 
-#    def test_save_load(self):
-#        f = NamedTemporaryFile(delete=False)
-#        self.model.save(f.name)
-#        params = self.params.duplicate()
-#        loaded_model = NNLanguageModel(self.vocabulary, params.pop("model"))
-#        loaded_model.load(f.name)
-#        os.unlink(f.name)
-#        self.assertFalse(os.path.exists(f.name))
-#        self._test_model_equality(loaded_model, self.model)
+    def test_save_load(self):
+        with TemporaryDirectory() as dirpath:
+            params = self.params.duplicate()
+            train_params = params.pop('train')
+            model = NNLanguageModel.from_params(params, vocab=self.vocabulary)
+            model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params, dirpath)
+            loaded_model = NNLanguageModel.load(dirpath, RNNLM_MODEL_PARAMS)
+            self._test_model_equality(model, loaded_model)
 

@@ -11,18 +11,20 @@ from allennlp.nn.util import get_text_field_mask
 from rulm.nn.models.seq2seq_encoder import Seq2SeqEncoder
 from rulm.nn.models.lstm_encoder import LstmEncoder
 
-
-class LMModule(Model):
+@Model.register("unidirectional_language_model")
+class UnidirectionalLanguageModel(Model):
     def __init__(self,
                  vocab: Vocabulary,
                  embedder: TokenEmbedder,
                  contextualizer: Seq2SeqEncoder,
                  dropout: float = None,
-                 tie_embeddings=True):
+                 use_custom_embedder_weights: bool = False,
+                 tie_embeddings: bool = True):
         super().__init__(vocab)
 
         self._embedder = embedder
-
+        if use_custom_embedder_weights:
+            self._embedder.weight.data.uniform_(-1., 1.)
         self._contextualizer = contextualizer
         self._context_dim = contextualizer.get_output_dim()
 

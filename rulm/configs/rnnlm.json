@@ -1,6 +1,8 @@
 {
    "model": {
+        "type": "unidirectional_language_model",
         "dropout": 0.2,
+        "use_custom_embedder_weights": true,
         "embedder": {
             "type": "embedding",
             "embedding_dim": 250
@@ -15,22 +17,27 @@
             "projection_dropout": 0.2
         }
     },
-    "dataset_reader": {
-        "type": "stream"
-    },
-    "data_iterator": {
-        "type": "bucket",
-        "batch_size": 2,
-        "padding_noise": 0.0,
-        "cache_instances": true
-    },
-    "trainer": {
-        "grad_clipping": 10.0,
-        "num_epochs": 20,
-        "optimizer": {
-            "type": "adam",
-            "lr": 0.005
+    "train": {
+        "reader": {
+            "type": "stream"
         },
-        "shuffle": false
+        "iterator": {
+            "type": "bucket",
+            "batch_size": 64,
+            "padding_noise": 0.0,
+            "sorting_keys": [["input_tokens", "num_tokens"]],
+            "cache_instances": true
+        },
+        "trainer": {
+            "grad_clipping": 10.0,
+            "num_epochs": 25,
+            "summary_interval": 1,
+            "should_log_learning_rate": true,
+            "optimizer": {
+                "type": "adam",
+                "lr": 0.001
+            },
+            "shuffle": false
+        }
     }
 }

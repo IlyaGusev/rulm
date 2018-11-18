@@ -6,59 +6,63 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
+from allennlp.nn import util
 from allennlp.common.params import Params
 from allennlp.training.optimizers import Optimizer
 from allennlp.training.trainer import Trainer
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.iterators.data_iterator import DataIterator
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+from allennlp.models.model import Model
 
 from rulm.transform import Transform
 from rulm.language_model import LanguageModel
 from rulm.stream_reader import LanguageModelingStreamReader
-from rulm.nn.models.lm import LMModule
+from rulm.nn.models.model import UnidirectionalLanguageModel
 
 use_cuda = torch.cuda.is_available()
 LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 
+_DEFAULT_PARAMS = "params.json"
+_DEFAULT_VOCAB_DIR = "vocabulary"
 
+@LanguageModel.register("nn_language_model")
 class NNLanguageModel(LanguageModel):
     def __init__(self,
-                 vocabulary: Vocabulary,
-                 params: Params,
+                 vocab: Vocabulary,
+                 model: Model,
                  transforms: Tuple[Transform]=tuple(),
                  reverse: bool=False,
                  seed: int=42):
-        LanguageModel.__init__(self, vocabulary, transforms, reverse)
+        LanguageModel.__init__(self, vocab, transforms, reverse)
+
+        self.set_seed(seed)
+        self.model = model
+
+    @staticmethod
+    def set_seed(seed):
         torch.manual_seed(seed)
         np.random.seed(seed)
         torch.backends.cudnn.set_flags(True, False, True, True)
 
-        self.params = params
-
-        self.model = LMModule.from_params(self.params.pop('model'), vocab=vocabulary)
-        print(self.model)
-        print("Trainable params count: ", sum(p.numel() for p in self.model.parameters() if p.requires_grad))
-        self.reader = DatasetReader.from_params(self.params.pop("dataset_reader"), reverse=self.reverse)
-        self.iterator = DataIterator.from_params(self.params.pop("data_iterator"),
-                                                 sorting_keys=[("input_tokens", "num_tokens")])
-        self.iterator.index_with(self.vocabulary)
-
-    def train_file(self, file_name: str, serialization_dir: str=None):
+    def train_file(self, file_name: str, train_params: Params, serialization_dir: str=None):
         assert os.path.exists(file_name)
-        dataset = self.reader.read(file_name)
 
-        trainer_params = self.params.pop('trainer')
+        if serialization_dir:
+            vocab_dir = os.path.join(serialization_dir, _DEFAULT_VOCAB_DIR)
+            self.vocabulary.save_to_files(vocab_dir)
 
-        self.trainer = Trainer.from_params(self.model, serialization_dir, self.iterator,
-                                           dataset, None, trainer_params)
-        self.trainer.train()
-        trainer_params.assert_empty("Bad trainer params")
-
+        reader = DatasetReader.from_params(train_params.pop('reader'), reverse=self.reverse)
+        dataset = reader.read(file_name)
+        iterator = DataIterator.from_params(train_params.pop('iterator'))
+        iterator.index_with(self.vocabulary)
+        trainer = Trainer.from_params(self.model, serialization_dir, iterator,
+                                      dataset, None, train_params.pop('trainer'))
+        train_params.assert_empty("Trainer")
+        trainer.train()
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
-
         indices = LongTensor(indices)
         indices = torch.unsqueeze(indices, 0)
         input_tokens = {"tokens": indices}
@@ -66,4 +70,29 @@ class NNLanguageModel(LanguageModel):
         result = logits.transpose(1, 2).transpose(0, 1)
         result = torch.exp(torch.squeeze(result, 1)[-1]).cpu().detach().numpy()
         return result
+
+    def print(self):
+        print(self.model)
+        print("Trainable params count: ",
+              sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+
+    @classmethod
+    def load(self,
+             serialization_dir: str,
+             params_file: str=None,
+             weights_file: str=None,
+             cuda_device: int=-1):
+        params_file = params_file or os.path.join(serialization_dir, _DEFAULT_PARAMS)
+        params = Params.from_file(params_file)
+        if params.get('train', None):
+            params.pop('train')
+
+        inner_model = UnidirectionalLanguageModel._load(
+            params,
+            serialization_dir,
+            weights_file=weights_file,
+            cuda_device=cuda_device)
+        params.pop('model')
+        model = NNLanguageModel.from_params(params, model=inner_model, vocab=inner_model.vocab)
+        return model
 
