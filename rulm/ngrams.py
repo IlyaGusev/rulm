@@ -1,14 +1,15 @@
 import os
 from collections import defaultdict
-from typing import List, Tuple, Type, Generator, Any
+from typing import List, Tuple, Type, Iterable
 import gzip
 
 import pygtrie
 import numpy as np
 from allennlp.data.vocabulary import Vocabulary
-from allennlp.common.util import START_SYMBOL, END_SYMBOL
+from allennlp.common.util import END_SYMBOL
+from allennlp.common.params import Params
 
-from rulm.language_model import  LanguageModel
+from rulm.language_model import LanguageModel
 from rulm.transform import Transform
 
 
@@ -89,7 +90,7 @@ class NGramLanguageModel(LanguageModel):
                 n_gram = indices[i:i+n]
                 self.n_grams[n][n_gram] += 1.0
 
-    def train(self, inputs: Generator[List[str], Any, None], report_every: int=10000):
+    def train(self, inputs: Iterable[List[str]], train_params: Params=Params({}), report_every: int=10000):
         sentence_number = 0
         for sentence in inputs:
             indices = self._numericalize_inputs(sentence)
@@ -100,10 +101,10 @@ class NGramLanguageModel(LanguageModel):
             if sentence_number % report_every == 0:
                 print("Train: {} sentences processed".format(sentence_number))
 
-    def train_file(self, file_name):
+    def train_file(self, file_name: str, train_params: Params=Params({})):
         assert os.path.exists(file_name)
         sentences = self._parse_file_for_train(file_name)
-        self.train(sentences)
+        self.train(sentences, train_params)
         print("Train: normalizng...")
         self.normalize()
 

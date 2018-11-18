@@ -1,6 +1,5 @@
 import unittest
-import os
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from allennlp.common.params import Params
@@ -9,6 +8,7 @@ from allennlp.data.vocabulary import Vocabulary
 from rulm.nn.language_model import NNLanguageModel
 from rulm.settings import RNNLM_REMEMBER_EXAMPLE, RNNLM_MODEL_PARAMS
 from rulm.stream_reader import LanguageModelingStreamReader
+
 
 class TestRNNLM(unittest.TestCase):
     @classmethod
@@ -72,6 +72,7 @@ class TestRNNLM(unittest.TestCase):
             train_params = params.pop('train')
             model = NNLanguageModel.from_params(params, vocab=self.vocabulary)
             model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params, dirpath)
-            loaded_model = NNLanguageModel.load(dirpath, RNNLM_MODEL_PARAMS)
+
+            loaded_model = NNLanguageModel.load(dirpath, RNNLM_MODEL_PARAMS, cuda_device=0)
             self._test_model_equality(model, loaded_model)
 

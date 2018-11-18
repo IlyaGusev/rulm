@@ -1,3 +1,5 @@
 rulm/data/vocab.rdt.example.txt filter=lfs diff=lfs merge=lfs -text
 rulm/data/rdt.example.txt filter=lfs diff=lfs merge=lfs -text
 rulm/data/rdt.example.test.txt filter=lfs diff=lfs merge=lfs -text
+rulm/data/rdt.example.vocab/tokens.txt filter=lfs diff=lfs merge=lfs -text
+rulm/data/rdt.example.vocab/non_padded_namespaces.txt filter=lfs diff=lfs merge=lfs -text

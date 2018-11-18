@@ -2,9 +2,10 @@ import numpy as np
 from typing import List
 
 from allennlp.data.vocabulary import Vocabulary
+from allennlp.common.registrable import Registrable
 
 
-class Transform:
+class Transform(Registrable):
     def __call__(self, probabilities: List[float]):
         raise NotImplementedError()
 
@@ -12,6 +13,7 @@ class Transform:
         raise NotImplementedError()
 
 
+@Transform.register("top-k")
 class TopKTransform(Transform):
     def __init__(self, k):
         self.k = k
@@ -29,6 +31,7 @@ class TopKTransform(Transform):
         pass
 
 
+@Transform.register("alphabet")
 class AlphabetOrderTransform(Transform):
     def __init__(self, vocabulary: Vocabulary, language: str="ru"):
         assert language in ("ru", "en"), "Bad language for filter"

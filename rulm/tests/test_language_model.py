@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 

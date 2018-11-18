@@ -1,8 +1,6 @@
 import unittest
 
 from allennlp.data.vocabulary import Vocabulary
-from allennlp.common.util import START_SYMBOL, END_SYMBOL
-from allennlp.data.tokenizers import Token
 
 from rulm.settings import TRAIN_EXAMPLE
 from rulm.stream_reader import LanguageModelingStreamReader

@@ -1,5 +1,3 @@
-from typing import Dict, Any
-
 from torch.nn import Dropout, Linear, LSTM, ReLU
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack

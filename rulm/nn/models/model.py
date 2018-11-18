@@ -1,15 +1,14 @@
 from typing import Dict
 
 import torch
-from torch.nn import Dropout, Linear, LogSoftmax, NLLLoss, Softmax
+from torch.nn import Dropout, Linear, LogSoftmax, NLLLoss
 from allennlp.models.model import Model
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN
 from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
-from allennlp.modules.token_embedders.embedding import Embedding
-from allennlp.nn.util import get_text_field_mask
 
 from rulm.nn.models.seq2seq_encoder import Seq2SeqEncoder
 from rulm.nn.models.lstm_encoder import LstmEncoder
+
 
 @Model.register("unidirectional_language_model")
 class UnidirectionalLanguageModel(Model):

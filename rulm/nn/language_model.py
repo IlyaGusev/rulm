@@ -11,20 +11,21 @@ from allennlp.common.params import Params
 from allennlp.training.optimizers import Optimizer
 from allennlp.training.trainer import Trainer
 from allennlp.data.vocabulary import Vocabulary
+from allennlp.data.instance import Instance
 from allennlp.data.iterators.data_iterator import DataIterator
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.model import Model
+from allennlp.data.tokenizers import Token
 
 from rulm.transform import Transform
 from rulm.language_model import LanguageModel
 from rulm.stream_reader import LanguageModelingStreamReader
 from rulm.nn.models.model import UnidirectionalLanguageModel
 
-use_cuda = torch.cuda.is_available()
-LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 
 _DEFAULT_PARAMS = "params.json"
 _DEFAULT_VOCAB_DIR = "vocabulary"
+
 
 @LanguageModel.register("nn_language_model")
 class NNLanguageModel(LanguageModel):
@@ -45,15 +46,23 @@ class NNLanguageModel(LanguageModel):
         np.random.seed(seed)
         torch.backends.cudnn.set_flags(True, False, True, True)
 
+    def train(self, inputs: Iterable[List[str]], train_params: Params, serialization_dir: str=None):
+        raise NotImplementedError()
+
     def train_file(self, file_name: str, train_params: Params, serialization_dir: str=None):
         assert os.path.exists(file_name)
+        reader = DatasetReader.from_params(train_params.pop('reader'), reverse=self.reverse)
+        dataset = reader.read(file_name)
+        self._train_dataset(dataset, train_params, serialization_dir)
 
+    def _train_dataset(self,
+                       dataset: Iterable[Instance],
+                       train_params: Params,
+                       serialization_dir: str=None):
         if serialization_dir:
             vocab_dir = os.path.join(serialization_dir, _DEFAULT_VOCAB_DIR)
             self.vocabulary.save_to_files(vocab_dir)
 
-        reader = DatasetReader.from_params(train_params.pop('reader'), reverse=self.reverse)
-        dataset = reader.read(file_name)
         iterator = DataIterator.from_params(train_params.pop('iterator'))
         iterator.index_with(self.vocabulary)
         trainer = Trainer.from_params(self.model, serialization_dir, iterator,
@@ -63,12 +72,15 @@ class NNLanguageModel(LanguageModel):
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
+        LongTensor = torch.cuda.LongTensor if next(self.model.parameters()).is_cuda else torch.LongTensor
         indices = LongTensor(indices)
         indices = torch.unsqueeze(indices, 0)
         input_tokens = {"tokens": indices}
+
         logits = self.model.forward(input_tokens=input_tokens)["logits"]
         result = logits.transpose(1, 2).transpose(0, 1)
         result = torch.exp(torch.squeeze(result, 1)[-1]).cpu().detach().numpy()
+
         return result
 
     def print(self):

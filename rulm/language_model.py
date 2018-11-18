@@ -6,6 +6,7 @@ import numpy as np
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.common.registrable import Registrable
+from allennlp.common.params import Params
 
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
@@ -51,10 +52,10 @@ class LanguageModel(Registrable):
         self.transforms = transforms  # type: List[Transform]
         self.reverse = reverse  # type : bool
 
-    def train(self, inputs: Iterable[List[str]]):
+    def train(self, inputs: Iterable[List[str]], train_params: Params):
         raise NotImplementedError()
 
-    def train_file(self, file_name: str):
+    def train_file(self, file_name: str, train_params: Params):
         raise NotImplementedError()
 
     def predict(self, inputs: List[int]) -> List[float]:
@@ -109,9 +110,7 @@ class LanguageModel(Registrable):
 
                 prediction = self.predict(context)
                 unk_index = self.vocabulary.get_token_index(DEFAULT_OOV_TOKEN)
-                print(word_index, self.vocabulary.get_token_from_index(word_index))
                 state.add(word_index, prediction[word_index], is_including_unk, unk_index)
-        print("!!!!")
         return state
 
     def measure_perplexity_file(self, file_name, batch_size: int=100):
@@ -174,7 +173,6 @@ class EquiprobableLanguageModel(LanguageModel):
         probabilities = np.full((vocab_size,), 1./(vocab_size-2))
         probabilities[self.vocabulary.get_token_index(START_SYMBOL)] = 0.
         probabilities[self.vocabulary.get_token_index(DEFAULT_PADDING_TOKEN)] = 0.
-        print(probabilities)
         return probabilities
 
 

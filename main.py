@@ -4,11 +4,10 @@ from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE, RNNL
 from rulm.stream_reader import LanguageModelingStreamReader
 
 reader = LanguageModelingStreamReader()
-#dataset = reader.read(TRAIN_EXAMPLE)
-#vocabulary = Vocabulary.from_instances(dataset)
-v = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
-print(v.get_token_index(DEFAULT_PADDING_TOKEN))
-#vocabulary.save_to_files(TRAIN_VOCAB_EXAMPLE)
+dataset = reader.read(TRAIN_EXAMPLE)
+vocabulary = Vocabulary.from_instances(dataset)
+# v = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
+vocabulary.save_to_files(TRAIN_VOCAB_EXAMPLE)
 #vocabulary.load(TRAIN_VOCAB_EXAMPLE)
 #vocabulary.sort(1000)
 #vocabulary.add_file(RNNLM_REMEMBER_EXAMPLE)

@@ -1,5 +1,4 @@
-import os
-from typing import List, Callable, Dict
+from typing import  Dict
 from overrides import overrides
 
 from allennlp.common.file_utils import cached_path
@@ -41,7 +40,7 @@ class LanguageModelingStreamReader(LanguageModelingReader):
                         sample = tokenized_line[index:(index + num_tokens)]
                         yield self._sample_to_instance(sample)
                 else:
-                   yield self._sample_to_instance(tokenized_line)
+                    yield self._sample_to_instance(tokenized_line)
 
     def _sample_to_instance(self, sample):
         y = sample[1:]
