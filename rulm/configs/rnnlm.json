@@ -37,8 +37,7 @@
                 "type": "adam",
                 "lr": 0.001
             },
-            "shuffle": false,
-            "cuda_device": 0
+            "shuffle": false
         }
     }
 }

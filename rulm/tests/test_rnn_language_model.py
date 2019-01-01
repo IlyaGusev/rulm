@@ -52,7 +52,7 @@ class TestRNNLM(unittest.TestCase):
     def test_model_from_file(self):
         self._test_model_predictions(self.model)
 
-    #def test_train_from_python(self):
+    def test_train_from_python(self):
     #    params = self.params.duplicate()
     #    model = NNLanguageModel(self.vocabulary, params.pop("model"))
     #    model.train(self.sentences, params.pop("train"))
@@ -73,6 +73,6 @@ class TestRNNLM(unittest.TestCase):
             model = NNLanguageModel.from_params(params, vocab=self.vocabulary)
             model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params, dirpath)
 
-            loaded_model = NNLanguageModel.load(dirpath, RNNLM_MODEL_PARAMS, cuda_device=0)
+            loaded_model = NNLanguageModel.load(dirpath, RNNLM_MODEL_PARAMS)
             self._test_model_equality(model, loaded_model)
 
