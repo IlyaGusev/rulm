@@ -52,7 +52,7 @@ class TestRNNLM(unittest.TestCase):
     def test_model_from_file(self):
         self._test_model_predictions(self.model)
 
-    def test_train_from_python(self):
+    # def test_train_from_python(self):
     #    params = self.params.duplicate()
     #    model = NNLanguageModel(self.vocabulary, params.pop("model"))
     #    model.train(self.sentences, params.pop("train"))
