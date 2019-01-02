@@ -5,13 +5,11 @@ from torch.nn import Dropout, Linear, LogSoftmax, NLLLoss
 from allennlp.models.model import Model
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN
 from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
-
-from rulm.nn.models.seq2seq_encoder import Seq2SeqEncoder
-from rulm.nn.models.lstm_encoder import LstmEncoder
+from allennlp.modules import Attention, TextFieldEmbedder, Seq2SeqEncoder
 
 
-@Model.register("unidirectional_language_model")
-class UnidirectionalLanguageModel(Model):
+@Model.register("encoder_only_language_model")
+class EncoderOnlyLanguageModel(Model):
     def __init__(self,
                  vocab: Vocabulary,
                  embedder: TokenEmbedder,

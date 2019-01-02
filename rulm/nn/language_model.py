@@ -20,7 +20,7 @@ from allennlp.data.tokenizers import Token
 from rulm.transform import Transform
 from rulm.language_model import LanguageModel
 from rulm.stream_reader import LanguageModelingStreamReader
-from rulm.nn.models.model import UnidirectionalLanguageModel
+from rulm.nn.models.encoder_only import EncoderOnlyLanguageModel
 
 
 _DEFAULT_PARAMS = "params.json"
@@ -99,7 +99,7 @@ class NNLanguageModel(LanguageModel):
         if params.get('train', None):
             params.pop('train')
 
-        inner_model = UnidirectionalLanguageModel._load(
+        inner_model = Model._load(
             params,
             serialization_dir,
             weights_file=weights_file,
