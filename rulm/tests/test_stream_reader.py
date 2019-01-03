@@ -20,7 +20,7 @@ class TestStreamReader(unittest.TestCase):
                 self.assertIsNotNone(sample)
                 self.assertNotEqual(len(sample), 0)
                 if prev_sample:
-                    self.assertNotEqual(sample["input_tokens"], prev_sample["input_tokens"])
+                    self.assertNotEqual(sample["source_tokens"], prev_sample["source_tokens"])
                 prev_sample = sample
 
     def test_vocabulary(self):

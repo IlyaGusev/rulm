@@ -5,8 +5,8 @@ import numpy as np
 from allennlp.common.params import Params
 from allennlp.data.vocabulary import Vocabulary
 
-from rulm.nn.language_model import NNLanguageModel
-from rulm.settings import RNNLM_REMEMBER_EXAMPLE, RNNLM_MODEL_PARAMS
+from rulm.nn.nn_language_model import NNLanguageModel
+from rulm.settings import RNNLM_REMEMBER_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS
 from rulm.stream_reader import LanguageModelingStreamReader
 
 
@@ -22,7 +22,7 @@ class TestRNNLM(unittest.TestCase):
             for line in r:
                 cls.sentences.append(line.strip())
 
-        cls.params = Params.from_file(RNNLM_MODEL_PARAMS)
+        cls.params = Params.from_file(ENCODER_ONLY_MODEL_PARAMS)
         params = cls.params.duplicate()
         train_params = params.pop("train")
         cls.model = NNLanguageModel.from_params(params, vocab=cls.vocabulary)
@@ -52,13 +52,6 @@ class TestRNNLM(unittest.TestCase):
     def test_model_from_file(self):
         self._test_model_predictions(self.model)
 
-    # def test_train_from_python(self):
-    #    params = self.params.duplicate()
-    #    model = NNLanguageModel(self.vocabulary, params.pop("model"))
-    #    model.train(self.sentences, params.pop("train"))
-    #    self._test_model_predictions(model)
-    #    self._test_model_equality(model, self.model)
-
     def test_reversed_model(self):
         params = self.params.duplicate()
         train_params = params.pop('train')
@@ -71,8 +64,7 @@ class TestRNNLM(unittest.TestCase):
             params = self.params.duplicate()
             train_params = params.pop('train')
             model = NNLanguageModel.from_params(params, vocab=self.vocabulary)
-            model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params, dirpath)
+            model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params, None, dirpath)
 
-            loaded_model = NNLanguageModel.load(dirpath, RNNLM_MODEL_PARAMS)
+            loaded_model = NNLanguageModel.load(dirpath, ENCODER_ONLY_MODEL_PARAMS)
             self._test_model_equality(model, loaded_model)
-

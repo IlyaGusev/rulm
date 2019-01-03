@@ -48,6 +48,6 @@ class LanguageModelingStreamReader(LanguageModelingReader):
         input_field = TextField(sample, self._token_indexers)
         output_field = TextField(y, self._token_indexers)
         return Instance({
-            'input_tokens': input_field,
-            'output_tokens': output_field
+            'source_tokens': input_field,
+            'target_tokens': output_field
         })

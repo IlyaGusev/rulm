@@ -5,7 +5,7 @@ from torch.nn import Dropout, Linear, LogSoftmax, NLLLoss
 from allennlp.models.model import Model
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN
 from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
-from allennlp.modules import Attention, TextFieldEmbedder, Seq2SeqEncoder
+from allennlp.modules import Seq2SeqEncoder
 
 
 @Model.register("encoder_only_language_model")
@@ -36,10 +36,11 @@ class EncoderOnlyLanguageModel(Model):
 
         self._softmax = LogSoftmax(dim=2)
 
-    def forward(self, input_tokens: Dict[str, torch.Tensor],
-                      output_tokens: Dict[str, torch.Tensor]=None) -> Dict[str, torch.Tensor]:
+    def forward(self,
+                source_tokens: Dict[str, torch.Tensor],
+                target_tokens: Dict[str, torch.Tensor]=None) -> Dict[str, torch.Tensor]:
         # Shape: (batch_size, max_length)
-        source = input_tokens["tokens"]
+        source = source_tokens["tokens"]
         source = source.flip(0)
         mask = source > 0
 
@@ -54,16 +55,13 @@ class EncoderOnlyLanguageModel(Model):
         linears = self._softmax_linear(contextual_embeddings)
         logits = self._softmax(linears)
 
-        # Shape: (batch_size, vocab_size, max_length)
-        logits = torch.transpose(logits, 1, 2)
-
         result = {"logits": logits}
 
         criterion = NLLLoss(ignore_index=self.vocab.get_token_index(DEFAULT_PADDING_TOKEN))
-        if output_tokens:
-            target = output_tokens["tokens"]
+        if target_tokens:
+            target = target_tokens["tokens"]
             target = target.flip(0)
-            loss = criterion(logits, target)
+            loss = criterion(logits.transpose(1, 2), target)
             result["loss"] = loss
         return result
 

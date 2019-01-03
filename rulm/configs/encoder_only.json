@@ -5,13 +5,13 @@
         "use_custom_embedder_weights": true,
         "embedder": {
             "type": "embedding",
-            "embedding_dim": 250
+            "embedding_dim": 400
         },
         "contextualizer": {
             "type": "lstm",
             "num_layers": 1,
-            "input_size": 250,
-            "hidden_size": 250
+            "input_size": 400,
+            "hidden_size": 400
         }
     },
     "train": {
@@ -22,7 +22,7 @@
             "type": "bucket",
             "batch_size": 64,
             "padding_noise": 0.0,
-            "sorting_keys": [["input_tokens", "num_tokens"]],
+            "sorting_keys": [["source_tokens", "num_tokens"]],
             "cache_instances": true
         },
         "trainer": {

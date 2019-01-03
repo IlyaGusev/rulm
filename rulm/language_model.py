@@ -159,10 +159,10 @@ class EquiprobableLanguageModel(LanguageModel):
     def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
         LanguageModel.__init__(self, vocabulary, transforms)
 
-    def train(self, inputs: List[List[str]]):
+    def train(self, inputs: List[List[str]], train_params: Params):
         pass
 
-    def train_file(self, file_name: str):
+    def train_file(self, file_name: str, train_params: Params):
         pass
 
     def normalize(self):
@@ -180,10 +180,10 @@ class VocabularyChainLanguageModel(LanguageModel):
     def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
         LanguageModel.__init__(self, vocabulary, transforms)
 
-    def train(self, inputs: List[List[str]]):
+    def train(self, inputs: List[List[str]], train_params: Params):
         pass
 
-    def train_file(self, file_name: str):
+    def train_file(self, file_name: str, train_params: Params):
         pass
 
     def normalize(self):
