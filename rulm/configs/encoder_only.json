@@ -1,6 +1,6 @@
 {
    "model": {
-        "type": "unidirectional_language_model",
+        "type": "encoder_only_language_model",
         "dropout": 0.2,
         "use_custom_embedder_weights": true,
         "embedder": {
@@ -9,12 +9,9 @@
         },
         "contextualizer": {
             "type": "lstm",
-            "input_dim": 250,
-            "output_dim": 250,
-            "n_layers": 1,
-            "lstm_hidden_size": 250,
-            "lstm_dropout": 0.2,
-            "projection_dropout": 0.2
+            "num_layers": 1,
+            "input_size": 250,
+            "hidden_size": 250
         }
     },
     "train": {
