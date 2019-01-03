@@ -39,6 +39,7 @@ class NNLanguageModel(LanguageModel):
 
         self.set_seed(seed)
         self.model = model
+        self.print()
 
     @staticmethod
     def set_seed(seed):
@@ -49,16 +50,17 @@ class NNLanguageModel(LanguageModel):
     def train(self, inputs: Iterable[List[str]], train_params: Params, serialization_dir: str=None):
         raise NotImplementedError()
 
-    def train_file(self, file_name: str, train_params: Params, serialization_dir: str=None):
-        assert os.path.exists(file_name)
+    def train_file(self,
+                   train_file_name: str,
+                   train_params: Params,
+                   valid_file_name: str=None,
+                   serialization_dir: str=None):
+        assert os.path.exists(train_file_name)
+        assert os.path.exists(valid_file_name)
         reader = DatasetReader.from_params(train_params.pop('reader'), reverse=self.reverse)
-        dataset = reader.read(file_name)
-        self._train_dataset(dataset, train_params, serialization_dir)
+        train_dataset = reader.read(train_file_name)
+        valid_dataset = reader.read(valid_file_name) if valid_file_name else None
 
-    def _train_dataset(self,
-                       dataset: Iterable[Instance],
-                       train_params: Params,
-                       serialization_dir: str=None):
         if serialization_dir:
             vocab_dir = os.path.join(serialization_dir, _DEFAULT_VOCAB_DIR)
             self.vocabulary.save_to_files(vocab_dir)
@@ -66,7 +68,7 @@ class NNLanguageModel(LanguageModel):
         iterator = DataIterator.from_params(train_params.pop('iterator'))
         iterator.index_with(self.vocabulary)
         trainer = Trainer.from_params(self.model, serialization_dir, iterator,
-                                      dataset, None, train_params.pop('trainer'))
+                                      train_dataset, valid_dataset, train_params.pop('trainer'))
         train_params.assert_empty("Trainer")
         trainer.train()
 
