@@ -12,14 +12,14 @@ from allennlp.models.model import Model
 
 from rulm.transform import Transform
 from rulm.language_model import LanguageModel
-from rulm.nn.encoder_only import EncoderOnlyLanguageModel
+from rulm.models.nn.encoder_only import EncoderOnlyLanguageModel
 
 _DEFAULT_PARAMS = "params.json"
 _DEFAULT_VOCAB_DIR = "vocabulary"
 
 
-@LanguageModel.register("nn_language_model")
-class NNLanguageModel(LanguageModel):
+@LanguageModel.register("neural_net")
+class NeuralNetLanguageModel(LanguageModel):
     def __init__(self,
                  vocab: Vocabulary,
                  model: Model,
@@ -99,6 +99,6 @@ class NNLanguageModel(LanguageModel):
             weights_file=weights_file,
             cuda_device=cuda_device)
         params.pop('model')
-        model = NNLanguageModel.from_params(params, model=inner_model, vocab=inner_model.vocab)
+        model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=inner_model.vocab)
         return model
 

@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
+from allennlp.data.vocabulary import Vocabulary, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.common.registrable import Registrable
 from allennlp.common.params import Params
@@ -155,54 +155,3 @@ class LanguageModel(Registrable):
         return np.random.choice(range(norm_model.shape[0]), k, p=norm_model, replace=False)
 
 
-class EquiprobableLanguageModel(LanguageModel):
-    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
-        LanguageModel.__init__(self, vocabulary, transforms)
-
-    def train(self, inputs: List[List[str]], train_params: Params):
-        pass
-
-    def train_file(self, file_name: str, train_params: Params):
-        pass
-
-    def normalize(self):
-        pass
-
-    def predict(self, inputs: List[int]):
-        vocab_size = self.vocabulary.get_vocab_size()
-        probabilities = np.full((vocab_size,), 1./(vocab_size-2))
-        probabilities[self.vocabulary.get_token_index(START_SYMBOL)] = 0.
-        probabilities[self.vocabulary.get_token_index(DEFAULT_PADDING_TOKEN)] = 0.
-        return probabilities
-
-
-class VocabularyChainLanguageModel(LanguageModel):
-    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
-        LanguageModel.__init__(self, vocabulary, transforms)
-
-    def train(self, inputs: List[List[str]], train_params: Params):
-        pass
-
-    def train_file(self, file_name: str, train_params: Params):
-        pass
-
-    def normalize(self):
-        pass
-
-    def predict(self, inputs: List[int]):
-        probabilities = np.zeros(self.vocabulary.get_vocab_size())
-        last_index = inputs[-1]
-        aux = (START_SYMBOL, END_SYMBOL, DEFAULT_OOV_TOKEN, DEFAULT_PADDING_TOKEN)
-        aux_indices = [self.vocabulary.get_token_index(s) for s in aux]
-        first_not_aux_index = 0
-        for i in range(self.vocabulary.get_vocab_size()):
-            if i in aux_indices:
-                continue
-            first_not_aux_index = i
-            break
-        bos_index = aux_indices[0]
-        if last_index == bos_index:
-            probabilities[first_not_aux_index] = 1.
-        elif last_index != self.vocabulary.get_vocab_size() - 1:
-            probabilities[last_index + 1] = 1.
-        return probabilities

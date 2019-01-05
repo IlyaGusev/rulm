@@ -71,8 +71,11 @@ class TrieNGramContainer(NGramContainer):
         return self.data.items()
 
 
+@LanguageModel.register("n_gram")
 class NGramLanguageModel(LanguageModel):
-    def __init__(self, n: int, vocabulary: Vocabulary,
+    def __init__(self,
+                 n: int,
+                 vocabulary: Vocabulary,
                  transforms: Tuple[Transform]=tuple(),
                  reverse: bool=False,
                  interpolation_lambdas: Tuple[float, ...]=None,
@@ -84,9 +87,9 @@ class NGramLanguageModel(LanguageModel):
         LanguageModel.__init__(self, vocabulary, transforms, reverse)
 
     def _collect_n_grams(self, indices: List[int]) -> None:
-        l = len(indices)
+        count = len(indices)
         for n in range(self.n + 1):
-            for i in range(min(l - n + 1, l)):
+            for i in range(min(count - n + 1, count)):
                 n_gram = indices[i:i+n]
                 self.n_grams[n][n_gram] += 1.0
 

@@ -4,7 +4,10 @@ import numpy as np
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_PADDING_TOKEN, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 
-from rulm.language_model import EquiprobableLanguageModel, VocabularyChainLanguageModel, PerplexityState
+from rulm.language_model import PerplexityState
+from rulm.models.vocabulary_chain import VocabularyChainLanguageModel
+from rulm.models.equiprobable import EquiprobableLanguageModel
+
 
 # TODO: test reverse
 

@@ -5,7 +5,7 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
 
 from rulm.stream_reader import LanguageModelingStreamReader
-from rulm.nn.nn_language_model import NNLanguageModel
+from rulm.models.neural_net import NeuralNetLanguageModel
 
 
 def main(model_path, train_path, val_path):
@@ -24,7 +24,7 @@ def main(model_path, train_path, val_path):
     params = Params.from_file(config_path)
     train_params = params.pop("train")
 
-    model = NNLanguageModel.from_params(params, vocab=vocabulary)
+    model = NeuralNetLanguageModel.from_params(params, vocab=vocabulary)
     model.train_file(train_path, train_params, val_path, serialization_dir=model_path)
 
 

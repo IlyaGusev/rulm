@@ -1,6 +1,6 @@
 {
    "model": {
-        "type": "encoder_only_language_model",
+        "type": "encoder_only",
         "dropout": 0.2,
         "use_custom_embedder_weights": true,
         "embedder": {

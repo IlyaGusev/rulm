@@ -1,4 +1,4 @@
-from typing import  Dict
+from typing import Dict
 from overrides import overrides
 
 from allennlp.common.file_utils import cached_path

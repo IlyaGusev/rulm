@@ -8,7 +8,7 @@ from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
 from allennlp.modules import Seq2SeqEncoder
 
 
-@Model.register("encoder_only_language_model")
+@Model.register("encoder_only")
 class EncoderOnlyLanguageModel(Model):
     def __init__(self,
                  vocab: Vocabulary,
