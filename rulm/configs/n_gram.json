@@ -1,0 +1,10 @@
+{
+  "type": "n_gram",
+  "n": 3,
+  "cutoff_count": 2,
+  "vocab": {
+    "max_vocab_size": 500
+  },
+  "reverse": true,
+  "interpolation_lambdas": [1.0, 0.1, 0.01]
+}

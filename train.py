@@ -5,10 +5,12 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
 
 from rulm.stream_reader import LanguageModelingStreamReader
+from rulm.language_model import LanguageModel
+from rulm.models.n_gram import NGramLanguageModel
 from rulm.models.neural_net import NeuralNetLanguageModel
 
 
-def main(model_path, train_path, val_path):
+def train(model_path, train_path, val_path):
     reader = LanguageModelingStreamReader()
     dataset = reader.read(train_path)
 
@@ -22,10 +24,10 @@ def main(model_path, train_path, val_path):
         vocabulary.save_to_files(vocabulary_path)
 
     params = Params.from_file(config_path)
-    train_params = params.pop("train")
+    train_params = params.pop("train", Params({}))
 
-    model = NeuralNetLanguageModel.from_params(params, vocab=vocabulary)
-    model.train_file(train_path, train_params, val_path, serialization_dir=model_path)
+    model = LanguageModel.from_params(params, vocab=vocabulary)
+    model.train_file(train_path, train_params, serialization_dir=model_path, valid_file_name=val_path)
 
 
 if __name__ == "__main__":
@@ -34,4 +36,4 @@ if __name__ == "__main__":
     parser.add_argument('--train-path', required=True)
     parser.add_argument('--val-path')
     args = parser.parse_args()
-    main(args.model_path, args.train_path, args.val_path)
+    train(args.model_path, args.train_path, args.val_path)

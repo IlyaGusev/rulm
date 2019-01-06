@@ -14,9 +14,6 @@ from rulm.transform import Transform
 from rulm.language_model import LanguageModel
 from rulm.models.nn.encoder_only import EncoderOnlyLanguageModel
 
-_DEFAULT_PARAMS = "params.json"
-_DEFAULT_VOCAB_DIR = "vocabulary"
-
 
 @LanguageModel.register("neural_net")
 class NeuralNetLanguageModel(LanguageModel):
@@ -38,26 +35,26 @@ class NeuralNetLanguageModel(LanguageModel):
         np.random.seed(seed)
         torch.backends.cudnn.set_flags(True, False, True, True)
 
-    def train(self, inputs: Iterable[List[str]], train_params: Params, serialization_dir: str=None):
+    def train(self,
+              inputs: Iterable[List[str]],
+              train_params: Params,
+              serialization_dir: str=None,
+              **kwargs):
         raise NotImplementedError()
 
     def train_file(self,
                    train_file_name: str,
                    train_params: Params,
-                   valid_file_name: str=None,
-                   serialization_dir: str=None):
+                   serialization_dir: str = None,
+                   valid_file_name: str = None):
         assert os.path.exists(train_file_name)
         assert not valid_file_name or os.path.exists(valid_file_name)
         reader = DatasetReader.from_params(train_params.pop('reader'), reverse=self.reverse)
         train_dataset = reader.read(train_file_name)
         valid_dataset = reader.read(valid_file_name) if valid_file_name else None
 
-        if serialization_dir:
-            vocab_dir = os.path.join(serialization_dir, _DEFAULT_VOCAB_DIR)
-            self.vocabulary.save_to_files(vocab_dir)
-
         iterator = DataIterator.from_params(train_params.pop('iterator'))
-        iterator.index_with(self.vocabulary)
+        iterator.index_with(self.vocab)
         trainer = Trainer.from_params(self.model, serialization_dir, iterator,
                                       train_dataset, valid_dataset, train_params.pop('trainer'))
         train_params.assert_empty("Trainer")
@@ -83,22 +80,21 @@ class NeuralNetLanguageModel(LanguageModel):
         print("Trainable params count: ", params_count)
 
     @classmethod
-    def load(cls,
-             serialization_dir: str,
-             params_file: str=None,
-             weights_file: str=None,
-             cuda_device: int=-1):
-        params_file = params_file or os.path.join(serialization_dir, _DEFAULT_PARAMS)
-        params = Params.from_file(params_file)
+    def _load(cls,
+              params: Params,
+              vocab: Vocabulary,
+              serialization_dir: str,
+              weights_file: str,
+              cuda_device: int=-1):
         if params.get('train', None):
             params.pop('train')
 
-        inner_model = Model._load(
+        inner_model = Model.load(
             params,
             serialization_dir,
             weights_file=weights_file,
             cuda_device=cuda_device)
         params.pop('model')
-        model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=inner_model.vocab)
+        model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=vocab)
         return model
 

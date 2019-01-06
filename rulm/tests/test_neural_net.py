@@ -1,28 +1,36 @@
 import unittest
+import os
 from tempfile import TemporaryDirectory
+from typing import cast
 
 import numpy as np
 from allennlp.common.params import Params
 from allennlp.data.vocabulary import Vocabulary
 
-from rulm.models.neural_net import NeuralNetLanguageModel
-from rulm.settings import RNNLM_REMEMBER_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS
+from rulm.settings import REMEMBERING_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS, DEFAULT_VOCAB_DIR
 from rulm.stream_reader import LanguageModelingStreamReader
+from rulm.language_model import LanguageModel
+from rulm.models.neural_net import NeuralNetLanguageModel
 
 
 class TestRNNLM(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        configs = (ENCODER_ONLY_MODEL_PARAMS,)
+        cls.params_sets = [Params.from_file(config) for config in configs]
+
         cls.reader = LanguageModelingStreamReader()
-        dataset = cls.reader.read(RNNLM_REMEMBER_EXAMPLE)
-        cls.vocabulary = Vocabulary.from_instances(dataset)
+        dataset = cls.reader.read(REMEMBERING_EXAMPLE)
+
+        cls.vocabularies = []
+        for params in cls.params_sets:
+            vocabulary_params = params.pop("vocabulary", default=Params({}))
+            cls.vocabularies.append(Vocabulary.from_params(vocabulary_params, instances=dataset))
 
         cls.sentences = []
-        with open(RNNLM_REMEMBER_EXAMPLE, "r", encoding="utf-8") as r:
+        with open(REMEMBERING_EXAMPLE, "r", encoding="utf-8") as r:
             for line in r:
                 cls.sentences.append(line.strip())
-        configs = (ENCODER_ONLY_MODEL_PARAMS, )
-        cls.params_sets = [Params.from_file(config) for config in configs]
 
     def _test_model_predictions(self, model, reverse=False):
         for sentence in self.sentences:
@@ -39,35 +47,45 @@ class TestRNNLM(unittest.TestCase):
                 self.assertListEqual(prediction, sentence)
 
     @staticmethod
-    def _test_model_equality(model1, model2):
+    def _test_model_equality(model1: NeuralNetLanguageModel, model2: NeuralNetLanguageModel):
         old_params = list([param.detach().cpu().numpy() for param in model1.model.parameters()])
         new_params = list([param.detach().cpu().numpy() for param in model2.model.parameters()])
         for o, n in zip(old_params, new_params):
             np.testing.assert_array_almost_equal(o, n)
 
     def test_model_from_file(self):
-        for params in self.params_sets:
+        for params, vocabulary in zip(self.params_sets, self.vocabularies):
             params = params.duplicate()
             train_params = params.pop("train")
-            model = NeuralNetLanguageModel.from_params(params, vocab=self.vocabulary)
-            model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params)
+            model = LanguageModel.from_params(params, vocab=vocabulary)
+            model.train_file(REMEMBERING_EXAMPLE, train_params)
             self._test_model_predictions(model)
 
     def test_reversed_model(self):
-        for params in self.params_sets:
+        for params, vocabulary in zip(self.params_sets, self.vocabularies):
             params = params.duplicate()
             train_params = params.pop('train')
-            model_reversed = NeuralNetLanguageModel.from_params(params, vocab=self.vocabulary, reverse=True)
-            model_reversed.train_file(RNNLM_REMEMBER_EXAMPLE, train_params)
+            model_reversed = LanguageModel.from_params(params, vocab=vocabulary, reverse=True)
+            model_reversed.train_file(REMEMBERING_EXAMPLE, train_params)
             self._test_model_predictions(model_reversed, reverse=True)
 
     def test_save_load(self):
         with TemporaryDirectory() as dirpath:
-            for params in self.params_sets:
+            for params, vocabulary in zip(self.params_sets, self.vocabularies):
+                vocab_dir = os.path.join(dirpath, DEFAULT_VOCAB_DIR)
+                os.mkdir(vocab_dir)
+                vocabulary.save_to_files(vocab_dir)
+
                 params = params.duplicate()
                 train_params = params.pop('train')
-                model = NeuralNetLanguageModel.from_params(params, vocab=self.vocabulary)
-                model.train_file(RNNLM_REMEMBER_EXAMPLE, train_params, None, dirpath)
+                model = LanguageModel.from_params(params, vocab=vocabulary)
+                model.train_file(REMEMBERING_EXAMPLE, train_params, dirpath)
 
-                loaded_model = NeuralNetLanguageModel.load(dirpath, ENCODER_ONLY_MODEL_PARAMS)
-                self._test_model_equality(model, loaded_model)
+                loaded_model = LanguageModel.load(dirpath,
+                                                  params_file=ENCODER_ONLY_MODEL_PARAMS,
+                                                  vocabulary_dir=vocab_dir)
+
+                self.assertTrue(isinstance(model, NeuralNetLanguageModel))
+                self.assertTrue(isinstance(loaded_model, NeuralNetLanguageModel))
+                self._test_model_equality(cast(NeuralNetLanguageModel, model),
+                                          cast(NeuralNetLanguageModel, loaded_model))

@@ -12,21 +12,37 @@ from rulm.transform import Transform
 
 @LanguageModel.register("equiprobable")
 class EquiprobableLanguageModel(LanguageModel):
-    def __init__(self, vocabulary: Vocabulary, transforms: Tuple[Transform]=tuple()):
-        LanguageModel.__init__(self, vocabulary, transforms)
+    def __init__(self, vocab: Vocabulary, transforms: Tuple[Transform]=tuple()):
+        LanguageModel.__init__(self, vocab, transforms)
 
-    def train(self, inputs: List[List[str]], train_params: Params):
+    def train(self,
+              inputs: List[List[str]],
+              train_params: Params,
+              serialization_dir: str=None,
+              **kwargs):
         pass
 
-    def train_file(self, file_name: str, train_params: Params):
+    def train_file(self,
+                   file_name: str,
+                   train_params: Params,
+                   serialization_dir: str=None,
+                   **kwargs):
         pass
 
     def normalize(self):
         pass
 
+    def _load(self,
+              params: Params,
+              vocab: Vocabulary,
+              serialization_dir: str,
+              weights_file: str,
+              cuda_device: int=-1):
+        pass
+
     def predict(self, inputs: List[int]):
-        vocab_size = self.vocabulary.get_vocab_size()
+        vocab_size = self.vocab.get_vocab_size()
         probabilities = np.full((vocab_size,), 1./(vocab_size-2))
-        probabilities[self.vocabulary.get_token_index(START_SYMBOL)] = 0.
-        probabilities[self.vocabulary.get_token_index(DEFAULT_PADDING_TOKEN)] = 0.
+        probabilities[self.vocab.get_token_index(START_SYMBOL)] = 0.
+        probabilities[self.vocab.get_token_index(DEFAULT_PADDING_TOKEN)] = 0.
         return probabilities

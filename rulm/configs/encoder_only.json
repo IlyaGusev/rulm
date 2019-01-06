@@ -1,40 +1,41 @@
 {
-   "model": {
-        "type": "encoder_only",
-        "dropout": 0.2,
-        "use_custom_embedder_weights": true,
-        "embedder": {
-            "type": "embedding",
-            "embedding_dim": 400
-        },
-        "contextualizer": {
-            "type": "lstm",
-            "num_layers": 1,
-            "input_size": 400,
-            "hidden_size": 400
-        }
+  "type": "neural_net",
+  "model": {
+    "type": "encoder_only",
+    "dropout": 0.2,
+    "use_custom_embedder_weights": true,
+    "embedder": {
+      "type": "embedding",
+      "embedding_dim": 400
     },
-    "train": {
-        "reader": {
-            "type": "stream"
-        },
-        "iterator": {
-            "type": "bucket",
-            "batch_size": 64,
-            "padding_noise": 0.0,
-            "sorting_keys": [["source_tokens", "num_tokens"]],
-            "cache_instances": true
-        },
-        "trainer": {
-            "grad_clipping": 10.0,
-            "num_epochs": 25,
-            "summary_interval": 1,
-            "should_log_learning_rate": true,
-            "optimizer": {
-                "type": "adam",
-                "lr": 0.001
-            },
-            "shuffle": false
-        }
+    "contextualizer": {
+      "type": "lstm",
+      "num_layers": 1,
+      "input_size": 400,
+      "hidden_size": 400
     }
+  },
+  "train": {
+    "reader": {
+      "type": "stream"
+    },
+    "iterator": {
+      "type": "bucket",
+      "batch_size": 64,
+      "padding_noise": 0.0,
+      "sorting_keys": [["source_tokens", "num_tokens"]],
+      "cache_instances": true
+    },
+    "trainer": {
+      "grad_clipping": 10.0,
+      "num_epochs": 25,
+      "summary_interval": 1,
+      "should_log_learning_rate": true,
+      "optimizer": {
+        "type": "adam",
+        "lr": 0.001
+      },
+      "shuffle": false
+    }
+  }
 }

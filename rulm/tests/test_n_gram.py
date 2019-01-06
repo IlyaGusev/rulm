@@ -1,15 +1,18 @@
 import unittest
 import os
 import time
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import cast
 
 import numpy as np
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
+from allennlp.common.params import Params
 
 from rulm.models.n_gram import NGramLanguageModel
-from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE
+from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE, N_GRAM_PARAMS, DEFAULT_VOCAB_DIR
 from rulm.stream_reader import LanguageModelingStreamReader
+from rulm.language_model import LanguageModel
 
 
 class TestNGrams(unittest.TestCase):
@@ -24,42 +27,42 @@ class TestNGrams(unittest.TestCase):
 
         cls.reader = LanguageModelingStreamReader()
 
-        cls.model = NGramLanguageModel(n=3, vocabulary=cls.vocabulary)
+        cls.model = NGramLanguageModel(n=3, vocab=cls.vocabulary)
         cls.model.train([["я", "не", "я"], ["ты", "не", "ты"], ["я", "не", "ты"]])
         cls.model.normalize()
 
-    def test_save_load(self):
+    def _assert_ngrams_equal(self, n_grams_1, n_grams_2):
+        for words, p1 in n_grams_1.items():
+            p2 = n_grams_2[words]
+            self.assertEqual("{:.4f}".format(np.log10(p1)), "{:.4f}".format(np.log10(p2)))
+
+    def _assert_models_equal(self, m1, m2):
+        self.assertEqual(m1.n, m2.n)
+        for n in range(1, m1.n + 1):
+            self._assert_ngrams_equal(m1.n_grams[n], m2.n_grams[n])
+
+    def test_save_load_weights(self):
         vocabulary = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
-        model1 = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
+        model1 = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
         model1.train_file(TRAIN_EXAMPLE)
 
-        def assert_ngrams_equal(n_grams_1, n_grams_2):
-            for words, p1 in n_grams_1.items():
-                p2 = n_grams_2[words]
-                self.assertEqual("{:.4f}".format(np.log10(p1)), "{:.4f}".format(np.log10(p2)))
-
-        def assert_models_equal(m1, m2):
-            self.assertEqual(m1.n, m2.n)
-            for n in range(1, m1.n+1):
-                assert_ngrams_equal(m1.n_grams[n], m2.n_grams[n])
-
         model1_file = NamedTemporaryFile(delete=False, suffix=".arpa")
-        model1.save(model1_file.name)
-        model2 = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
-        model2.load(model1_file.name)
-        assert_models_equal(model1, model2)
+        model1.save_weights(model1_file.name)
+        model2 = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
+        model2.load_weights(model1_file.name)
+        self._assert_models_equal(model1, model2)
         os.unlink(model1_file.name)
 
         model1_file_gzip = NamedTemporaryFile(delete=False, suffix=".arpa.gzip")
-        model1.save(model1_file_gzip.name)
-        model3 = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
-        model3.load(model1_file_gzip.name)
-        assert_models_equal(model1, model3)
+        model1.save_weights(model1_file_gzip.name)
+        model3 = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
+        model3.load_weights(model1_file_gzip.name)
+        self._assert_models_equal(model1, model3)
         os.unlink(model1_file_gzip.name)
 
     def test_predict_big(self):
         vocabulary = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
-        model = NGramLanguageModel(n=2, vocabulary=vocabulary)
+        model = NGramLanguageModel(n=2, vocab=vocabulary)
         model.train_file(TRAIN_EXAMPLE)
 
         prediction = model.predict([vocabulary.get_token_index(START_SYMBOL)])
@@ -69,7 +72,7 @@ class TestNGrams(unittest.TestCase):
     def test_predict_time(self):
         dataset = self.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_instances(dataset, max_vocab_size=3000)
-        model = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
+        model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
         model.train_file(TRAIN_EXAMPLE)
 
         ts = time.time()
@@ -107,7 +110,38 @@ class TestNGrams(unittest.TestCase):
     def test_perplexity(self):
         dataset = self.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_instances(dataset, max_vocab_size=500)
-        model = NGramLanguageModel(n=3, vocabulary=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
+        model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
         model.train_file(TRAIN_EXAMPLE)
         ppl_state = model.measure_perplexity_file(TEST_EXAMPLE)
         self.assertLess(np.exp(ppl_state.avg_log_perplexity), 30.)
+
+    def test_from_params(self):
+        params = Params.from_file(N_GRAM_PARAMS)
+        vocabulary_params = params.pop("vocab")
+        dataset = self.reader.read(TRAIN_EXAMPLE)
+        vocabulary = Vocabulary.from_params(vocabulary_params, instances=dataset)
+        model = LanguageModel.from_params(params, vocab=vocabulary)
+        self.assertTrue(isinstance(model, NGramLanguageModel))
+
+    def test_save_load(self):
+        with TemporaryDirectory() as dirpath:
+            params = Params.from_file(N_GRAM_PARAMS)
+            vocabulary_params = params.pop("vocab")
+            dataset = self.reader.read(TRAIN_EXAMPLE)
+            vocabulary = Vocabulary.from_params(vocabulary_params, instances=dataset)
+
+            vocab_dir = os.path.join(dirpath, DEFAULT_VOCAB_DIR)
+            os.mkdir(vocab_dir)
+            vocabulary.save_to_files(vocab_dir)
+
+            model = LanguageModel.from_params(params, vocab=vocabulary)
+            model.train_file(TRAIN_EXAMPLE, Params({}), serialization_dir=dirpath)
+
+            loaded_model = LanguageModel.load(dirpath,
+                                              params_file=N_GRAM_PARAMS,
+                                              vocabulary_dir=vocab_dir)
+
+            self.assertTrue(isinstance(model, NGramLanguageModel))
+            self.assertTrue(isinstance(loaded_model, NGramLanguageModel))
+            self._assert_models_equal(cast(NGramLanguageModel, model),
+                                      cast(NGramLanguageModel, loaded_model))
