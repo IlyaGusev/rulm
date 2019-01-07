@@ -25,12 +25,12 @@ class TestLanguageModel(unittest.TestCase):
         cls.chain_model = VocabularyChainLanguageModel(cls.vocabulary)
 
     def test_measure_perplexity(self):
-        eq_state = PerplexityState()
+        eq_state = PerplexityState(self.eq_model.vocab.get_token_index(DEFAULT_OOV_TOKEN))
         eq_state = self.eq_model.measure_perplexity([["я", "не", "ты"]], eq_state)
         self.assertAlmostEqual(np.exp(eq_state.avg_log_perplexity), 5.)
-        self.assertEqual(eq_state.zeroprobs_count, 0)
+        self.assertEqual(eq_state.zeroprobs_count, 1)
 
-        chain_state = PerplexityState()
+        chain_state = PerplexityState(self.chain_model.vocab.get_token_index(DEFAULT_OOV_TOKEN))
         chain_state = self.chain_model.measure_perplexity([["я", "не", "ты"]], chain_state)
         self.assertEqual(chain_state.zeroprobs_count, 1)
         self.assertAlmostEqual(np.exp(chain_state.avg_log_perplexity), 1.)

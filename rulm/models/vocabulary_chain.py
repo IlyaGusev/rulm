@@ -42,16 +42,19 @@ class VocabularyChainLanguageModel(LanguageModel):
 
     def predict(self, inputs: List[int]):
         probabilities = np.zeros(self.vocab.get_vocab_size())
-        last_index = inputs[-1]
         aux = (START_SYMBOL, END_SYMBOL, DEFAULT_OOV_TOKEN, DEFAULT_PADDING_TOKEN)
         aux_indices = [self.vocab.get_token_index(s) for s in aux]
+        bos_index = aux_indices[0]
+        if not inputs:
+            probabilities[bos_index] = 1.0
+            return probabilities
+        last_index = inputs[-1]
         first_not_aux_index = 0
         for i in range(self.vocab.get_vocab_size()):
             if i in aux_indices:
                 continue
             first_not_aux_index = i
             break
-        bos_index = aux_indices[0]
         if last_index == bos_index:
             probabilities[first_not_aux_index] = 1.
         elif last_index != self.vocab.get_vocab_size() - 1:

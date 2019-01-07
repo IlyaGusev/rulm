@@ -5,6 +5,7 @@ import gzip
 
 import pygtrie
 import numpy as np
+from scipy.optimize import minimize
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.util import END_SYMBOL
 from allennlp.common.params import Params
@@ -100,11 +101,18 @@ class NGramLanguageModel(LanguageModel):
                  cutoff_count: int=None,
                  interpolation_lambdas: Tuple[float, ...]=None,
                  container: Type[NGramContainer]=DictNGramContainer):
-        assert not interpolation_lambdas or n == len(interpolation_lambdas)
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
         self.n = n  # type: int
         self.cutoff_count = cutoff_count  # type: int
+
         self.interpolation_lambdas = interpolation_lambdas  # type: Tuple[float]
+        if not interpolation_lambdas:
+            self.interpolation_lambdas = np.zeros(self.n + 1, dtype=np.float64)
+            self.interpolation_lambdas[-1] = 1.0
+        else:
+            self.interpolation_lambdas = np.array(interpolation_lambdas)
+        assert n + 1 == len(self.interpolation_lambdas)
+
         LanguageModel.__init__(self, vocab, transforms, reverse)
 
     def _collect_n_grams(self, indices: List[int]) -> None:
@@ -137,7 +145,7 @@ class NGramLanguageModel(LanguageModel):
                    serialization_dir: str=None,
                    **kwargs):
         assert os.path.exists(file_name)
-        sentences = self._parse_file_for_train(file_name)
+        sentences = self._parse_file_for_sentences(file_name)
         self.train(sentences, train_params, serialization_dir=None)
         print("Train: normalizng...")
         self.normalize()
@@ -159,23 +167,62 @@ class NGramLanguageModel(LanguageModel):
         self.n_grams[0][tuple()] = 1.0
 
     def predict(self, indices: List[int]) -> np.ndarray:
+        step_probabilities = self._get_step_probabilities(indices)
+        probabilities = self.interpolation_lambdas.dot(step_probabilities)
+        norm_proba = probabilities / np.sum(probabilities)
+        return norm_proba
+
+    def _get_step_probabilities(self, indices: List[int]) -> np.ndarray:
         vocab_size = self.vocab.get_vocab_size()
-        probabilities = np.zeros(vocab_size, dtype=np.float64)
-        if not self.interpolation_lambdas:
-            self.interpolation_lambdas = (1.0, ) + tuple((0. for _ in range(self.n-1)))
         context = tuple(indices[-self.n+1:])
+        step_probabilities = np.zeros((self.n + 1, vocab_size), dtype=np.float64)
         for shift in range(self.n):
-            wanted_context_length = self.n-1-shift
-            if wanted_context_length > len(context) or self.interpolation_lambdas[shift] == 0.:
+            current_n = self.n - shift
+            wanted_context_length = current_n - 1
+            if wanted_context_length > len(context):
                 continue
-            difference = len(context) - wanted_context_length
-            context = context[difference:]
-            n = len(context) + 1
-            for index in range(probabilities.shape[0]):
-                n_gram = context + (index,)
-                p = self.n_grams[n][n_gram] if n_gram in self.n_grams[n] else 0.
-                probabilities[index] += p * self.interpolation_lambdas[shift]
-        return probabilities
+            start_index = len(context) - wanted_context_length
+            wanted_context = context[start_index:]
+            for index in range(vocab_size):
+                n_gram = wanted_context + (index,)
+                p = self.n_grams[current_n][n_gram] if n_gram in self.n_grams[current_n] else 0.
+                step_probabilities[current_n, index] = p
+        step_probabilities[0].fill(1.0 / vocab_size)
+        return step_probabilities
+
+    def estimate_parameters(self, inputs: Iterable[str]):
+        samples = []
+        for sentence in inputs:
+            words = sentence.strip().split()
+            sentence_indices = self._numericalize_inputs(words)
+            sentence_indices.append(self.vocab.get_token_index(END_SYMBOL))
+            for i in range(1, len(sentence_indices) + 1):
+                indices = sentence_indices[:i]
+                true_index = indices[-1]
+                context = indices[:-1]
+                step_probabilities = self._get_step_probabilities(context)
+                samples.append((step_probabilities, true_index))
+
+        def sum_log_likelihood(interpolation_lambdas):
+            s = 0
+            for step_probabilities, true_index in samples:
+                probabilities = interpolation_lambdas.dot(step_probabilities)
+                norm_proba = probabilities / np.sum(probabilities)
+                s -= np.log(norm_proba[true_index])
+            return s
+
+        def sum_one_constraint(x):
+            return np.sum(x) - 1
+
+        opt = minimize(
+            sum_log_likelihood,
+            self.interpolation_lambdas,
+            constraints=[{'type': 'eq', 'fun': sum_one_constraint}],
+            bounds=[(0, 1) for _ in self.interpolation_lambdas]
+        )
+
+        print(opt.x, np.exp(sum_log_likelihood(opt.x)/len(samples)), len(samples))
+        self.interpolation_lambdas = opt.x
 
     def save_weights(self, path: str) -> None:
         assert path.endswith(".arpa") or path.endswith(".arpa.gzip")

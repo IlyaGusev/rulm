@@ -43,19 +43,19 @@ class TestNGrams(unittest.TestCase):
 
     def test_save_load_weights(self):
         vocabulary = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
-        model1 = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
+        model1 = NGramLanguageModel(n=3, vocab=vocabulary)
         model1.train_file(TRAIN_EXAMPLE)
 
         model1_file = NamedTemporaryFile(delete=False, suffix=".arpa")
         model1.save_weights(model1_file.name)
-        model2 = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
+        model2 = NGramLanguageModel(n=3, vocab=vocabulary)
         model2.load_weights(model1_file.name)
         self._assert_models_equal(model1, model2)
         os.unlink(model1_file.name)
 
         model1_file_gzip = NamedTemporaryFile(delete=False, suffix=".arpa.gzip")
         model1.save_weights(model1_file_gzip.name)
-        model3 = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.0, 0.0))
+        model3 = NGramLanguageModel(n=3, vocab=vocabulary)
         model3.load_weights(model1_file_gzip.name)
         self._assert_models_equal(model1, model3)
         os.unlink(model1_file_gzip.name)
@@ -72,7 +72,7 @@ class TestNGrams(unittest.TestCase):
     def test_predict_time(self):
         dataset = self.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_instances(dataset, max_vocab_size=3000)
-        model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
+        model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(0.0, 0.01, 0.1, 1.0))
         model.train_file(TRAIN_EXAMPLE)
 
         ts = time.time()
@@ -110,7 +110,7 @@ class TestNGrams(unittest.TestCase):
     def test_perplexity(self):
         dataset = self.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_instances(dataset, max_vocab_size=500)
-        model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(1.0, 0.1, 0.01))
+        model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(0.0, 0.01, 0.1, 1.0))
         model.train_file(TRAIN_EXAMPLE)
         ppl_state = model.measure_perplexity_file(TEST_EXAMPLE)
         self.assertLess(np.exp(ppl_state.avg_log_perplexity), 30.)
