@@ -3,7 +3,7 @@ sudo: required
 language: python
 python: 3.6
 before_install:
-- sudo apt-get install git-lfs
+- sudo apt-get install -y --allow-unauthenticated git-lfs
 - sudo git lfs install
 before_script:
 - git lfs pull
