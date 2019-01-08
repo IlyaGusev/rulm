@@ -22,20 +22,12 @@ class NeuralNetLanguageModel(LanguageModel):
     def __init__(self,
                  vocab: Vocabulary,
                  model: Model,
-                 transforms: Tuple[Transform]=tuple(),
-                 reverse: bool=False,
-                 seed: int=42):
+                 transforms: Tuple[Transform]=None,
+                 reverse: bool=False):
         LanguageModel.__init__(self, vocab, transforms, reverse)
 
-        self.set_seed(seed)
         self.model = model
         self.log_model()
-
-    @staticmethod
-    def set_seed(seed):
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-        torch.backends.cudnn.set_flags(True, False, True, True)
 
     def train(self,
               inputs: Iterable[List[str]],

@@ -1,5 +1,5 @@
 import copy
-from typing import Callable, List
+from typing import Callable, List, Iterable
 
 import numpy as np
 
@@ -24,13 +24,13 @@ class BeamSearch:
     def __init__(self,
                  eos_index: int,
                  predict_func: Callable,
-                 transforms: List[Transform],
+                 transforms: Iterable[Transform],
                  beam_width: int=5,
                  max_length: int=50,
                  length_reward: float=0.):
         self.predict = predict_func  # type: Callable
         self.eos_index = eos_index  # type: int
-        self.transforms = transforms  # type: List[Transform]
+        self.transforms = transforms  # type: Iterable[Transform]
         self.beam_width = beam_width  # type: int
         self.max_length = max_length  # type: int
         self.length_reward = length_reward  # type: float
@@ -54,7 +54,7 @@ class BeamSearch:
             for i, candidate in enumerate(new_candidates):
                 if candidate.is_finished:
                     continue
-                new_transforms = copy.deepcopy(candidate.transforms)
+                new_transforms = copy.copy(candidate.transforms)
                 for transform in new_transforms:
                     transform.advance(candidate.indices[-1])
                 new_candidates[i] = BeamState(candidate.indices, candidate.log_prob, new_transforms)

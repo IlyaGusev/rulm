@@ -152,7 +152,7 @@ class NGramLanguageModel(LanguageModel):
     def __init__(self,
                  n: int,
                  vocab: Vocabulary,
-                 transforms: Tuple[Transform]=tuple(),
+                 transforms: Tuple[Transform]=None,
                  reverse: bool=False,
                  cutoff_count: int=None,
                  interpolation_lambdas: Tuple[float, ...]=None,

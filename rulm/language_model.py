@@ -4,7 +4,7 @@ from timeit import default_timer as timer
 import logging
 
 import numpy as np
-
+import torch
 from allennlp.data.vocabulary import Vocabulary, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.common.registrable import Registrable
@@ -65,11 +65,13 @@ class PerplexityState:
 class LanguageModel(Registrable):
     def __init__(self,
                  vocab: Vocabulary,
-                 transforms: Tuple[Transform],
-                 reverse: bool=False):
+                 transforms: Tuple[Transform]=None,
+                 reverse: bool=False,
+                 seed: int = 42):
         self.vocab = vocab  # type: Vocabulary
-        self.transforms = transforms  # type: List[Transform]
+        self.transforms = transforms or tuple()  # type: Iterable[Transform]
         self.reverse = reverse  # type: bool
+        self.set_seed(seed)
 
     def train(self,
               inputs: Iterable[List[str]],
@@ -207,5 +209,11 @@ class LanguageModel(Registrable):
     def _choose(model: np.array, k: int=1):
         norm_model = model / np.sum(model)
         return np.random.choice(range(norm_model.shape[0]), k, p=norm_model, replace=False)
+
+    @staticmethod
+    def set_seed(seed):
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        torch.backends.cudnn.set_flags(True, False, True, True)
 
 

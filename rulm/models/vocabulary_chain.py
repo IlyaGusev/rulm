@@ -12,7 +12,7 @@ from rulm.transform import Transform
 
 @LanguageModel.register("vocabulary_chain")
 class VocabularyChainLanguageModel(LanguageModel):
-    def __init__(self, vocab: Vocabulary, transforms: Tuple[Transform]=tuple()):
+    def __init__(self, vocab: Vocabulary, transforms: Tuple[Transform]=None):
         LanguageModel.__init__(self, vocab, transforms)
 
     def train(self,
