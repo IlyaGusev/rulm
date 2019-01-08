@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List, Iterable
 from overrides import overrides
 
 from allennlp.common.file_utils import cached_path
@@ -25,24 +25,28 @@ class LanguageModelingStreamReader(LanguageModelingReader):
 
     @overrides
     def _read(self, file_path: str):
-        file_path = cached_path(file_path)
-        with open(file_path, "r") as text_file:
-            for line in text_file:
-                line = line.strip()
-                tokenized_line = self._tokenizer.tokenize(line)
-                if self.reverse:
-                    tokenized_line = tokenized_line[::-1]
-                tokenized_line.insert(0, Token(START_SYMBOL))
-                tokenized_line.append(Token(END_SYMBOL))
-                if self._tokens_per_instance is not None:
-                    num_tokens = self._tokens_per_instance + 1
-                    for index in range(0, len(tokenized_line) - num_tokens, num_tokens - 1):
-                        sample = tokenized_line[index:(index + num_tokens)]
-                        yield self._sample_to_instance(sample)
-                else:
-                    yield self._sample_to_instance(tokenized_line)
+        for line in self._lines(file_path):
+            if self._tokens_per_instance is None:
+                yield self.text_to_instance(line)
+                continue
+            tokenized_text = self._tokenize(line)
+            num_tokens = self._tokens_per_instance + 1
+            for start in range(0, len(tokenized_text) - num_tokens, num_tokens - 1):
+                end = start + num_tokens
+                sample = tokenized_text[start:end]
+                yield self._sample_to_instance(sample)
 
-    def _sample_to_instance(self, sample):
+    def text_to_instance(self, text: str) -> Iterable[Instance]:
+        return self._sample_to_instance(self._tokenize(text))
+
+    def _tokenize(self, text: str) -> List[Token]:
+        tokenized_text = self._tokenizer.tokenize(text)
+        tokenized_text = tokenized_text[::-1] if self.reverse else tokenized_text
+        tokenized_text.insert(0, Token(START_SYMBOL))
+        tokenized_text.append(Token(END_SYMBOL))
+        return tokenized_text
+
+    def _sample_to_instance(self, sample: List[Token]) -> Instance:
         y = sample[1:]
         y.append(Token(DEFAULT_PADDING_TOKEN))
         input_field = TextField(sample, self._token_indexers)
@@ -51,3 +55,11 @@ class LanguageModelingStreamReader(LanguageModelingReader):
             'source_tokens': input_field,
             'target_tokens': output_field
         })
+
+    @staticmethod
+    def _lines(file_path: str) -> Iterable[str]:
+        file_path = cached_path(file_path)
+        with open(file_path, "r") as text_file:
+            for line in text_file:
+                line = line.strip()
+                yield line
