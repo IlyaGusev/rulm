@@ -15,7 +15,8 @@ setup(
         'pygtrie>=2.2',
         'torch>=1.0.0',
         'overrides>=1.9',
-        'allennlp>=0.8.0'
+        'allennlp>=0.8.0',
+        'scipy>=1.0.1'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
