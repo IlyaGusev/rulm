@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple, Iterable
 import os
+from timeit import default_timer as timer
 
 import numpy as np
 
@@ -21,6 +22,7 @@ class PerplexityState:
         self.zeroprobs_count = 0
         self.unknown_count = 0
         self.avg_log_perplexity = 0.
+        self.time = 0.
 
     def add(self, word_index: int, probability: float) -> None:
         old_word_count = self.true_word_count
@@ -50,10 +52,11 @@ class PerplexityState:
         return np.exp(self.avg_log_perplexity)
 
     def __repr__(self):
-        return "Avg ppl: {}, zeroprobs: {}, unk: {}".format(
+        return "Avg ppl: {}, zeroprobs: {}, unk: {}, time: {}".format(
             self.avg_perplexity,
             self.zeroprobs_count,
-            self.unknown_count
+            self.unknown_count,
+            self.time
         )
 
 
@@ -64,7 +67,7 @@ class LanguageModel(Registrable):
                  reverse: bool=False):
         self.vocab = vocab  # type: Vocabulary
         self.transforms = transforms  # type: List[Transform]
-        self.reverse = reverse  # type : bool
+        self.reverse = reverse  # type: bool
 
     def train(self,
               inputs: Iterable[List[str]],
@@ -149,6 +152,7 @@ class LanguageModel(Registrable):
         return outputs
 
     def measure_perplexity(self, inputs: List[List[str]], state: PerplexityState) -> PerplexityState:
+        start_time = timer()
         for sentence in inputs:
             sentence_indices = self._numericalize_inputs(sentence)
             sentence_indices.append(self.vocab.get_token_index(END_SYMBOL))
@@ -159,6 +163,8 @@ class LanguageModel(Registrable):
                 prediction = self.predict(context)
                 p = prediction[true_index]
                 state.add(true_index, p)
+        end_time = timer()
+        state.time += end_time - start_time
         return state
 
     def measure_perplexity_file(self, file_name, batch_size: int=100, is_including_unk: bool=True):

@@ -2,6 +2,8 @@ import os
 from collections import defaultdict
 from typing import List, Tuple, Type, Iterable
 import gzip
+from queue import PriorityQueue
+from datetime import datetime
 
 import pygtrie
 import numpy as np
@@ -9,13 +11,17 @@ from scipy.optimize import minimize
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.util import END_SYMBOL
 from allennlp.common.params import Params
+from allennlp.common.registrable import Registrable
 
 from rulm.language_model import LanguageModel
 from rulm.transform import Transform
 from rulm.settings import DEFAULT_N_GRAM_WEIGHTS
 
+# TODO: backoff
+# TODO: backoff in ARPA
+# TODO: Kneser-Nay
 
-class NGramContainer:
+class NGramContainer(Registrable):
     def __getitem__(self, n_gram: Iterable[int]):
         raise NotImplementedError()
 
@@ -38,6 +44,7 @@ class NGramContainer:
         raise NotImplementedError()
 
 
+@NGramContainer.register("dict")
 class DictNGramContainer(NGramContainer):
     def __init__(self):
         self.data = defaultdict(float)
@@ -64,6 +71,7 @@ class DictNGramContainer(NGramContainer):
         return self.data.items()
 
 
+@NGramContainer.register("trie")
 class TrieNGramContainer(NGramContainer):
     def __init__(self):
         self.data = pygtrie.Trie()
@@ -91,6 +99,48 @@ class TrieNGramContainer(NGramContainer):
         return self.data.items()
 
 
+class PredictionsCache(Registrable):
+    def __init__(self,
+                 capacity: int,
+                 timestamps_capacity: int):
+        self.capacity = capacity
+        self.timestamps_capacity = timestamps_capacity
+        self.data = dict()
+        self.timestamps = PriorityQueue()
+        self.last_timestamp = dict()
+        self.miss_count = 0
+        self.success_count = 0
+
+    def __getitem__(self, context: Iterable[int]):
+        result = self.data.get(context, None)
+        if result is not None:
+            self._update_ts(context)
+            self.success_count += 1
+            return result
+        else:
+            self.miss_count += 1
+            return None
+
+    def __setitem__(self, context: Iterable[int], prediction: Iterable[float]):
+        assert context not in self.data
+        while len(self.data) >= self.capacity or self.timestamps.qsize() >= self.timestamps_capacity:
+            ts, c = self.timestamps.get()
+            assert c in self.last_timestamp
+            if ts == self.last_timestamp[c]:
+                del self.data[c]
+                del self.last_timestamp[c]
+        self.data[context] = prediction
+        self._update_ts(context)
+
+    def _update_ts(self, context: Iterable[int]):
+        ts_now = int(datetime.now().strftime('%s%f'))
+        self.timestamps.put((ts_now, context))
+        self.last_timestamp[context] = ts_now
+
+    def __len__(self):
+        return len(self.data)
+
+
 @LanguageModel.register("n_gram")
 class NGramLanguageModel(LanguageModel):
     def __init__(self,
@@ -100,10 +150,12 @@ class NGramLanguageModel(LanguageModel):
                  reverse: bool=False,
                  cutoff_count: int=None,
                  interpolation_lambdas: Tuple[float, ...]=None,
-                 container: Type[NGramContainer]=DictNGramContainer):
+                 container: Type[NGramContainer]=DictNGramContainer,
+                 cache: PredictionsCache=None):
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
         self.n = n  # type: int
         self.cutoff_count = cutoff_count  # type: int
+        self.cache = cache
 
         self.interpolation_lambdas = interpolation_lambdas  # type: Tuple[float]
         if not interpolation_lambdas:
@@ -183,10 +235,17 @@ class NGramLanguageModel(LanguageModel):
                 continue
             start_index = len(context) - wanted_context_length
             wanted_context = context[start_index:]
+            if self.cache:
+                cache_prediction = self.cache[wanted_context]
+                if cache_prediction is not None:
+                    step_probabilities[current_n] = cache_prediction
+                    continue
             for index in range(vocab_size):
                 n_gram = wanted_context + (index,)
                 p = self.n_grams[current_n][n_gram] if n_gram in self.n_grams[current_n] else 0.
                 step_probabilities[current_n, index] = p
+            if self.cache is not None:
+                self.cache[wanted_context] = step_probabilities[current_n]
         step_probabilities[0].fill(1.0 / vocab_size)
         return step_probabilities
 
