@@ -1,14 +1,12 @@
 import argparse
 
 from rulm.language_model import LanguageModel
-from rulm.models.neural_net import NeuralNetLanguageModel
-from rulm.models.n_gram import NGramLanguageModel
 
 
 def measure_ppl(model_path, val_path):
     model = LanguageModel.load(model_path)
     model.measure_perplexity_file(val_path)
-    #with open(val_path, "r", encoding="utf-8") as r:
+    # with open(val_path, "r", encoding="utf-8") as r:
     #    lines = r.readlines()[:200]
     #    model.estimate_parameters(lines)
 

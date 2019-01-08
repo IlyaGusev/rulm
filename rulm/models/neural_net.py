@@ -1,5 +1,6 @@
 import os
 from typing import List, Tuple, Iterable
+import logging
 
 import numpy as np
 import torch
@@ -12,7 +13,8 @@ from allennlp.models.model import Model
 
 from rulm.transform import Transform
 from rulm.language_model import LanguageModel
-from rulm.models.nn.encoder_only import EncoderOnlyLanguageModel
+
+logger = logging.getLogger(__name__)
 
 
 @LanguageModel.register("neural_net")
@@ -27,7 +29,7 @@ class NeuralNetLanguageModel(LanguageModel):
 
         self.set_seed(seed)
         self.model = model
-        self.print()
+        self.log_model()
 
     @staticmethod
     def set_seed(seed):
@@ -74,10 +76,10 @@ class NeuralNetLanguageModel(LanguageModel):
 
         return result
 
-    def print(self):
-        print(self.model)
+    def log_model(self):
+        logger.info(self.model)
         params_count = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        print("Trainable params count: ", params_count)
+        logger.info("Trainable params count: ", params_count)
 
     @classmethod
     def _load(cls,

@@ -4,6 +4,7 @@ from typing import List, Tuple, Type, Iterable
 import gzip
 from queue import PriorityQueue
 from datetime import datetime
+import logging
 
 import pygtrie
 import numpy as np
@@ -17,9 +18,12 @@ from rulm.language_model import LanguageModel
 from rulm.transform import Transform
 from rulm.settings import DEFAULT_N_GRAM_WEIGHTS
 
+logger = logging.getLogger(__name__)
+
 # TODO: backoff
 # TODO: backoff in ARPA
 # TODO: Kneser-Nay
+
 
 class NGramContainer(Registrable):
     def __getitem__(self, n_gram: Iterable[int]):
@@ -105,9 +109,11 @@ class PredictionsCache(Registrable):
                  timestamps_capacity: int):
         self.capacity = capacity
         self.timestamps_capacity = timestamps_capacity
+
         self.data = dict()
         self.timestamps = PriorityQueue()
         self.last_timestamp = dict()
+
         self.miss_count = 0
         self.success_count = 0
 
@@ -187,7 +193,7 @@ class NGramLanguageModel(LanguageModel):
             self._collect_n_grams(indices)
             sentence_number += 1
             if sentence_number % report_every == 0:
-                print("Train: {} sentences processed".format(sentence_number))
+                logger.info("Train: {} sentences processed".format(sentence_number))
         if serialization_dir:
             self.save_weights(os.path.join(serialization_dir, DEFAULT_N_GRAM_WEIGHTS))
 
@@ -199,7 +205,7 @@ class NGramLanguageModel(LanguageModel):
         assert os.path.exists(file_name)
         sentences = self._parse_file_for_sentences(file_name)
         self.train(sentences, train_params, serialization_dir=None)
-        print("Train: normalizng...")
+        logger.info("Train: normalizng...")
         self.normalize()
         if serialization_dir:
             self.save_weights(os.path.join(serialization_dir, DEFAULT_N_GRAM_WEIGHTS))
@@ -280,7 +286,6 @@ class NGramLanguageModel(LanguageModel):
             bounds=[(0, 1) for _ in self.interpolation_lambdas]
         )
 
-        print(opt.x, np.exp(sum_log_likelihood(opt.x)/len(samples)), len(samples))
         self.interpolation_lambdas = opt.x
 
     def save_weights(self, path: str) -> None:
@@ -340,4 +345,4 @@ class NGramLanguageModel(LanguageModel):
             while not line.strip():
                 line = next(r)
             assert line.strip() == "\\end\\", "Invalid ARPA: \\end\\ invalid or missing"
-        print("Load finished")
+        logger.info("Load finished")

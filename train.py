@@ -6,8 +6,6 @@ from allennlp.common.params import Params
 
 from rulm.stream_reader import LanguageModelingStreamReader
 from rulm.language_model import LanguageModel
-from rulm.models.n_gram import NGramLanguageModel
-from rulm.models.neural_net import NeuralNetLanguageModel
 
 
 def train(model_path, train_path, val_path):

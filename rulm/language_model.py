@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple, Iterable
 import os
 from timeit import default_timer as timer
+import logging
 
 import numpy as np
 
@@ -12,6 +13,8 @@ from allennlp.common.params import Params
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
 from rulm.settings import DEFAULT_PARAMS, DEFAULT_VOCAB_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class PerplexityState:
@@ -38,7 +41,6 @@ class PerplexityState:
             return
 
         log_prob = -np.log(probability)
-        unknown_count = self.unknown_count if not self.is_including_unk else 0
         prev_avg = self.avg_log_perplexity * old_word_count / self.true_word_count
         self.avg_log_perplexity = prev_avg + log_prob / self.true_word_count
 
@@ -86,6 +88,15 @@ class LanguageModel(Registrable):
         raise NotImplementedError()
 
     @classmethod
+    def _load(cls,
+              params: Params,
+              vocab: Vocabulary,
+              serialization_dir: str,
+              weights_file: str,
+              cuda_device: int = -1):
+        raise NotImplementedError()
+
+    @classmethod
     def load(cls,
              serialization_dir: str,
              params_file: str = None,
@@ -102,15 +113,6 @@ class LanguageModel(Registrable):
         model_type = params.pop("type")
         return cls.by_name(model_type)._load(params, vocabulary, serialization_dir,
                                              weights_file, cuda_device)
-
-    @classmethod
-    def _load(cls,
-              params: Params,
-              vocab: Vocabulary,
-              serialization_dir: str,
-              weights_file: str,
-              cuda_device: int=-1):
-        raise NotImplementedError()
 
     def query(self, inputs: List[str]) -> Dict[str, float]:
         indices = self._numericalize_inputs(inputs)
@@ -177,20 +179,12 @@ class LanguageModel(Registrable):
             if len(batch) == batch_size:
                 ppl_state = self.measure_perplexity(batch, ppl_state)
                 batch_number += 1
-                print("Measure_perplexity: {} sentences processed, {}".format(
+                logger.info("Measure_perplexity: {} sentences processed, {}".format(
                     batch_number * batch_size, ppl_state))
                 batch = []
         if batch:
             ppl_state = self.measure_perplexity(batch, ppl_state)
         return ppl_state
-
-    @staticmethod
-    def _parse_file_for_sentences(file_name):
-        assert os.path.exists(file_name)
-        with open(file_name, "r", encoding="utf-8") as r:
-            for line in r:
-                words = line.strip().split()
-                yield words
 
     def _numericalize_inputs(self, words: List[str]) -> List[int]:
         if self.reverse:
@@ -200,6 +194,14 @@ class LanguageModel(Registrable):
 
     def _decipher_outputs(self, indices: List[int]) -> List[str]:
         return [self.vocab.get_token_from_index(index) for index in indices[1:-1]]
+
+    @staticmethod
+    def _parse_file_for_sentences(file_name):
+        assert os.path.exists(file_name)
+        with open(file_name, "r", encoding="utf-8") as r:
+            for line in r:
+                words = line.strip().split()
+                yield words
 
     @staticmethod
     def _choose(model: np.array, k: int=1):
