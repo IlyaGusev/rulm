@@ -54,7 +54,7 @@ class DictNGramContainer(NGramContainer):
         self.data = defaultdict(float)
 
     def __getitem__(self, n_gram: Iterable[int]):
-        return self.data[tuple(n_gram)]
+        return self.data.get(tuple(n_gram), 0.)
 
     def __setitem__(self, n_gram: Iterable[int], value: float):
         self.data[tuple(n_gram)] = value
@@ -79,7 +79,6 @@ class DictNGramContainer(NGramContainer):
 class TrieNGramContainer(NGramContainer):
     def __init__(self):
         self.data = pygtrie.Trie()
-        self.n = None
 
     def __getitem__(self, n_gram: List[int]):
         return self.data[tuple(n_gram)] if n_gram in self.data else 0.
@@ -122,6 +121,12 @@ class PredictionsCache(Registrable):
         if result is not None:
             self._update_ts(context)
             self.success_count += 1
+            if self.success_count % self.capacity == 0:
+                ratio = int(self.ratio * 100)
+                size = int(float(len(self.data)) / self.capacity * 100)
+                timestamps_size = int(float(self.timestamps.qsize()) / self.timestamps_capacity * 100)
+                message = "Cache ratio: {}%, size: {}%, timestamps: {}%"
+                logger.info(message.format(ratio, size, timestamps_size))
             return result
         else:
             self.miss_count += 1
@@ -143,6 +148,10 @@ class PredictionsCache(Registrable):
         self.timestamps.put((ts_now, context))
         self.last_timestamp[context] = ts_now
 
+    @property
+    def ratio(self):
+        return float(self.success_count)/(self.miss_count + self.success_count)
+
     def __len__(self):
         return len(self.data)
 
@@ -158,6 +167,8 @@ class NGramLanguageModel(LanguageModel):
                  interpolation_lambdas: Tuple[float, ...]=None,
                  container: Type[NGramContainer]=DictNGramContainer,
                  cache: PredictionsCache=None):
+        LanguageModel.__init__(self, vocab, transforms, reverse)
+ 
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
         self.n = n  # type: int
         self.cutoff_count = cutoff_count  # type: int
@@ -170,8 +181,6 @@ class NGramLanguageModel(LanguageModel):
         else:
             self.interpolation_lambdas = np.array(interpolation_lambdas)
         assert n + 1 == len(self.interpolation_lambdas)
-
-        LanguageModel.__init__(self, vocab, transforms, reverse)
 
     def _collect_n_grams(self, indices: List[int]) -> None:
         count = len(indices)
@@ -232,8 +241,9 @@ class NGramLanguageModel(LanguageModel):
 
     def _get_step_probabilities(self, indices: List[int]) -> np.ndarray:
         vocab_size = self.vocab.get_vocab_size()
-        context = tuple(indices[-self.n+1:])
+        context = tuple(indices[-self.n + 1:])
         step_probabilities = np.zeros((self.n + 1, vocab_size), dtype=np.float64)
+        step_probabilities[0].fill(1.0 / vocab_size)
         for shift in range(self.n):
             current_n = self.n - shift
             wanted_context_length = current_n - 1
@@ -246,13 +256,13 @@ class NGramLanguageModel(LanguageModel):
                 if cache_prediction is not None:
                     step_probabilities[current_n] = cache_prediction
                     continue
+            current_n_grams = self.n_grams[current_n]
             for index in range(vocab_size):
                 n_gram = wanted_context + (index,)
-                p = self.n_grams[current_n][n_gram] if n_gram in self.n_grams[current_n] else 0.
+                p = current_n_grams[n_gram]
                 step_probabilities[current_n, index] = p
             if self.cache is not None:
                 self.cache[wanted_context] = step_probabilities[current_n]
-        step_probabilities[0].fill(1.0 / vocab_size)
         return step_probabilities
 
     def estimate_parameters(self, inputs: Iterable[str]):
