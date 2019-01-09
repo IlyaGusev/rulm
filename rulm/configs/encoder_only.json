@@ -16,9 +16,6 @@
     }
   },
   "train": {
-    "reader": {
-      "type": "stream"
-    },
     "iterator": {
       "type": "bucket",
       "batch_size": 64,

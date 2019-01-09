@@ -9,10 +9,14 @@ from allennlp.data.vocabulary import Vocabulary, DEFAULT_OOV_TOKEN
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.common.registrable import Registrable
 from allennlp.common.params import Params
+from allennlp.data.instance import Instance
+from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+from allennlp.data.fields import TextField
 
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
 from rulm.settings import DEFAULT_PARAMS, DEFAULT_VOCAB_DIR
+from rulm.stream_reader import LanguageModelingStreamReader
 
 logger = logging.getLogger(__name__)
 
@@ -66,27 +70,21 @@ class LanguageModel(Registrable):
     def __init__(self,
                  vocab: Vocabulary,
                  transforms: Tuple[Transform]=None,
-                 reverse: bool=False,
+                 reader: DatasetReader=None,
                  seed: int = 42):
         self.vocab = vocab  # type: Vocabulary
         self.transforms = transforms or tuple()  # type: Iterable[Transform]
-        self.reverse = reverse  # type: bool
+        self.reader = reader or LanguageModelingStreamReader(reverse=False)
         self.set_seed(seed)
 
     def train(self,
-              inputs: Iterable[List[str]],
+              file_name: str,
               train_params: Params,
               serialization_dir: str=None,
               **kwargs):
         raise NotImplementedError()
 
-    def train_file(self, file_name: str,
-                   train_params: Params,
-                   serialization_dir: str=None,
-                   **kwargs):
-        raise NotImplementedError()
-
-    def predict(self, inputs: List[int]) -> List[float]:
+    def predict(self, inputs: Iterable[int]) -> List[float]:
         raise NotImplementedError()
 
     @classmethod
@@ -95,7 +93,7 @@ class LanguageModel(Registrable):
               vocab: Vocabulary,
               serialization_dir: str,
               weights_file: str,
-              cuda_device: int = -1):
+              cuda_device: int = -1) -> 'LanguageModel':
         raise NotImplementedError()
 
     @classmethod
@@ -155,11 +153,29 @@ class LanguageModel(Registrable):
         outputs = self._decipher_outputs(current_state)
         return outputs
 
-    def measure_perplexity(self, inputs: List[List[str]], state: PerplexityState) -> PerplexityState:
+    def measure_perplexity(self, file_name: str, batch_size: int=100, is_including_unk: bool=True):
+        unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
+        ppl_state = PerplexityState(unk_index, is_including_unk)
+        batch_number = 0
+        batch = []
+        for instance in self.reader.read(file_name):
+            batch.append(instance)
+            if len(batch) == batch_size:
+                ppl_state = self._measure_perplexity_on_batch(batch, ppl_state)
+                batch_number += 1
+                logger.info("Measure_perplexity: {} sentences processed, {}".format(
+                    batch_number * batch_size, ppl_state))
+                batch = []
+        if batch:
+            ppl_state = self._measure_perplexity_on_batch(batch, ppl_state)
+        return ppl_state
+
+    def _measure_perplexity_on_batch(self, inputs: List[Instance], state: PerplexityState) -> PerplexityState:
         start_time = timer()
-        for sentence in inputs:
-            sentence_indices = self._numericalize_inputs(sentence)
-            sentence_indices.append(self.vocab.get_token_index(END_SYMBOL))
+        for instance in inputs:
+            instance.index_fields(self.vocab)
+            text_field = instance["source_tokens"]
+            sentence_indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
             for i in range(1, len(sentence_indices) + 1):
                 indices = sentence_indices[:i]
                 true_index = indices[-1]
@@ -171,39 +187,12 @@ class LanguageModel(Registrable):
         state.time += end_time - start_time
         return state
 
-    def measure_perplexity_file(self, file_name, batch_size: int=100, is_including_unk: bool=True):
-        unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
-        ppl_state = PerplexityState(unk_index, is_including_unk)
-        batch_number = 0
-        batch = []
-        for sentence in self._parse_file_for_sentences(file_name):
-            batch.append(sentence)
-            if len(batch) == batch_size:
-                ppl_state = self.measure_perplexity(batch, ppl_state)
-                batch_number += 1
-                logger.info("Measure_perplexity: {} sentences processed, {}".format(
-                    batch_number * batch_size, ppl_state))
-                batch = []
-        if batch:
-            ppl_state = self.measure_perplexity(batch, ppl_state)
-        return ppl_state
-
     def _numericalize_inputs(self, words: List[str]) -> List[int]:
-        if self.reverse:
-            words = words[::-1]
         words.insert(0, START_SYMBOL)
         return [self.vocab.get_token_index(word) for word in words]
 
     def _decipher_outputs(self, indices: List[int]) -> List[str]:
         return [self.vocab.get_token_from_index(index) for index in indices[1:-1]]
-
-    @staticmethod
-    def _parse_file_for_sentences(file_name):
-        assert os.path.exists(file_name)
-        with open(file_name, "r", encoding="utf-8") as r:
-            for line in r:
-                words = line.strip().split()
-                yield words
 
     @staticmethod
     def _choose(model: np.array, k: int=1):

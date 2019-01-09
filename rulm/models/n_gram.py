@@ -13,6 +13,7 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.util import END_SYMBOL
 from allennlp.common.params import Params
 from allennlp.common.registrable import Registrable
+from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
 from rulm.language_model import LanguageModel
 from rulm.transform import Transform
@@ -162,12 +163,12 @@ class NGramLanguageModel(LanguageModel):
                  n: int,
                  vocab: Vocabulary,
                  transforms: Tuple[Transform]=None,
-                 reverse: bool=False,
+                 reader: DatasetReader=None,
                  cutoff_count: int=None,
                  interpolation_lambdas: Tuple[float, ...]=None,
                  container: Type[NGramContainer]=DictNGramContainer,
                  cache: PredictionsCache=None):
-        LanguageModel.__init__(self, vocab, transforms, reverse)
+        LanguageModel.__init__(self, vocab, transforms, reader)
  
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
         self.n = n  # type: int
@@ -190,30 +191,18 @@ class NGramLanguageModel(LanguageModel):
                 self.n_grams[n][n_gram] += 1.0
 
     def train(self,
-              inputs: Iterable[List[str]],
+              file_name: str,
               train_params: Params=Params({}),
-              serialization_dir: str = None,
-              report_every: int=10000):
+              serialization_dir: str=None,
+              report_every: int = 10000):
+        assert os.path.exists(file_name)
         sentence_number = 0
-        for sentence in inputs:
-            indices = self._numericalize_inputs(sentence)
-            eos_index = self.vocab.get_token_index(END_SYMBOL)
-            indices.append(eos_index)
+        for instance in self.reader.read(file_name):
+            instance.index_fields(self.vocab)
+            text_field = instance["source_tokens"]
+            indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
             self._collect_n_grams(indices)
             sentence_number += 1
-            if sentence_number % report_every == 0:
-                logger.info("Train: {} sentences processed".format(sentence_number))
-        if serialization_dir:
-            self.save_weights(os.path.join(serialization_dir, DEFAULT_N_GRAM_WEIGHTS))
-
-    def train_file(self,
-                   file_name: str,
-                   train_params: Params=Params({}),
-                   serialization_dir: str=None,
-                   **kwargs):
-        assert os.path.exists(file_name)
-        sentences = self._parse_file_for_sentences(file_name)
-        self.train(sentences, train_params, serialization_dir=None)
         logger.info("Train: normalizng...")
         self.normalize()
         if serialization_dir:
@@ -233,13 +222,13 @@ class NGramLanguageModel(LanguageModel):
                 current_n_grams[words] = count / prev_order_n_gram_count
         self.n_grams[0][tuple()] = 1.0
 
-    def predict(self, indices: List[int]) -> np.ndarray:
+    def predict(self, indices: Iterable[int]) -> List[float]:
         step_probabilities = self._get_step_probabilities(indices)
         probabilities = self.interpolation_lambdas.dot(step_probabilities)
         norm_proba = probabilities / np.sum(probabilities)
         return norm_proba
 
-    def _get_step_probabilities(self, indices: List[int]) -> np.ndarray:
+    def _get_step_probabilities(self, indices: Iterable[int]) -> np.ndarray:
         vocab_size = self.vocab.get_vocab_size()
         context = tuple(indices[-self.n + 1:])
         step_probabilities = np.zeros((self.n + 1, vocab_size), dtype=np.float64)

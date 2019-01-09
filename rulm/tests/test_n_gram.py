@@ -11,7 +11,6 @@ from allennlp.common.params import Params
 
 from rulm.models.n_gram import NGramLanguageModel
 from rulm.settings import TRAIN_EXAMPLE, TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE, N_GRAM_PARAMS, DEFAULT_VOCAB_DIR
-from rulm.stream_reader import LanguageModelingStreamReader
 from rulm.language_model import LanguageModel
 
 
@@ -25,11 +24,12 @@ class TestNGrams(unittest.TestCase):
         cls.vocabulary.add_token_to_namespace("не")
         cls.vocabulary.add_token_to_namespace("ты")
 
-        cls.reader = LanguageModelingStreamReader()
-
         cls.model = NGramLanguageModel(n=3, vocab=cls.vocabulary)
-        cls.model.train([["я", "не", "я"], ["ты", "не", "ты"], ["я", "не", "ты"]])
-        cls.model.normalize()
+        train_file = NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8")
+        train_file.write("я не я\nты не ты\nя не ты")
+        train_file.close()
+        cls.model.train(train_file.name)
+        os.unlink(train_file.name)
 
     def _assert_ngrams_equal(self, n_grams_1, n_grams_2):
         for words, p1 in n_grams_1.items():
@@ -44,7 +44,7 @@ class TestNGrams(unittest.TestCase):
     def test_save_load_weights(self):
         vocabulary = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
         model1 = NGramLanguageModel(n=3, vocab=vocabulary)
-        model1.train_file(TRAIN_EXAMPLE)
+        model1.train(TRAIN_EXAMPLE)
 
         model1_file = NamedTemporaryFile(delete=False, suffix=".arpa")
         model1.save_weights(model1_file.name)
@@ -63,17 +63,17 @@ class TestNGrams(unittest.TestCase):
     def test_predict_big(self):
         vocabulary = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
         model = NGramLanguageModel(n=2, vocab=vocabulary)
-        model.train_file(TRAIN_EXAMPLE)
+        model.train(TRAIN_EXAMPLE)
 
         prediction = model.predict([vocabulary.get_token_index(START_SYMBOL)])
         non_zero_indices = list(filter(lambda x: x != 0., prediction))
         self.assertEqual(len(non_zero_indices), 502)
 
     def test_predict_time(self):
-        dataset = self.reader.read(TRAIN_EXAMPLE)
+        dataset = self.model.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_instances(dataset, max_vocab_size=3000)
         model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(0.0, 0.01, 0.1, 1.0))
-        model.train_file(TRAIN_EXAMPLE)
+        model.train(TRAIN_EXAMPLE)
 
         ts = time.time()
         for i in range(10):
@@ -108,17 +108,17 @@ class TestNGrams(unittest.TestCase):
         assert_prediction(("не", "ты"), [0., 0., 0., 1., 0., 0., 0.])
 
     def test_perplexity(self):
-        dataset = self.reader.read(TRAIN_EXAMPLE)
+        dataset = self.model.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_instances(dataset, max_vocab_size=500)
         model = NGramLanguageModel(n=3, vocab=vocabulary, interpolation_lambdas=(0.0, 0.01, 0.1, 1.0))
-        model.train_file(TRAIN_EXAMPLE)
-        ppl_state = model.measure_perplexity_file(TEST_EXAMPLE)
+        model.train(TRAIN_EXAMPLE)
+        ppl_state = model.measure_perplexity(TEST_EXAMPLE)
         self.assertLess(np.exp(ppl_state.avg_log_perplexity), 30.)
 
     def test_from_params(self):
         params = Params.from_file(N_GRAM_PARAMS)
         vocabulary_params = params.pop("vocab")
-        dataset = self.reader.read(TRAIN_EXAMPLE)
+        dataset = self.model.reader.read(TRAIN_EXAMPLE)
         vocabulary = Vocabulary.from_params(vocabulary_params, instances=dataset)
         model = LanguageModel.from_params(params, vocab=vocabulary)
         self.assertTrue(isinstance(model, NGramLanguageModel))
@@ -127,7 +127,7 @@ class TestNGrams(unittest.TestCase):
         with TemporaryDirectory() as dirpath:
             params = Params.from_file(N_GRAM_PARAMS)
             vocabulary_params = params.pop("vocab")
-            dataset = self.reader.read(TRAIN_EXAMPLE)
+            dataset = self.model.reader.read(TRAIN_EXAMPLE)
             vocabulary = Vocabulary.from_params(vocabulary_params, instances=dataset)
 
             vocab_dir = os.path.join(dirpath, DEFAULT_VOCAB_DIR)
@@ -135,7 +135,7 @@ class TestNGrams(unittest.TestCase):
             vocabulary.save_to_files(vocab_dir)
 
             model = LanguageModel.from_params(params, vocab=vocabulary)
-            model.train_file(TRAIN_EXAMPLE, Params({}), serialization_dir=dirpath)
+            model.train(TRAIN_EXAMPLE, Params({}), serialization_dir=dirpath)
 
             loaded_model = LanguageModel.load(dirpath,
                                               params_file=N_GRAM_PARAMS,

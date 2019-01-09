@@ -13,7 +13,7 @@ from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.dataset_readers.language_modeling import LanguageModelingReader
 
 
-@DatasetReader.register("stream")
+@DatasetReader.register("lm_stream")
 class LanguageModelingStreamReader(LanguageModelingReader):
     def __init__(self,
                  reverse: bool = False,

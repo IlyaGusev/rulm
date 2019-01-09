@@ -38,11 +38,9 @@ class TestRNNLM(unittest.TestCase):
             if reverse:
                 sentence = sentence[::-1]
             for i in range(1, len(sentence)-1):
-                if i == 1 and sentence[0] == "Я" or reverse and sentence[0] != "!":
+                if i == 1 and sentence[0] == "Я" or sentence[0] != "!":
                     continue
                 context = sentence[:i]
-                if reverse:
-                    context = context[::-1]
                 prediction = model.sample_decoding(context, k=1)
                 self.assertListEqual(prediction, sentence)
 
@@ -58,15 +56,19 @@ class TestRNNLM(unittest.TestCase):
             params = params.duplicate()
             train_params = params.pop("train")
             model = LanguageModel.from_params(params, vocab=vocabulary)
-            model.train_file(REMEMBERING_EXAMPLE, train_params)
+            model.train(REMEMBERING_EXAMPLE, train_params)
             self._test_model_predictions(model)
 
     def test_reversed_model(self):
         for params, vocabulary in zip(self.params_sets, self.vocabularies):
             params = params.duplicate()
             train_params = params.pop('train')
-            model_reversed = LanguageModel.from_params(params, vocab=vocabulary, reverse=True)
-            model_reversed.train_file(REMEMBERING_EXAMPLE, train_params)
+
+            reader_params = Params({"type": "lm_stream", "reverse": True})
+            params["reader"] = reader_params
+            model_reversed = LanguageModel.from_params(params, vocab=vocabulary)
+
+            model_reversed.train(REMEMBERING_EXAMPLE, train_params)
             self._test_model_predictions(model_reversed, reverse=True)
 
     def test_save_load(self):
@@ -79,7 +81,7 @@ class TestRNNLM(unittest.TestCase):
                 params = params.duplicate()
                 train_params = params.pop('train')
                 model = LanguageModel.from_params(params, vocab=vocabulary)
-                model.train_file(REMEMBERING_EXAMPLE, train_params, dirpath)
+                model.train(REMEMBERING_EXAMPLE, train_params, dirpath)
 
                 loaded_model = LanguageModel.load(dirpath,
                                                   params_file=ENCODER_ONLY_MODEL_PARAMS,

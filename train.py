@@ -25,7 +25,7 @@ def train(model_path, train_path, val_path):
     train_params = params.pop("train", Params({}))
 
     model = LanguageModel.from_params(params, vocab=vocabulary)
-    model.train_file(train_path, train_params, serialization_dir=model_path, valid_file_name=val_path)
+    model.train(train_path, train_params, serialization_dir=model_path, valid_file_name=val_path)
 
 
 if __name__ == "__main__":

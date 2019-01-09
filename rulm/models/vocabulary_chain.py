@@ -16,20 +16,10 @@ class VocabularyChainLanguageModel(LanguageModel):
         LanguageModel.__init__(self, vocab, transforms)
 
     def train(self,
-              inputs: List[List[str]],
+              file_name: str,
               train_params: Params,
               serialization_dir: str=None,
               **kwargs):
-        pass
-
-    def train_file(self,
-                   file_name: str,
-                   train_params: Params,
-                   serialization_dir: str=None,
-                   **kwargs):
-        pass
-
-    def normalize(self):
         pass
 
     def _load(self,

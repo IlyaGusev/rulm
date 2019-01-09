@@ -5,6 +5,5 @@
   "vocab": {
     "max_vocab_size": 500
   },
-  "reverse": true,
   "interpolation_lambdas": [0.01, 0.16, 0.4, 1.0]
 }
