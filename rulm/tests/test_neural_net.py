@@ -6,9 +6,9 @@ from typing import cast
 import numpy as np
 from allennlp.common.params import Params
 from allennlp.data.vocabulary import Vocabulary
+from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
 from rulm.settings import REMEMBERING_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS, DEFAULT_VOCAB_DIR
-from rulm.stream_reader import LanguageModelingStreamReader
 from rulm.language_model import LanguageModel
 from rulm.models.neural_net import NeuralNetLanguageModel
 
@@ -19,12 +19,12 @@ class TestRNNLM(unittest.TestCase):
         configs = (ENCODER_ONLY_MODEL_PARAMS,)
         cls.params_sets = [Params.from_file(config) for config in configs]
 
-        cls.reader = LanguageModelingStreamReader()
-        dataset = cls.reader.read(REMEMBERING_EXAMPLE)
-
         cls.vocabularies = []
         for params in cls.params_sets:
             vocabulary_params = params.pop("vocabulary", default=Params({}))
+            reader_params = params.duplicate().pop("reader", default=Params({}))
+            cls.reader = DatasetReader.from_params(reader_params)
+            dataset = cls.reader.read(REMEMBERING_EXAMPLE)
             cls.vocabularies.append(Vocabulary.from_params(vocabulary_params, instances=dataset))
 
         cls.sentences = []
@@ -38,7 +38,7 @@ class TestRNNLM(unittest.TestCase):
             if reverse:
                 sentence = sentence[::-1]
             for i in range(1, len(sentence)-1):
-                if i == 1 and sentence[0] == "Я" or sentence[0] != "!":
+                if i == 1 and (sentence[0] in "Я!.?"):
                     continue
                 context = sentence[:i]
                 prediction = model.sample_decoding(context, k=1)
@@ -64,8 +64,7 @@ class TestRNNLM(unittest.TestCase):
             params = params.duplicate()
             train_params = params.pop('train')
 
-            reader_params = Params({"type": "lm_stream", "reverse": True})
-            params["reader"] = reader_params
+            params["reader"]["reverse"] = True
             model_reversed = LanguageModel.from_params(params, vocab=vocabulary)
 
             model_reversed.train(REMEMBERING_EXAMPLE, train_params)

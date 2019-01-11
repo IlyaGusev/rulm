@@ -1,18 +1,61 @@
 {
   "type": "neural_net",
+  "reader": {
+    "type": "lm_stream",
+    "tokens_per_instance": 200,
+    "tokenizer": {
+      "type": "word",
+      "word_splitter": {
+        "type": "just_spaces"
+      }
+    },
+    "token_indexers": {
+      "tokens": {
+        "type": "single_id",
+        "lowercase_tokens": false
+      },
+      "token_characters": {
+        "type": "characters"
+      }
+    }
+  },
   "model": {
     "type": "encoder_only",
-    "dropout": 0.2,
-    "use_custom_embedder_weights": true,
+    "dropout": 0.3,
     "embedder": {
-      "type": "embedding",
-      "embedding_dim": 400
+      "type": "basic",
+      "token_embedders": {
+        "tokens": {
+          "type": "embedding",
+          "embedding_dim": 512
+        },
+        "token_characters": {
+          "type": "character_encoding",
+          "embedding": {
+            "embedding_dim": 16
+          },
+          "encoder": {
+            "type": "cnn-highway",
+            "activation": "relu",
+            "embedding_dim": 16,
+            "filters": [
+              [1, 32],
+              [2, 32],
+              [3, 64],
+              [4, 128]],
+            "num_highway": 2,
+            "projection_dim": 256,
+            "projection_location": "after_highway",
+            "do_layer_norm": true
+          }
+        }
+      }
     },
     "contextualizer": {
       "type": "lstm",
       "num_layers": 1,
-      "input_size": 400,
-      "hidden_size": 400
+      "input_size": 768,
+      "hidden_size": 512
     }
   },
   "train": {
@@ -24,8 +67,8 @@
       "cache_instances": true
     },
     "trainer": {
-      "grad_clipping": 10.0,
-      "num_epochs": 25,
+      "grad_clipping": 5.0,
+      "num_epochs": 50,
       "summary_interval": 1,
       "should_log_learning_rate": true,
       "optimizer": {

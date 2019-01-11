@@ -11,7 +11,6 @@ from allennlp.common.registrable import Registrable
 from allennlp.common.params import Params
 from allennlp.data.instance import Instance
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
-from allennlp.data.fields import TextField
 
 from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch

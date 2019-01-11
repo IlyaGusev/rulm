@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Iterable
+from typing import List, Tuple
 import logging
 
 import torch
@@ -7,8 +7,10 @@ from allennlp.common.params import Params
 from allennlp.training.trainer import Trainer
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.iterators.data_iterator import DataIterator
+from allennlp.data.iterators.basic_iterator import BasicIterator
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.model import Model
+from allennlp.nn import util
 
 from rulm.transform import Transform
 from rulm.language_model import LanguageModel
@@ -47,12 +49,16 @@ class NeuralNetLanguageModel(LanguageModel):
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
-        LongTensor = torch.cuda.LongTensor if next(self.model.parameters()).is_cuda else torch.LongTensor
-        indices = LongTensor(indices)
-        indices = torch.unsqueeze(indices, 0)
-        source_tokens = {"tokens": indices}
 
-        output_dict = self.model.forward(source_tokens=source_tokens)
+        text = " ".join([self.vocab.get_token_from_index(i) for i in indices[1:]])
+        instance = self.reader.text_to_instance(text, add_end=False, undo_reverse=True)
+        cuda_device = 0 if next(self.model.parameters()).is_cuda else -1
+        iterator = BasicIterator()
+        iterator.index_with(self.vocab)
+        batch = next(iterator([instance], num_epochs=1))
+        batch = util.move_to_device(batch, cuda_device)
+
+        output_dict = self.model.forward(**batch)
         logits = output_dict["logits"]
         result = torch.exp(logits.transpose(0, 1).squeeze(1)[-1])
         result = result.cpu().detach().numpy()
