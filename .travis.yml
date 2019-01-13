@@ -10,4 +10,4 @@ install:
 script:
 - pytest --cov rulm
 after_success:
-- bash < (curl -s https://codecov.io/bash)
+- codecov
