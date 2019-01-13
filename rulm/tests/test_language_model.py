@@ -32,10 +32,10 @@ class TestLanguageModel(unittest.TestCase):
 
         eq_state = self.eq_model.measure_perplexity(val_file.name)
         self.assertAlmostEqual(np.exp(eq_state.avg_log_perplexity), 5.)
-        self.assertEqual(eq_state.zeroprobs_count, 1)
+        self.assertEqual(eq_state.zeroprobs_count, 0)
 
         chain_state = self.chain_model.measure_perplexity(val_file.name)
-        self.assertEqual(chain_state.zeroprobs_count, 1)
+        self.assertEqual(chain_state.zeroprobs_count, 0)
         self.assertAlmostEqual(np.exp(chain_state.avg_log_perplexity), 1.)
 
         os.unlink(val_file.name)

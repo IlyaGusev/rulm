@@ -51,7 +51,7 @@ class NeuralNetLanguageModel(LanguageModel):
         self.model.eval()
 
         text = " ".join([self.vocab.get_token_from_index(i) for i in indices[1:]])
-        instance = self.reader.text_to_instance(text, add_end=False, undo_reverse=True)
+        instance = self.reader.text_to_instance(text, undo_reverse=True)
         cuda_device = 0 if next(self.model.parameters()).is_cuda else -1
         iterator = BasicIterator()
         iterator.index_with(self.vocab)

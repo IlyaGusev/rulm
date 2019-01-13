@@ -18,6 +18,7 @@ from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from rulm.language_model import LanguageModel
 from rulm.transform import Transform
 from rulm.settings import DEFAULT_N_GRAM_WEIGHTS
+from rulm.stream_reader import LanguageModelingStreamReader
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,7 @@ class NGramLanguageModel(LanguageModel):
                  interpolation_lambdas: Tuple[float, ...]=None,
                  container: Type[NGramContainer]=DictNGramContainer,
                  cache: PredictionsCache=None):
+        reader = reader or LanguageModelingStreamReader(reverse=False, is_source_only=True)
         LanguageModel.__init__(self, vocab, transforms, reader)
  
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
