@@ -86,6 +86,8 @@ class NeuralNetLanguageModel(LanguageModel):
             weights_file=weights_file,
             cuda_device=cuda_device)
         params.pop('model')
+        if params.get('vocabulary', None):
+            params.pop('vocabulary')
         model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=vocab)
         return model
 

@@ -175,7 +175,7 @@ class LanguageModel(Registrable):
             instance.index_fields(self.vocab)
             text_field = instance["source_tokens"]
             sentence_indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
-            for i in range(1, len(sentence_indices) + 1):
+            for i in range(2, len(sentence_indices) + 1):
                 indices = sentence_indices[:i]
                 true_index = indices[-1]
                 context = indices[:-1]

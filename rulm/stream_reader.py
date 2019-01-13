@@ -40,22 +40,30 @@ class LanguageModelingStreamReader(LanguageModelingReader):
                 print(sample)
                 yield self._sample_to_instance(sample)
 
-    def text_to_instance(self, text: str, add_end: bool=True, undo_reverse: bool=False) -> Iterable[Instance]:
-        return self._sample_to_instance(self._tokenize(text, add_end=add_end, undo_reverse=undo_reverse))
+    def text_to_instance(self,
+                         text: str,
+                         add_end: bool=True,
+                         undo_reverse: bool=False,
+                         add_begin: bool=True) -> Iterable[Instance]:
+        tokens = self._tokenize(text, add_end=add_end, undo_reverse=undo_reverse, add_begin=add_begin)
+        return self._sample_to_instance(tokens)
 
-    def _tokenize(self, text: str, add_end: bool=True, undo_reverse: bool=False) -> List[Token]:
+    def _tokenize(self,
+                  text: str,
+                  add_end: bool=True,
+                  undo_reverse: bool=False,
+                  add_begin: bool = True) -> List[Token]:
         tokenized_text = self._tokenizer.tokenize(text)
         tokenized_text = tokenized_text[::-1] if self.reverse and not undo_reverse else tokenized_text
-        tokenized_text.insert(0, Token(START_SYMBOL))
+        if add_begin:
+            tokenized_text.insert(0, Token(START_SYMBOL))
         if add_end:
             tokenized_text.append(Token(END_SYMBOL))
         return tokenized_text
 
     def _sample_to_instance(self, sample: List[Token]) -> Instance:
-        y = sample[1:]
-        y.append(Token(DEFAULT_PADDING_TOKEN))
-        input_field = TextField(sample, self._token_indexers)
-        output_field = TextField(y, self._token_indexers)
+        input_field = TextField(sample[:-1], self._token_indexers)
+        output_field = TextField(sample[1:], self._token_indexers)
         return Instance({
             'source_tokens': input_field,
             'target_tokens': output_field
