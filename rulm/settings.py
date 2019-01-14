@@ -7,7 +7,9 @@ TRAIN_EXAMPLE = os.path.join(DATA_DIR, "rdt.example.txt")
 TRAIN_VOCAB_EXAMPLE = os.path.join(DATA_DIR, "rdt.example.vocab")
 TEST_EXAMPLE = os.path.join(DATA_DIR, "rdt.example.test.txt")
 REMEMBERING_EXAMPLE = os.path.join(DATA_DIR, "remember.txt")
+
 ENCODER_ONLY_MODEL_PARAMS = os.path.join(CONFIGS_DIR, "encoder_only.json")
+ENCODER_ONLY_SAMPLED_SOFTMAX_MODEL_PARAMS = os.path.join(CONFIGS_DIR, "encoder_only_sampled_softmax.json")
 N_GRAM_PARAMS = os.path.join(CONFIGS_DIR, "n_gram.json")
 
 DEFAULT_PARAMS = "config.json"

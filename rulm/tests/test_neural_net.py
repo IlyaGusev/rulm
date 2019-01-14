@@ -8,7 +8,8 @@ from allennlp.common.params import Params
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
-from rulm.settings import REMEMBERING_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS, DEFAULT_VOCAB_DIR
+from rulm.settings import REMEMBERING_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS, \
+    ENCODER_ONLY_SAMPLED_SOFTMAX_MODEL_PARAMS, DEFAULT_VOCAB_DIR
 from rulm.language_model import LanguageModel
 from rulm.models.neural_net import NeuralNetLanguageModel
 
@@ -16,7 +17,7 @@ from rulm.models.neural_net import NeuralNetLanguageModel
 class TestRNNLM(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        configs = (ENCODER_ONLY_MODEL_PARAMS,)
+        configs = (ENCODER_ONLY_MODEL_PARAMS, ENCODER_ONLY_SAMPLED_SOFTMAX_MODEL_PARAMS)
         cls.params_sets = [Params.from_file(config) for config in configs]
 
         cls.vocabularies = []
@@ -71,8 +72,8 @@ class TestRNNLM(unittest.TestCase):
             self._test_model_predictions(model_reversed, reverse=True)
 
     def test_save_load(self):
-        with TemporaryDirectory() as dirpath:
-            for params, vocabulary in zip(self.params_sets, self.vocabularies):
+        for params, vocabulary in zip(self.params_sets, self.vocabularies):
+            with TemporaryDirectory() as dirpath:
                 vocab_dir = os.path.join(dirpath, DEFAULT_VOCAB_DIR)
                 os.mkdir(vocab_dir)
                 vocabulary.save_to_files(vocab_dir)
