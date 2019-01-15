@@ -79,23 +79,27 @@ class EncoderOnlyLanguageModel(Model):
         contextual_embeddings = self._contextualizer(embeddings, mask)
         contextual_embeddings = self._dropout(contextual_embeddings)
 
-        batch_size = contextual_embeddings.size(0)
-        seq_len = contextual_embeddings.size(1)
-
         result = dict()
-        if self.training:
+        if target_tokens:
             targets = target_tokens["tokens"]
             targets = targets.view(-1)
             mask = targets > 0
             masked_targets = targets.masked_select(mask)
-            contextual_embeddings = contextual_embeddings.view(-1, self._context_dim)
-            masked_embeddings = contextual_embeddings.masked_select(mask.unsqueeze(-1)).view(-1, self._context_dim)
-            loss = self._softmax_loss(masked_embeddings, masked_targets)
-            num_targets = torch.sum(mask.long())
-            average_loss = loss / num_targets.float()
-            result["loss"] = average_loss
-        else:
-            contextual_embeddings = contextual_embeddings.view(batch_size, seq_len, self._context_dim)
-            linears = linear(contextual_embeddings, self._softmax_loss.softmax_w, self._softmax_loss.softmax_b)
-            result["logits"] = log_softmax(linears, dim=-1)
+            lined_embeddings = contextual_embeddings.view(-1, self._context_dim)
+            masked_embeddings = lined_embeddings.masked_select(mask.unsqueeze(-1))
+            masked_embeddings = masked_embeddings.view(-1, self._context_dim)
+            if self.training:
+                loss = self._softmax_loss(masked_embeddings, masked_targets)
+                num_targets = torch.sum(mask.long())
+                result["loss"] = loss / num_targets.float()
+            else:
+                logits = self._get_logits(masked_embeddings)
+                criterion = NLLLoss(ignore_index=self.vocab.get_token_index(DEFAULT_PADDING_TOKEN))
+                result["loss"] = criterion(logits, masked_targets.long())
+        if not self.training:
+            result["logits"] = self._get_logits(contextual_embeddings)
         return result
+
+    def _get_logits(self, embeddings):
+        linears = linear(embeddings, self._softmax_loss.softmax_w, self._softmax_loss.softmax_b)
+        return log_softmax(linears, dim=-1)

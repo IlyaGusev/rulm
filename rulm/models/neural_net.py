@@ -45,7 +45,7 @@ class NeuralNetLanguageModel(LanguageModel):
         trainer = Trainer.from_params(self.model, serialization_dir, iterator,
                                       train_dataset, valid_dataset, train_params.pop('trainer'))
         train_params.assert_empty("Trainer")
-        trainer.train()
+        return trainer.train()
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
