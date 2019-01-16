@@ -37,7 +37,6 @@ class LanguageModelingStreamReader(LanguageModelingReader):
             for start in range(0, len(tokenized_text) - num_tokens, num_tokens - 1):
                 end = start + num_tokens
                 sample = tokenized_text[start:end]
-                print(sample)
                 yield self._sample_to_instance(sample)
 
     def text_to_instance(self, text: str, add_end: bool=True, undo_reverse: bool=False) -> Iterable[Instance]:
