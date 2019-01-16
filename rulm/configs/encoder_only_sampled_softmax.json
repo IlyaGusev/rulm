@@ -22,6 +22,7 @@
   "model": {
     "type": "encoder_only",
     "dropout": 0.3,
+    "num_samples": 32,
     "embedder": {
       "type": "basic",
       "token_embedders": {

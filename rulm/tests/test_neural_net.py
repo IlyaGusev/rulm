@@ -8,7 +8,9 @@ from allennlp.common.params import Params
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
-from rulm.settings import REMEMBERING_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS, DEFAULT_VOCAB_DIR
+from rulm.settings import REMEMBERING_EXAMPLE, ENCODER_ONLY_MODEL_PARAMS, \
+    ENCODER_ONLY_SAMPLED_SOFTMAX_MODEL_PARAMS, DEFAULT_VOCAB_DIR, TRAIN_EXAMPLE, \
+    TRAIN_VOCAB_EXAMPLE, TEST_EXAMPLE
 from rulm.language_model import LanguageModel
 from rulm.models.neural_net import NeuralNetLanguageModel
 
@@ -16,16 +18,19 @@ from rulm.models.neural_net import NeuralNetLanguageModel
 class TestRNNLM(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        configs = (ENCODER_ONLY_MODEL_PARAMS,)
+        LanguageModel.set_seed(42)
+        configs = (ENCODER_ONLY_MODEL_PARAMS, ENCODER_ONLY_SAMPLED_SOFTMAX_MODEL_PARAMS)
         cls.params_sets = [Params.from_file(config) for config in configs]
 
         cls.vocabularies = []
         for params in cls.params_sets:
             vocabulary_params = params.pop("vocabulary", default=Params({}))
             reader_params = params.duplicate().pop("reader", default=Params({}))
-            cls.reader = DatasetReader.from_params(reader_params)
-            dataset = cls.reader.read(REMEMBERING_EXAMPLE)
+            reader = DatasetReader.from_params(reader_params)
+            dataset = reader.read(REMEMBERING_EXAMPLE)
             cls.vocabularies.append(Vocabulary.from_params(vocabulary_params, instances=dataset))
+
+        cls.train_vocabulary = Vocabulary.from_files(TRAIN_VOCAB_EXAMPLE)
 
         cls.sentences = []
         with open(REMEMBERING_EXAMPLE, "r", encoding="utf-8") as r:
@@ -71,8 +76,8 @@ class TestRNNLM(unittest.TestCase):
             self._test_model_predictions(model_reversed, reverse=True)
 
     def test_save_load(self):
-        with TemporaryDirectory() as dirpath:
-            for params, vocabulary in zip(self.params_sets, self.vocabularies):
+        for params, vocabulary in zip(self.params_sets, self.vocabularies):
+            with TemporaryDirectory() as dirpath:
                 vocab_dir = os.path.join(dirpath, DEFAULT_VOCAB_DIR)
                 os.mkdir(vocab_dir)
                 vocabulary.save_to_files(vocab_dir)
@@ -90,3 +95,15 @@ class TestRNNLM(unittest.TestCase):
                 self.assertTrue(isinstance(loaded_model, NeuralNetLanguageModel))
                 self._test_model_equality(cast(NeuralNetLanguageModel, model),
                                           cast(NeuralNetLanguageModel, loaded_model))
+
+    def test_valid_ppl(self):
+        for params in self.params_sets:
+            params = params.duplicate()
+            train_params = params.pop('train')
+            train_params["trainer"]["num_epochs"] = 1
+            train_params["iterator"]["batch_size"] = 50
+            model = LanguageModel.from_params(params, vocab=self.train_vocabulary)
+            metrics = model.train(TRAIN_EXAMPLE, train_params, valid_file_name=TEST_EXAMPLE)
+            val_loss = metrics["validation_loss"]
+            ppl_state = model.measure_perplexity(TEST_EXAMPLE)
+            self.assertAlmostEqual(ppl_state.avg_perplexity, np.exp(val_loss))

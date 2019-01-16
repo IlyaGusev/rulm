@@ -7,8 +7,9 @@ def measure_ppl(model_path, val_path):
     model = LanguageModel.load(model_path)
     model.measure_perplexity(val_path)
     # with open(val_path, "r", encoding="utf-8") as r:
-    #    lines = r.readlines()[:200]
-    #    model.estimate_parameters(lines)
+    #     lines = r.readlines()[:200]
+    #     model.estimate_parameters(lines)
+    #     print(model.interpolation_lambdas)
 
 
 if __name__ == "__main__":

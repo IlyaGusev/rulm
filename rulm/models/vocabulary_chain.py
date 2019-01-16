@@ -35,6 +35,7 @@ class VocabularyChainLanguageModel(LanguageModel):
         aux = (START_SYMBOL, END_SYMBOL, DEFAULT_OOV_TOKEN, DEFAULT_PADDING_TOKEN)
         aux_indices = [self.vocab.get_token_index(s) for s in aux]
         bos_index = aux_indices[0]
+        eos_index = aux_indices[1]
         if not inputs:
             probabilities[bos_index] = 1.0
             return probabilities
@@ -49,4 +50,6 @@ class VocabularyChainLanguageModel(LanguageModel):
             probabilities[first_not_aux_index] = 1.
         elif last_index != self.vocab.get_vocab_size() - 1:
             probabilities[last_index + 1] = 1.
+        elif last_index == self.vocab.get_vocab_size() - 1:
+            probabilities[eos_index] = 1.
         return probabilities

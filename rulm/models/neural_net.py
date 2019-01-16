@@ -45,13 +45,13 @@ class NeuralNetLanguageModel(LanguageModel):
         trainer = Trainer.from_params(self.model, serialization_dir, iterator,
                                       train_dataset, valid_dataset, train_params.pop('trainer'))
         train_params.assert_empty("Trainer")
-        trainer.train()
+        return trainer.train()
 
     def predict(self, indices: List[int]) -> List[float]:
         self.model.eval()
 
         text = " ".join([self.vocab.get_token_from_index(i) for i in indices[1:]])
-        instance = self.reader.text_to_instance(text, add_end=False, undo_reverse=True)
+        instance = self.reader.text_to_instance(text, undo_reverse=True)
         cuda_device = 0 if next(self.model.parameters()).is_cuda else -1
         iterator = BasicIterator()
         iterator.index_with(self.vocab)
@@ -86,6 +86,8 @@ class NeuralNetLanguageModel(LanguageModel):
             weights_file=weights_file,
             cuda_device=cuda_device)
         params.pop('model')
+        if params.get('vocabulary', None):
+            params.pop('vocabulary')
         model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=vocab)
         return model
 

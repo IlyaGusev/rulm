@@ -18,6 +18,7 @@ from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from rulm.language_model import LanguageModel
 from rulm.transform import Transform
 from rulm.settings import DEFAULT_N_GRAM_WEIGHTS
+from rulm.stream_reader import LanguageModelingStreamReader
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,7 @@ class NGramLanguageModel(LanguageModel):
                  interpolation_lambdas: Tuple[float, ...]=None,
                  container: Type[NGramContainer]=DictNGramContainer,
                  cache: PredictionsCache=None):
+        reader = reader or LanguageModelingStreamReader(reverse=False, is_source_only=True)
         LanguageModel.__init__(self, vocab, transforms, reader)
  
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
@@ -194,7 +196,8 @@ class NGramLanguageModel(LanguageModel):
               file_name: str,
               train_params: Params=Params({}),
               serialization_dir: str=None,
-              report_every: int = 10000):
+              report_every: int = 10000,
+              **kwargs):
         assert os.path.exists(file_name)
         sentence_number = 0
         for instance in self.reader.read(file_name):
@@ -203,6 +206,8 @@ class NGramLanguageModel(LanguageModel):
             indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
             self._collect_n_grams(indices)
             sentence_number += 1
+            if sentence_number % report_every == 0:
+                logger.info("Processed {} sentences".format(sentence_number))
         logger.info("Train: normalizng...")
         self.normalize()
         if serialization_dir:
@@ -260,7 +265,7 @@ class NGramLanguageModel(LanguageModel):
             words = sentence.strip().split()
             sentence_indices = self._numericalize_inputs(words)
             sentence_indices.append(self.vocab.get_token_index(END_SYMBOL))
-            for i in range(1, len(sentence_indices) + 1):
+            for i in range(2, len(sentence_indices) + 1):
                 indices = sentence_indices[:i]
                 true_index = indices[-1]
                 context = indices[:-1]
@@ -310,6 +315,7 @@ class NGramLanguageModel(LanguageModel):
               serialization_dir: str,
               weights_file: str = None,
               cuda_device: int = -1):
+        params.pop('vocabulary', None)
         model = NGramLanguageModel.from_params(params, vocab=vocab)
         weights_file = weights_file or os.path.join(serialization_dir, DEFAULT_N_GRAM_WEIGHTS)
         model.load_weights(weights_file)

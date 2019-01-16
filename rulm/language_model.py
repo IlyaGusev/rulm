@@ -28,6 +28,7 @@ class PerplexityState:
         self.zeroprobs_count = 0
         self.unknown_count = 0
         self.avg_log_perplexity = 0.
+        self.sum_log_perplexity = 0.
         self.time = 0.
 
     def add(self, word_index: int, probability: float) -> None:
@@ -44,8 +45,10 @@ class PerplexityState:
             return
 
         log_prob = -np.log(probability)
+        self.sum_log_perplexity += log_prob
         prev_avg = self.avg_log_perplexity * old_word_count / self.true_word_count
         self.avg_log_perplexity = prev_avg + log_prob / self.true_word_count
+        # self.avg_log_perplexity = self.sum_log_perplexity / self.true_word_count
 
     @property
     def true_word_count(self):
@@ -166,6 +169,7 @@ class LanguageModel(Registrable):
                     batch_number * batch_size, ppl_state))
                 batch = []
         if batch:
+            batch_number += 1
             ppl_state = self._measure_perplexity_on_batch(batch, ppl_state)
         return ppl_state
 
@@ -175,7 +179,12 @@ class LanguageModel(Registrable):
             instance.index_fields(self.vocab)
             text_field = instance["source_tokens"]
             sentence_indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
-            for i in range(1, len(sentence_indices) + 1):
+            if "target_tokens" in instance:
+                text_field = instance["target_tokens"]
+                target_indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
+                sentence_indices.append(target_indices[-1])
+            indices = range(2, len(sentence_indices) + 1)
+            for i in indices:
                 indices = sentence_indices[:i]
                 true_index = indices[-1]
                 context = indices[:-1]
