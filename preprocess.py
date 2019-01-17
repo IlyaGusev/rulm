@@ -5,6 +5,8 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.params import Params
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
+from rulm.language_model import LanguageModel
+
 
 def preprocess(train_path, vocabulary_path, config_path):
     vocabulary_path = vocabulary_path
