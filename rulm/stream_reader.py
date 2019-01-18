@@ -32,6 +32,10 @@ class LanguageModelingStreamReader(LanguageModelingReader):
                 yield self.text_to_instance(line)
                 continue
             tokenized_text = self._tokenize(line)
+            if self._reverse:
+                tokenized_text = tokenized_text[::-1]
+                tokenized_text[0] = Token(START_SYMBOL)
+                tokenized_text[-1] = Token(END_SYMBOL)
             num_tokens = self._tokens_per_instance + 1
             if num_tokens >= len(tokenized_text):
                 yield self._sample_to_instance(tokenized_text)
@@ -39,20 +43,14 @@ class LanguageModelingStreamReader(LanguageModelingReader):
             for start in range(0, len(tokenized_text) - num_tokens, num_tokens - 1):
                 end = start + num_tokens
                 sample = tokenized_text[start:end]
-                print(sample)
                 yield self._sample_to_instance(sample)
 
-    def text_to_instance(self,
-                         text: str,
-                         undo_reverse: bool=False) -> Iterable[Instance]:
-        tokens = self._tokenize(text, undo_reverse=undo_reverse)
+    def text_to_instance(self, text: str) -> Instance:
+        tokens = self._tokenize(text)
         return self._sample_to_instance(tokens)
 
-    def _tokenize(self,
-                  text: str,
-                  undo_reverse: bool=False) -> List[Token]:
+    def _tokenize(self, text: str) -> List[Token]:
         tokenized_text = self._tokenizer.tokenize(text)
-        tokenized_text = tokenized_text[::-1] if self._reverse and not undo_reverse else tokenized_text
         tokenized_text.insert(0, Token(START_SYMBOL))
         tokenized_text.append(Token(END_SYMBOL))
         return tokenized_text
@@ -62,6 +60,7 @@ class LanguageModelingStreamReader(LanguageModelingReader):
         if not self._is_source_only:
             result['source_tokens'] = TextField(sample[:-1], self._token_indexers)
             result['target_tokens'] = TextField(sample[1:], self._token_indexers)
+            result['all_tokens'] = TextField(sample, self._token_indexers)
         else:
             result['source_tokens'] = TextField(sample, self._token_indexers)
         return Instance(result)

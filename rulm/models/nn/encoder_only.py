@@ -67,7 +67,8 @@ class EncoderOnlyLanguageModel(Model):
 
     def forward(self,
                 source_tokens: Dict[str, torch.Tensor],
-                target_tokens: Dict[str, torch.Tensor]=None) -> Dict[str, torch.Tensor]:
+                target_tokens: Dict[str, torch.Tensor]=None,
+                **kwargs) -> Dict[str, torch.Tensor]:
         # Shape: (batch_size, max_length)
         source = source_tokens["tokens"]
         mask = source > 0

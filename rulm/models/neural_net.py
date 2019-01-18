@@ -1,12 +1,14 @@
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Iterable, Dict
 import logging
 
+import numpy as np
 import torch
+from torch import Tensor
 from allennlp.common.params import Params
 from allennlp.training.trainer import Trainer
 from allennlp.data.vocabulary import Vocabulary
-from allennlp.data.iterators.data_iterator import DataIterator
+from allennlp.data.iterators.data_iterator import DataIterator, Batch
 from allennlp.data.iterators.basic_iterator import BasicIterator
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.models.model import Model
@@ -47,23 +49,31 @@ class NeuralNetLanguageModel(LanguageModel):
         train_params.assert_empty("Trainer")
         return trainer.train()
 
-    def predict(self, indices: List[int]) -> List[float]:
+    def predict(self, batch: Dict[str, Tensor]) -> List[List[float]]:
         self.model.eval()
-
-        text = " ".join([self.vocab.get_token_from_index(i) for i in indices[1:]])
-        instance = self.reader.text_to_instance(text, undo_reverse=True)
-        cuda_device = 0 if next(self.model.parameters()).is_cuda else -1
-        iterator = BasicIterator()
-        iterator.index_with(self.vocab)
-        batch = next(iterator([instance], num_epochs=1))
-        batch = util.move_to_device(batch, cuda_device)
-
         output_dict = self.model.forward(**batch)
         logits = output_dict["logits"]
-        result = torch.exp(logits.transpose(0, 1).squeeze(1)[-1])
+        result = torch.exp(logits[:, -1])
         result = result.cpu().detach().numpy()
-
         return result
+
+    def predict_texts(self, texts: List[str], batch_size: int=64) -> List[List[float]]:
+        instances = [self.reader.text_to_instance(text) for text in texts]
+        for instance in instances:
+            instance.index_fields(self.vocab)
+        iterator = BasicIterator(batch_size=batch_size)
+        batches = iterator(instances, num_epochs=1)
+        predictions = None
+        for batch in batches:
+            batch_predictions = self.predict(batch)
+            if not predictions:
+                predictions = batch_predictions
+            else:
+                predictions = np.concatenate(predictions, batch_predictions)
+        return predictions
+
+    def predict_text(self, text: str) -> List[float]:
+        return self.predict_texts([text])[0]
 
     def log_model(self):
         logger.info(self.model)

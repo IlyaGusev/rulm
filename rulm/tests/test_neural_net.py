@@ -39,15 +39,18 @@ class TestRNNLM(unittest.TestCase):
 
     def _test_model_predictions(self, model, reverse=False):
         for sentence in self.sentences:
-            sentence = sentence.split()
+            indices = model.text_to_indices(sentence)[1:-1]
             if reverse:
-                sentence = sentence[::-1]
-            for i in range(1, len(sentence)-1):
-                if i == 1 and (sentence[0] in "Я!.?"):
+                indices = indices[::-1]
+            sentence = " ".join([model.vocab.get_token_from_index(i) for i in indices])
+            first_token = model.vocab.get_token_from_index(indices[0])
+            for context_right_border in range(1, len(indices)-1):
+                if context_right_border == 1 and (first_token in "Я!.?"):
                     continue
-                context = sentence[:i]
-                prediction = model.sample_decoding(context, k=1)
-                self.assertListEqual(prediction, sentence)
+                context = indices[:context_right_border]
+                text = " ".join([model.vocab.get_token_from_index(i) for i in context])
+                prediction = model.sample_decoding(text, k=1)
+                self.assertEqual(prediction, sentence)
 
     @staticmethod
     def _test_model_equality(model1: NeuralNetLanguageModel, model2: NeuralNetLanguageModel):
@@ -68,10 +71,8 @@ class TestRNNLM(unittest.TestCase):
         for params, vocabulary in zip(self.params_sets, self.vocabularies):
             params = params.duplicate()
             train_params = params.pop('train')
-
             params["reader"]["reverse"] = True
             model_reversed = LanguageModel.from_params(params, vocab=vocabulary)
-
             model_reversed.train(REMEMBERING_EXAMPLE, train_params)
             self._test_model_predictions(model_reversed, reverse=True)
 
@@ -106,4 +107,4 @@ class TestRNNLM(unittest.TestCase):
             metrics = model.train(TRAIN_EXAMPLE, train_params, valid_file_name=TEST_EXAMPLE)
             val_loss = metrics["validation_loss"]
             ppl_state = model.measure_perplexity(TEST_EXAMPLE)
-            self.assertAlmostEqual(ppl_state.avg_perplexity, np.exp(val_loss))
+            self.assertAlmostEqual(np.log(ppl_state.avg_perplexity), val_loss, places=3)
