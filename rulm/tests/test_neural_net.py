@@ -104,7 +104,7 @@ class TestRNNLM(unittest.TestCase):
             train_params["trainer"]["num_epochs"] = 1
             train_params["iterator"]["batch_size"] = 50
             model = LanguageModel.from_params(params, vocab=self.train_vocabulary)
-            metrics = model.train(TRAIN_EXAMPLE, train_params, valid_file_name=TEST_EXAMPLE)
+            metrics = model.train(TEST_EXAMPLE, train_params, valid_file_name=TEST_EXAMPLE)
             val_loss = metrics["validation_loss"]
             ppl_state = model.measure_perplexity(TEST_EXAMPLE)
             self.assertAlmostEqual(np.log(ppl_state.avg_perplexity), val_loss, places=3)
