@@ -65,7 +65,7 @@ class TestNGrams(unittest.TestCase):
         model = NGramLanguageModel(n=2, vocab=vocabulary)
         model.train(TRAIN_EXAMPLE)
 
-        prediction = model.predict([vocabulary.get_token_index(START_SYMBOL)])
+        prediction = model.predict_text("")
         non_zero_indices = list(filter(lambda x: x != 0., prediction))
         self.assertEqual(len(non_zero_indices), 502)
 
@@ -77,7 +77,7 @@ class TestNGrams(unittest.TestCase):
 
         ts = time.time()
         for i in range(10):
-            model.predict([7, 28])
+            model.predict_text("Я не")
         te = time.time()
         self.assertLess(te - ts, 1.0)
 
@@ -97,15 +97,12 @@ class TestNGrams(unittest.TestCase):
         assert_n_gram_prob((4, 5, 5), 0.0)
 
     def test_predict(self):
-        def pack_context(context):
-            return tuple(map(self.vocabulary.get_token_index, context))
-
         def assert_prediction(context, prediction):
-            self.assertListEqual(list(self.model.predict(pack_context(context))), prediction)
+            np.testing.assert_array_equal(self.model.predict_text(context), prediction)
 
-        assert_prediction((START_SYMBOL, "я"), [0., 0., 0., 0., 0., 1., 0.])
-        assert_prediction(("я", "не"), [0., 0., 0., 0., 0.5, 0., 0.5])
-        assert_prediction(("не", "ты"), [0., 0., 0., 1., 0., 0., 0.])
+        assert_prediction("я", [0., 0., 0., 0., 0., 1., 0.])
+        assert_prediction("я не", [0., 0., 0., 0., 0.5, 0., 0.5])
+        assert_prediction("не ты", [0., 0., 0., 1., 0., 0., 0.])
 
     def test_perplexity(self):
         dataset = self.model.reader.read(TRAIN_EXAMPLE)

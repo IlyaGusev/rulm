@@ -41,8 +41,8 @@ class TestLanguageModel(unittest.TestCase):
         os.unlink(val_file.name)
 
     def test_query(self):
-        predictions = self.eq_model.query([])
-        self.assertEqual(predictions, {
+        predictions = self.eq_model.query("")
+        self.assertDictEqual(predictions, {
             "я": 1./5.,
             "не": 1./5.,
             "ты": 1./5.,
@@ -53,8 +53,9 @@ class TestLanguageModel(unittest.TestCase):
         })
 
     def test_sample_decoding(self):
-        np.random.seed(13370)
-        self.assertListEqual(self.eq_model.sample_decoding([], k=5), ['не', 'не'])
+        self.eq_model.set_seed(13370)
+        self.assertEqual(self.eq_model.sample_decoding("", k=5), 'не не')
 
     def test_beam_decoding(self):
-        self.assertListEqual(self.eq_model.beam_decoding(["не"], beam_width=10), ["не"])
+        self.assertEqual(self.eq_model.beam_decoding("не", beam_width=10), "не")
+        self.assertEqual(self.chain_model.beam_decoding("я", beam_width=10), "я не ты")

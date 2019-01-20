@@ -1,4 +1,4 @@
-from rulm.models.nn.encoder_only import EncoderOnlyLanguageModel
+from rulm.models.neural_net.encoder_only import EncoderOnlyLanguageModel
 from rulm.models.neural_net import NeuralNetLanguageModel
 from rulm.models.n_gram import NGramLanguageModel
 from rulm.models.vocabulary_chain import VocabularyChainLanguageModel

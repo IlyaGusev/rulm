@@ -1,10 +1,8 @@
 from typing import Dict, List, Iterable
-from overrides import overrides
 
 from allennlp.common.file_utils import cached_path
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data.instance import Instance
-from allennlp.data.vocabulary import DEFAULT_PADDING_TOKEN
 from allennlp.data.tokenizers import Token
 from allennlp.data.tokenizers.tokenizer import Tokenizer
 from allennlp.data.fields import TextField
@@ -25,7 +23,6 @@ class LanguageModelingStreamReader(LanguageModelingReader):
         self._reverse = reverse
         self._is_source_only = is_source_only
 
-    @overrides
     def _read(self, file_path: str):
         for line in self._lines(file_path):
             if self._tokens_per_instance is None:
@@ -57,12 +54,9 @@ class LanguageModelingStreamReader(LanguageModelingReader):
 
     def _sample_to_instance(self, sample: List[Token]) -> Instance:
         result = dict()
-        if not self._is_source_only:
-            result['source_tokens'] = TextField(sample[:-1], self._token_indexers)
-            result['target_tokens'] = TextField(sample[1:], self._token_indexers)
-            result['all_tokens'] = TextField(sample, self._token_indexers)
-        else:
-            result['source_tokens'] = TextField(sample, self._token_indexers)
+        result['source_tokens'] = TextField(sample[:-1], self._token_indexers)
+        result['target_tokens'] = TextField(sample[1:], self._token_indexers)
+        result['all_tokens'] = TextField(sample, self._token_indexers)
         return Instance(result)
 
     @staticmethod

@@ -1,6 +1,7 @@
-from typing import Tuple, List
+from typing import Tuple, Dict
 
 import numpy as np
+from torch import Tensor
 from allennlp.common import Params
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data import Vocabulary
@@ -30,26 +31,29 @@ class VocabularyChainLanguageModel(LanguageModel):
               cuda_device: int=-1):
         pass
 
-    def predict(self, inputs: List[int]):
-        probabilities = np.zeros(self.vocab.get_vocab_size())
-        aux = (START_SYMBOL, END_SYMBOL, DEFAULT_OOV_TOKEN, DEFAULT_PADDING_TOKEN)
-        aux_indices = [self.vocab.get_token_index(s) for s in aux]
-        bos_index = aux_indices[0]
-        eos_index = aux_indices[1]
-        if not inputs:
-            probabilities[bos_index] = 1.0
-            return probabilities
-        last_index = inputs[-1]
-        first_not_aux_index = 0
-        for i in range(self.vocab.get_vocab_size()):
-            if i in aux_indices:
-                continue
-            first_not_aux_index = i
-            break
-        if last_index == bos_index:
-            probabilities[first_not_aux_index] = 1.
-        elif last_index != self.vocab.get_vocab_size() - 1:
-            probabilities[last_index + 1] = 1.
-        elif last_index == self.vocab.get_vocab_size() - 1:
-            probabilities[eos_index] = 1.
-        return probabilities
+    def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> np.ndarray:
+        inputs = batch["source_tokens"]["tokens"]
+        batch_size = inputs.size(0)
+        vocab_size = self.vocab.get_vocab_size("tokens")
+        result = np.zeros((batch_size, vocab_size), dtype="float")
+        for sample_number in range(batch_size):
+            probabilities = np.zeros(vocab_size)
+            aux = (START_SYMBOL, END_SYMBOL, DEFAULT_OOV_TOKEN, DEFAULT_PADDING_TOKEN)
+            aux_indices = [self.vocab.get_token_index(s) for s in aux]
+            bos_index = aux_indices[0]
+            eos_index = aux_indices[1]
+            last_index = inputs[sample_number][-1]
+            first_not_aux_index = 0
+            for i in range(self.vocab.get_vocab_size()):
+                if i in aux_indices:
+                    continue
+                first_not_aux_index = i
+                break
+            if last_index == bos_index:
+                probabilities[first_not_aux_index] = 1.
+            elif last_index != self.vocab.get_vocab_size() - 1:
+                probabilities[last_index + 1] = 1.
+            elif last_index == self.vocab.get_vocab_size() - 1:
+                probabilities[eos_index] = 1.
+            result[sample_number] = probabilities
+        return result

@@ -1,21 +1,19 @@
 import os
-from collections import defaultdict
-from typing import List, Tuple, Type, Iterable
+from typing import List, Tuple, Type, Iterable, Dict
 import gzip
-from queue import PriorityQueue
-from datetime import datetime
 import logging
 
-import pygtrie
 import numpy as np
 from scipy.optimize import minimize
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.common.util import END_SYMBOL
 from allennlp.common.params import Params
-from allennlp.common.registrable import Registrable
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+from torch import Tensor
 
 from rulm.language_model import LanguageModel
+from rulm.models.n_gram.predictions_cache import PredictionsCache
+from rulm.models.n_gram.n_gram_container import NGramContainer, DictNGramContainer
 from rulm.transform import Transform
 from rulm.settings import DEFAULT_N_GRAM_WEIGHTS
 from rulm.stream_reader import LanguageModelingStreamReader
@@ -25,137 +23,6 @@ logger = logging.getLogger(__name__)
 # TODO: backoff
 # TODO: backoff in ARPA
 # TODO: Kneser-Nay
-
-
-class NGramContainer(Registrable):
-    def __getitem__(self, n_gram: Iterable[int]):
-        raise NotImplementedError()
-
-    def __setitem__(self, n_gram: Iterable[int], value: float):
-        raise NotImplementedError()
-
-    def __delitem__(self, n_gram: Iterable[int]):
-        raise NotImplementedError()
-
-    def __contains__(self, n_gram: Iterable[int]):
-        raise NotImplementedError()
-
-    def __len__(self):
-        raise NotImplementedError()
-
-    def __repr__(self):
-        raise NotImplementedError()
-
-    def items(self):
-        raise NotImplementedError()
-
-
-@NGramContainer.register("dict")
-class DictNGramContainer(NGramContainer):
-    def __init__(self):
-        self.data = defaultdict(float)
-
-    def __getitem__(self, n_gram: Iterable[int]):
-        return self.data.get(tuple(n_gram), 0.)
-
-    def __setitem__(self, n_gram: Iterable[int], value: float):
-        self.data[tuple(n_gram)] = value
-
-    def __delitem__(self, n_gram: Iterable[int]):
-        del self.data[tuple(n_gram)]
-
-    def __contains__(self, n_gram: Iterable[int]):
-        return tuple(n_gram) in self.data
-
-    def __len__(self):
-        return len(self.data)
-
-    def __repr__(self):
-        return repr(self.data)
-
-    def items(self):
-        return self.data.items()
-
-
-@NGramContainer.register("trie")
-class TrieNGramContainer(NGramContainer):
-    def __init__(self):
-        self.data = pygtrie.Trie()
-
-    def __getitem__(self, n_gram: List[int]):
-        return self.data[tuple(n_gram)] if n_gram in self.data else 0.
-
-    def __setitem__(self, n_gram: List[int], value: float):
-        self.data[tuple(n_gram)] = value
-
-    def __delitem__(self, n_gram: Iterable[int]):
-        del self.data[tuple(n_gram)]
-
-    def __contains__(self, n_gram: Iterable[int]):
-        return tuple(n_gram) in self.data
-
-    def __len__(self):
-        return len(self.data)
-
-    def __repr__(self):
-        return repr(self.data)
-
-    def items(self):
-        return self.data.items()
-
-
-class PredictionsCache(Registrable):
-    def __init__(self,
-                 capacity: int,
-                 timestamps_capacity: int):
-        self.capacity = capacity
-        self.timestamps_capacity = timestamps_capacity
-
-        self.data = dict()
-        self.timestamps = PriorityQueue()
-        self.last_timestamp = dict()
-
-        self.miss_count = 0
-        self.success_count = 0
-
-    def __getitem__(self, context: Iterable[int]):
-        result = self.data.get(context, None)
-        if result is not None:
-            self._update_ts(context)
-            self.success_count += 1
-            if self.success_count % self.capacity == 0:
-                ratio = int(self.ratio * 100)
-                size = int(float(len(self.data)) / self.capacity * 100)
-                timestamps_size = int(float(self.timestamps.qsize()) / self.timestamps_capacity * 100)
-                message = "Cache ratio: {}%, size: {}%, timestamps: {}%"
-                logger.info(message.format(ratio, size, timestamps_size))
-            return result
-        else:
-            self.miss_count += 1
-            return None
-
-    def __setitem__(self, context: Iterable[int], prediction: Iterable[float]):
-        assert context not in self.data
-        while len(self.data) >= self.capacity or self.timestamps.qsize() >= self.timestamps_capacity:
-            ts, c = self.timestamps.get()
-            assert c in self.last_timestamp
-            if ts == self.last_timestamp[c]:
-                del self.data[c]
-                del self.last_timestamp[c]
-        self.data[context] = prediction
-        self._update_ts(context)
-
-    def _update_ts(self, context: Iterable[int]):
-        ts_now = int(datetime.now().strftime('%s%f'))
-        self.timestamps.put((ts_now, context))
-        self.last_timestamp[context] = ts_now
-
-    @property
-    def ratio(self):
-        return float(self.success_count)/(self.miss_count + self.success_count)
-
-    def __len__(self):
-        return len(self.data)
 
 
 @LanguageModel.register("n_gram")
@@ -202,7 +69,7 @@ class NGramLanguageModel(LanguageModel):
         sentence_number = 0
         for instance in self.reader.read(file_name):
             instance.index_fields(self.vocab)
-            text_field = instance["source_tokens"]
+            text_field = instance["all_tokens"]
             indices = text_field.as_tensor(text_field.get_padding_lengths())["tokens"].tolist()
             self._collect_n_grams(indices)
             sentence_number += 1
@@ -227,11 +94,18 @@ class NGramLanguageModel(LanguageModel):
                 current_n_grams[words] = count / prev_order_n_gram_count
         self.n_grams[0][tuple()] = 1.0
 
-    def predict(self, indices: Iterable[int]) -> List[float]:
-        step_probabilities = self._get_step_probabilities(indices)
-        probabilities = self.interpolation_lambdas.dot(step_probabilities)
-        norm_proba = probabilities / np.sum(probabilities)
-        return norm_proba
+    def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> np.ndarray:
+        batch_indices = batch["source_tokens"]["tokens"].numpy()
+        batch_size = batch_indices.shape[0]
+        vocab_size = self.vocab.get_vocab_size("tokens")
+        result = np.zeros((batch_size, vocab_size), dtype="float")
+        for batch_number, indices in enumerate(batch_indices):
+            step_probabilities = self._get_step_probabilities(indices)
+            probabilities = self.interpolation_lambdas.dot(step_probabilities)
+            s = np.sum(probabilities)
+            norm_proba = probabilities / s if s != 0 else probabilities
+            result[batch_number] = norm_proba
+        return result
 
     def _get_step_probabilities(self, indices: Iterable[int]) -> np.ndarray:
         vocab_size = self.vocab.get_vocab_size()

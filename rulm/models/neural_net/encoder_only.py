@@ -89,14 +89,9 @@ class EncoderOnlyLanguageModel(Model):
             lined_embeddings = contextual_embeddings.view(-1, self._context_dim)
             masked_embeddings = lined_embeddings.masked_select(mask.unsqueeze(-1))
             masked_embeddings = masked_embeddings.view(-1, self._context_dim)
-            if self.training:
-                loss = self._softmax_loss(masked_embeddings, masked_targets)
-                num_targets = torch.sum(mask.long())
-                result["loss"] = loss / num_targets.float()
-            else:
-                logits = self._get_logits(masked_embeddings)
-                criterion = NLLLoss(ignore_index=self.vocab.get_token_index(DEFAULT_PADDING_TOKEN))
-                result["loss"] = criterion(logits, masked_targets.long())
+            loss = self._softmax_loss(masked_embeddings, masked_targets)
+            num_targets = torch.sum(mask.long())
+            result["loss"] = loss / num_targets.float()
         if not self.training:
             result["logits"] = self._get_logits(contextual_embeddings)
         return result
