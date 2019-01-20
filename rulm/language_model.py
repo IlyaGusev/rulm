@@ -49,7 +49,8 @@ class LanguageModel(Registrable):
               vocab: Vocabulary,
               serialization_dir: str,
               weights_file: str,
-              cuda_device: int = -1) -> 'LanguageModel':
+              cuda_device: int = -1,
+              **kwargs) -> 'LanguageModel':
         raise NotImplementedError()
 
     def predict_texts(self, texts: List[str], batch_size: int=64) -> np.ndarray:
@@ -78,7 +79,8 @@ class LanguageModel(Registrable):
              params_file: str = None,
              weights_file: str = None,
              vocabulary_dir: str = None,
-             cuda_device: int = -1) -> 'LanguageModel':
+             cuda_device: int = -1,
+             **kwargs) -> 'LanguageModel':
         params_file = params_file or os.path.join(serialization_dir, DEFAULT_PARAMS)
         params = Params.from_file(params_file)
         params.pop("vocab", None)
@@ -88,7 +90,7 @@ class LanguageModel(Registrable):
 
         model_type = params.pop("type")
         return cls.by_name(model_type)._load(params, vocabulary, serialization_dir,
-                                             weights_file, cuda_device)
+                                             weights_file, cuda_device, **kwargs)
 
     def sample_decoding(self,
                         input_text: str,

@@ -188,9 +188,10 @@ class NGramLanguageModel(LanguageModel):
               vocab: Vocabulary,
               serialization_dir: str,
               weights_file: str = None,
-              cuda_device: int = -1):
+              cuda_device: int = -1,
+              **kwargs):
         params.pop('vocabulary', None)
-        model = NGramLanguageModel.from_params(params, vocab=vocab)
+        model = NGramLanguageModel.from_params(params, vocab=vocab, **kwargs)
         weights_file = weights_file or os.path.join(serialization_dir, DEFAULT_N_GRAM_WEIGHTS)
         model.load_weights(weights_file)
         return model

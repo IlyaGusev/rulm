@@ -65,7 +65,8 @@ class NeuralNetLanguageModel(LanguageModel):
               vocab: Vocabulary,
               serialization_dir: str,
               weights_file: str,
-              cuda_device: int=-1):
+              cuda_device: int=-1,
+              **kwargs):
         if params.get('train', None):
             params.pop('train')
 
@@ -77,6 +78,6 @@ class NeuralNetLanguageModel(LanguageModel):
         params.pop('model')
         if params.get('vocabulary', None):
             params.pop('vocabulary')
-        model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=vocab)
+        model = NeuralNetLanguageModel.from_params(params, model=inner_model, vocab=vocab, **kwargs)
         return model
 
