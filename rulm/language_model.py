@@ -70,6 +70,9 @@ class LanguageModel(Registrable):
 
     def query(self, text: str) -> Dict[str, float]:
         next_index_prediction = self.predict_text(text)
+        for transform in self.transforms:
+            next_index_prediction = transform(next_index_prediction)
+        next_index_prediction = next_index_prediction / np.sum(next_index_prediction)
         return {self.vocab.get_token_from_index(index): float(prob)
                 for index, prob in enumerate(next_index_prediction)}
 
@@ -107,12 +110,12 @@ class LanguageModel(Registrable):
 
         while last_index != eos_index and len(indices) < max_length:
             next_word_probabilities = self.predict_text(current_text)
-            for transform in self.transforms:
-                next_word_probabilities = transform(next_word_probabilities)
-            next_word_probabilities = TopKTransform(k)(next_word_probabilities)
             if exclude_unk:
                 unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
                 next_word_probabilities = ExcludeTransform((unk_index, ))(next_word_probabilities)
+            for transform in self.transforms:
+                next_word_probabilities = transform(next_word_probabilities)
+            next_word_probabilities = TopKTransform(k)(next_word_probabilities)
             last_index = self._choose(next_word_probabilities)[0]
             for transform in self.transforms:
                 transform.advance(last_index)
@@ -193,6 +196,8 @@ class LanguageModel(Registrable):
     @staticmethod
     def _choose(model: np.array, k: int=1):
         norm_model = model / np.sum(model)
+        non_zero_count = int(np.sum(model > 0))
+        k = min(k, non_zero_count)
         return np.random.choice(range(norm_model.shape[0]), k, p=norm_model, replace=False)
 
     @staticmethod

@@ -38,7 +38,8 @@ class ExcludeTransform(Transform):
         self.indices = exclude_indices
 
     def __call__(self, probabilities: np.array) -> np.array:
-        probabilities[self.indices] = 0.
+        for index in self.indices:
+            probabilities[index] = 0.
         return probabilities
 
     def advance(self, index: int):

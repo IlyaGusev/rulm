@@ -50,11 +50,12 @@ class BeamSearch:
                     finished_count += 1
                 else:
                     new_candidates += self._beam_process_candidate(candidate)
-            if len(new_candidates) == finished_count:
-                break
 
             new_candidates.sort(key=lambda x: x.score(self.length_reward))
             candidates = new_candidates[:self.beam_width]
+
+            if len(candidates) == finished_count:
+                break
 
         assert candidates
         return candidates[0].text
@@ -73,8 +74,9 @@ class BeamSearch:
                 continue
             is_eos = index == self.eos_index
             new_text = candidate.text + " " + self.index_to_text(index) if not is_eos else candidate.text
+            new_text = new_text.strip()
             new_log_prob = candidate.log_prob - np.log(p)
-            new_transforms = copy.copy(candidate.transforms)
+            new_transforms = [copy.copy(transform) for transform in candidate.transforms]
             for transform in new_transforms:
                 transform.advance(index)
             new_state = BeamState(new_text, new_log_prob, new_transforms, step_number + 1)

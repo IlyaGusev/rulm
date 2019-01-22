@@ -8,6 +8,7 @@ from allennlp.common.util import START_SYMBOL, END_SYMBOL
 
 from rulm.models.vocabulary_chain import VocabularyChainLanguageModel
 from rulm.models.equiprobable import EquiprobableLanguageModel
+from rulm.transform import ExcludeTransform
 
 
 # TODO: test reverse
@@ -24,6 +25,9 @@ class TestLanguageModel(unittest.TestCase):
         cls.vocabulary.add_token_to_namespace("ты")
         cls.eq_model = EquiprobableLanguageModel(cls.vocabulary)
         cls.chain_model = VocabularyChainLanguageModel(cls.vocabulary)
+        unk_index = cls.vocabulary.get_token_index(DEFAULT_OOV_TOKEN)
+        cls.eq_model_exclude_unk = EquiprobableLanguageModel(cls.vocabulary,
+                                                             transforms=(ExcludeTransform((unk_index, )), ))
 
     def test_measure_perplexity(self):
         val_file = NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8")
@@ -48,6 +52,18 @@ class TestLanguageModel(unittest.TestCase):
             "ты": 1./5.,
             DEFAULT_OOV_TOKEN: 1./5.,
             END_SYMBOL: 1./5.,
+            DEFAULT_PADDING_TOKEN: 0.,
+            START_SYMBOL: 0.
+        })
+
+    def test_exclude_unk(self):
+        predictions = self.eq_model_exclude_unk.query("")
+        self.assertDictEqual(predictions, {
+            "я": 1./4.,
+            "не": 1./4.,
+            "ты": 1./4.,
+            DEFAULT_OOV_TOKEN: 0,
+            END_SYMBOL: 1./4.,
             DEFAULT_PADDING_TOKEN: 0.,
             START_SYMBOL: 0.
         })

@@ -28,7 +28,8 @@ class EquiprobableLanguageModel(LanguageModel):
               vocab: Vocabulary,
               serialization_dir: str,
               weights_file: str,
-              cuda_device: int=-1):
+              cuda_device: int=-1,
+              **kwargs):
         pass
 
     def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> np.ndarray:
