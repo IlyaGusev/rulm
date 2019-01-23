@@ -69,7 +69,7 @@
     },
     "trainer": {
       "grad_clipping": 5.0,
-      "num_epochs": 40,
+      "num_epochs": 50,
       "summary_interval": 1,
       "should_log_learning_rate": true,
       "optimizer": {
