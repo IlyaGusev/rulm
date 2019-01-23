@@ -9,6 +9,8 @@ from allennlp.data.fields import TextField
 from allennlp.data.token_indexers.token_indexer import TokenIndexer
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.dataset_readers.language_modeling import LanguageModelingReader
+from allennlp.data.tokenizers import WordTokenizer
+from allennlp.data.tokenizers.word_splitter import JustSpacesWordSplitter
 
 
 @DatasetReader.register("lm_stream")
@@ -17,11 +19,10 @@ class LanguageModelingStreamReader(LanguageModelingReader):
                  reverse: bool = False,
                  tokens_per_instance: int = None,
                  tokenizer: Tokenizer = None,
-                 token_indexers: Dict[str, TokenIndexer] = None,
-                 is_source_only: bool = False) -> None:
+                 token_indexers: Dict[str, TokenIndexer] = None) -> None:
+        tokenizer = tokenizer or WordTokenizer(word_splitter=JustSpacesWordSplitter())
         super().__init__(tokens_per_instance, tokenizer, token_indexers, True)
         self._reverse = reverse
-        self._is_source_only = is_source_only
 
     def _read(self, file_path: str):
         for line in self._lines(file_path):

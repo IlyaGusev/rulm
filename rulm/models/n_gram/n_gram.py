@@ -36,7 +36,7 @@ class NGramLanguageModel(LanguageModel):
                  interpolation_lambdas: Tuple[float, ...]=None,
                  container: Type[NGramContainer]=DictNGramContainer,
                  cache: PredictionsCache=None):
-        reader = reader or LanguageModelingStreamReader(reverse=False, is_source_only=True)
+        reader = reader or LanguageModelingStreamReader(reverse=False)
         LanguageModel.__init__(self, vocab, transforms, reader)
  
         self.n_grams = tuple(container() for _ in range(n+1))  # type: List[NGramContainer]
