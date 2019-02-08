@@ -4,6 +4,7 @@ import logging
 
 import torch
 from torch import Tensor
+import numpy as np
 from allennlp.common.params import Params
 from allennlp.training.trainer import Trainer
 from allennlp.data.vocabulary import Vocabulary
@@ -46,12 +47,14 @@ class NeuralNetLanguageModel(LanguageModel):
         train_params.assert_empty("Trainer")
         return trainer.train()
 
-    def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> List[List[float]]:
+    def predict(self, batch: Dict[str, Dict[str, Tensor]], temperature: float=1.0) -> List[List[float]]:
         self.model.eval()
         output_dict = self.model.forward(**batch)
         logits = output_dict["logits"]
+        logits = logits.div(temperature)
         result = torch.exp(logits[:, -1])
-        result = result.cpu().detach().numpy()
+        result_norm = torch.nn.functional.normalize(result, p=1)
+        result = result_norm.cpu().detach().numpy()
         return result
 
     def log_model(self):
