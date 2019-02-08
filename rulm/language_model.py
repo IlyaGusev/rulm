@@ -99,7 +99,8 @@ class LanguageModel(Registrable):
                         input_text: str,
                         k: int=5,
                         max_length: int=30,
-                        exclude_unk: bool=False) -> str:
+                        exclude_unk: bool=False,
+                        **kwargs) -> str:
         vocab_size = self.vocab.get_vocab_size()
         if k > vocab_size:
             k = vocab_size
@@ -109,7 +110,7 @@ class LanguageModel(Registrable):
         current_text = input_text
 
         while last_index != eos_index and len(indices) < max_length:
-            next_word_probabilities = self.predict_text(current_text)
+            next_word_probabilities = self.predict_text(current_text, **kwargs)
             if exclude_unk:
                 unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
                 next_word_probabilities = ExcludeTransform((unk_index, ))(next_word_probabilities)
@@ -124,11 +125,15 @@ class LanguageModel(Registrable):
                 indices = self.text_to_indices(current_text)[:-1]
         return current_text.strip()
 
-    def beam_decoding(self, input_text: str, beam_width: int=5,
-                      max_length: int=50, length_reward: float=0.0) -> str:
+    def beam_decoding(self,
+                      input_text: str,
+                      beam_width: int=5,
+                      max_length: int=50,
+                      length_reward: float=0.0,
+                      **kwargs) -> str:
         beam = BeamSearch(
             eos_index=self.vocab.get_token_index(END_SYMBOL),
-            predict_func=self.predict_text,
+            predict_func=lambda x : self.predict_text(x, **kwargs),
             index_to_text_func=self.vocab.get_token_from_index,
             transforms=self.transforms,
             beam_width=beam_width,
