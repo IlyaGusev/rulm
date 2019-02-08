@@ -98,31 +98,28 @@ class LanguageModel(Registrable):
     def sample_decoding(self,
                         input_text: str,
                         k: int=5,
-                        max_length: int=30,
-                        exclude_unk: bool=False,
+                        max_length: int=500,
                         **kwargs) -> str:
         vocab_size = self.vocab.get_vocab_size()
         if k > vocab_size:
             k = vocab_size
-        eos_index = self.vocab.get_token_index(END_SYMBOL)
-        indices = self.text_to_indices(input_text)[:-1]
-        last_index = indices[-1]
-        current_text = input_text
 
-        while last_index != eos_index and len(indices) < max_length:
+        eos_index = self.vocab.get_token_index(END_SYMBOL)
+        current_text = input_text
+        current_step = 0
+        last_index = None
+        while last_index != eos_index and current_step < max_length:
             next_word_probabilities = self.predict_text(current_text, **kwargs)
-            if exclude_unk:
-                unk_index = self.vocab.get_token_index(DEFAULT_OOV_TOKEN)
-                next_word_probabilities = ExcludeTransform((unk_index, ))(next_word_probabilities)
             for transform in self.transforms:
                 next_word_probabilities = transform(next_word_probabilities)
             next_word_probabilities = TopKTransform(k)(next_word_probabilities)
+            print(current_text)
             last_index = self._choose(next_word_probabilities)[0]
             for transform in self.transforms:
                 transform.advance(last_index)
             if last_index != eos_index:
                 current_text = current_text + " " + self.vocab.get_token_from_index(last_index)
-                indices = self.text_to_indices(current_text)[:-1]
+            current_step += 1
         return current_text.strip()
 
     def beam_decoding(self,
@@ -200,9 +197,12 @@ class LanguageModel(Registrable):
 
     @staticmethod
     def _choose(model: np.array, k: int=1):
-        norm_model = model / np.sum(model)
+        s = np.sum(model)
+        assert s != 0.0
+        norm_model = model / s
         non_zero_count = int(np.sum(model > 0))
         k = min(k, non_zero_count)
+        assert k != 0
         return np.random.choice(range(norm_model.shape[0]), k, p=norm_model, replace=False)
 
     @staticmethod
