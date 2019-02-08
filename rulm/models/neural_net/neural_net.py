@@ -47,7 +47,9 @@ class NeuralNetLanguageModel(LanguageModel):
         train_params.assert_empty("Trainer")
         return trainer.train()
 
-    def predict(self, batch: Dict[str, Dict[str, Tensor]], temperature: float=1.0) -> List[List[float]]:
+    def predict(self,
+                batch: Dict[str, Dict[str, Tensor]],
+                temperature: float=1.0) -> List[List[float]]:
         self.model.eval()
         output_dict = self.model.forward(**batch)
         logits = output_dict["logits"]

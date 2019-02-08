@@ -40,7 +40,7 @@ class LanguageModel(Registrable):
               **kwargs):
         raise NotImplementedError()
 
-    def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> np.ndarray:
+    def predict(self, batch: Dict[str, Dict[str, Tensor]], **kwargs) -> np.ndarray:
         raise NotImplementedError()
 
     @classmethod
@@ -53,7 +53,7 @@ class LanguageModel(Registrable):
               **kwargs) -> 'LanguageModel':
         raise NotImplementedError()
 
-    def predict_texts(self, texts: List[str], batch_size: int=64) -> np.ndarray:
+    def predict_texts(self, texts: List[str], batch_size: int=64, **kwargs) -> np.ndarray:
         instances = [self.reader.text_to_instance(text) for text in texts]
         for instance in instances:
             instance.index_fields(self.vocab)
@@ -61,12 +61,12 @@ class LanguageModel(Registrable):
         batches = iterator(instances, num_epochs=1)
         predictions = None
         for batch in batches:
-            batch_predictions = self.predict(batch)
+            batch_predictions = self.predict(batch, **kwargs)
             predictions = batch_predictions if not predictions else np.concatenate((predictions, batch_predictions))
         return predictions
 
-    def predict_text(self, text: str) -> np.ndarray:
-        return self.predict_texts([text])[0]
+    def predict_text(self, text: str, **kwargs) -> np.ndarray:
+        return self.predict_texts([text], **kwargs)[0]
 
     def query(self, text: str) -> Dict[str, float]:
         next_index_prediction = self.predict_text(text)
