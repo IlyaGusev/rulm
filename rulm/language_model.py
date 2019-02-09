@@ -113,7 +113,6 @@ class LanguageModel(Registrable):
             for transform in self.transforms:
                 next_word_probabilities = transform(next_word_probabilities)
             next_word_probabilities = TopKTransform(k)(next_word_probabilities)
-            print(current_text)
             last_index = self._choose(next_word_probabilities)[0]
             for transform in self.transforms:
                 transform.advance(last_index)
