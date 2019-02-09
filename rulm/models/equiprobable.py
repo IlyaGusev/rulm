@@ -1,4 +1,4 @@
-from typing import Tuple, Dict
+from typing import List, Dict
 
 import numpy as np
 from torch import Tensor
@@ -13,7 +13,7 @@ from rulm.transform import Transform
 
 @LanguageModel.register("equiprobable")
 class EquiprobableLanguageModel(LanguageModel):
-    def __init__(self, vocab: Vocabulary, transforms: Tuple[Transform]=None):
+    def __init__(self, vocab: Vocabulary, transforms: List[Transform]=None):
         LanguageModel.__init__(self, vocab, transforms)
 
     def train(self,
@@ -32,7 +32,7 @@ class EquiprobableLanguageModel(LanguageModel):
               **kwargs):
         pass
 
-    def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> np.ndarray:
+    def predict(self, batch: Dict[str, Dict[str, Tensor]], **kwargs) -> np.ndarray:
         inputs = batch["source_tokens"]["tokens"]
         batch_size = inputs.size(0)
         vocab_size = self.vocab.get_vocab_size()

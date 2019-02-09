@@ -23,7 +23,7 @@ class NeuralNetLanguageModel(LanguageModel):
     def __init__(self,
                  vocab: Vocabulary,
                  model: Model,
-                 transforms: Tuple[Transform]=None,
+                 transforms: List[Transform]=None,
                  reader: DatasetReader = None):
         LanguageModel.__init__(self, vocab, transforms, reader)
 
