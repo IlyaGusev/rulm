@@ -30,7 +30,7 @@ class NGramLanguageModel(LanguageModel):
     def __init__(self,
                  n: int,
                  vocab: Vocabulary,
-                 transforms: Tuple[Transform]=None,
+                 transforms: List[Transform]=None,
                  reader: DatasetReader=None,
                  cutoff_count: int=None,
                  interpolation_lambdas: Tuple[float, ...]=None,
@@ -94,7 +94,7 @@ class NGramLanguageModel(LanguageModel):
                 current_n_grams[words] = count / prev_order_n_gram_count
         self.n_grams[0][tuple()] = 1.0
 
-    def predict(self, batch: Dict[str, Dict[str, Tensor]]) -> np.ndarray:
+    def predict(self, batch: Dict[str, Dict[str, Tensor]], **kwargs) -> np.ndarray:
         batch_indices = batch["source_tokens"]["tokens"].numpy()
         batch_size = batch_indices.shape[0]
         vocab_size = self.vocab.get_vocab_size("tokens")

@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Iterable
+from typing import List, Dict, Tuple
 import os
 from timeit import default_timer as timer
 import logging
@@ -13,7 +13,7 @@ from allennlp.common.params import Params
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 from allennlp.data.iterators.basic_iterator import BasicIterator
 
-from rulm.transform import Transform, TopKTransform, ExcludeTransform
+from rulm.transform import Transform, TopKTransform
 from rulm.beam import BeamSearch
 from rulm.settings import DEFAULT_PARAMS, DEFAULT_VOCAB_DIR
 from rulm.stream_reader import LanguageModelingStreamReader
@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 class LanguageModel(Registrable):
     def __init__(self,
                  vocab: Vocabulary,
-                 transforms: Tuple[Transform]=None,
+                 transforms: List[Transform]=None,
                  reader: DatasetReader=None,
                  seed: int = 42):
         self.vocab = vocab  # type: Vocabulary
-        self.transforms = transforms or tuple()  # type: Iterable[Transform]
+        self.transforms = transforms or list()  # type: List[Transform]
         self.reader = reader or LanguageModelingStreamReader(reverse=False)
         self.set_seed(seed)
 
@@ -113,7 +113,6 @@ class LanguageModel(Registrable):
             for transform in self.transforms:
                 next_word_probabilities = transform(next_word_probabilities)
             next_word_probabilities = TopKTransform(k)(next_word_probabilities)
-            print(current_text)
             last_index = self._choose(next_word_probabilities)[0]
             for transform in self.transforms:
                 transform.advance(last_index)
