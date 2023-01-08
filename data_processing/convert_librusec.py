@@ -6,20 +6,23 @@ import unicodedata
 import razdel
 from tqdm import tqdm
 
-from converters.lang_detector import FasttextLanguageDetector
+from data_processing.lang_detector import FasttextLanguageDetector
+from data_processing.util import gen_batch
+
 
 RE_ID = re.compile(r'^(\d+)\.fb2')
 RE_BRACKETS = re.compile(r"\([^\)]*\)", flags=re.MULTILINE)
 RE_SQUARE_BRACKETS = re.compile(r"\[[^\]]*\]", flags=re.MULTILINE)
-
-
-def gen_batch(records, batch_size):
-    batch_start = 0
-    while batch_start < len(records):
-        batch_end = batch_start + batch_size
-        batch = records[batch_start: batch_end]
-        batch_start = batch_end
-        yield batch
+BAD_SUBSTRINGS = (
+    "• ",
+    "+79",
+    "@gmail",
+    "var ",
+    "<a ",
+    "<p ",
+    ".jpg",
+    "http:"
+)
 
 
 def preprocess_text(text):
@@ -46,6 +49,9 @@ def preprocess_text(text):
     sentences = [s.text for s in razdel.sentenize(text)]
     for s in sentences:
         if len(s) > 1500:
+            return
+        if any(ss in s for ss in BAD_SUBSTRINGS):
+            print(s)
             return
 
     text = " ".join(text.split())

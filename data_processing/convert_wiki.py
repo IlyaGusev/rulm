@@ -7,6 +7,7 @@ import unicodedata
 from tqdm import tqdm
 from corus import load_wiki
 import razdel
+
 from converters.lang_detector import FasttextLanguageDetector
 
 RE_MARKUP = re.compile(
