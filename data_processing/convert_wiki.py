@@ -8,7 +8,8 @@ from tqdm import tqdm
 from corus import load_wiki
 import razdel
 
-from converters.lang_detector import FasttextLanguageDetector
+from data_processing.lang_detector import FasttextLanguageDetector
+from data_processing.util import normalize, remove_non_printable, PlainArchive
 
 RE_MARKUP = re.compile(
     r'<br( [^>]+)?>|'               # e.g. <br>, <br style="clear: both">
@@ -69,15 +70,12 @@ def count_punct_part(sentence):
 
 
 def preprocess_text(text):
-    text = unicodedata.normalize("NFKC", text)
-    text = text.replace("\xa0", " ")
+    text = normalize(text)
     paragraphs = text.split("\n")
     paragraphs = [p.strip() for p in paragraphs if p.strip()]
     paragraphs = [p if p[-1] in string.punctuation else p + "." for p in paragraphs]
     text = " ".join(paragraphs)
-
-    # remove invisible characters
-    text = "".join(c for c in text if c.isprintable())
+    text = remove_non_printable(text)
 
     # remove templates
     text = re.sub(r"\[\d+?\]", " ", text)
@@ -126,20 +124,26 @@ def preprocess_text(text):
 
 input_path = sys.argv[1]
 output_path = sys.argv[2]
+
 lang_detector = FasttextLanguageDetector()
 records = load_wiki(input_path)
-with open(output_path, "w") as w:
-    for record in tqdm(records):
-        title = record.title
-        text = record.text
-        if len(text) < 300:
-            continue
-        text = preprocess_text(text)
-        if lang_detector(text)[0] != "ru":
-            continue
-        if len(text) < 300:
-            continue
-        w.write(json.dumps({
+archive = PlainArchive(output_path)
+for record in tqdm(records):
+    title = record.title
+    text = record.text
+    rid = record.id
+    if len(text) < 300:
+        continue
+    text = preprocess_text(text)
+    if lang_detector(text)[0] != "ru":
+        continue
+    if len(text) < 300:
+        continue
+    archive.add_data(
+        text=text,
+        meta={
+            "source": "wiki",
             "title": title,
-            "text": text
-        }, ensure_ascii=False) + "\n")
+            "id": rid
+        }
+    )

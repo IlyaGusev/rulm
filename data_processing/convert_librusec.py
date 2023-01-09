@@ -7,7 +7,7 @@ import razdel
 from tqdm import tqdm
 
 from data_processing.lang_detector import FasttextLanguageDetector
-from data_processing.util import gen_batch
+from data_processing.util import gen_batch, remove_non_printable, normalize, PlainArchive
 
 
 RE_ID = re.compile(r'^(\d+)\.fb2')
@@ -55,13 +55,17 @@ def preprocess_text(text):
             return
 
     text = " ".join(text.split())
+    text = normalize(text)
+    text = remove_non_printable(text)
     return text.strip()
 
-lang_detector = FasttextLanguageDetector()
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
-with open(input_path, "r") as r, open(output_path, "w") as w:
+lang_detector = FasttextLanguageDetector()
+archive = PlainArchive(output_path)
+
+with open(input_path, "r") as r:
     def flush(text_id, fragments):
         text = " ".join(fragments)
         sentences = [s.text for s in razdel.sentenize(text)]
@@ -76,12 +80,16 @@ with open(input_path, "r") as r, open(output_path, "w") as w:
             fragment = preprocess_text(fragment)
             if not fragment:
                 continue
-            record = {
-                "text_id": text_id,
-                "fragment_num": fragment_num,
-                "text": fragment
-            }
-            w.write(json.dumps(record, ensure_ascii=False) + "\n")
+            if len(fragment) < 300:
+                continue
+            archive.add_data(
+                text=fragment,
+                meta={
+                    "source": "librusec",
+                    "text_id": text_id,
+                    "fragment_num": fragment_num,
+                }
+            )
 
     text_id = None
     fragments = []

@@ -7,7 +7,7 @@ from collections import Counter
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 
-from data_processing.util import gen_batch
+from data_processing.util import gen_batch, PlainArchive
 
 
 input_path = sys.argv[1]
@@ -35,7 +35,7 @@ def parse_single_txt(path_to_txt, zip_file):
         question = lines[2 * i]
         answer = lines[2 * i + 1]
         assert len(answer) < len(question), f"{answer} vs {question}"
-        example =  question + "; ответ: " + answer
+        example =  question + " Ответ: " + answer
         examples.append(example)
     return "\n".join(examples)
 
@@ -43,16 +43,17 @@ def parse_single_txt(path_to_txt, zip_file):
 if __name__ == "__main__":
     zip_file = zipfile.ZipFile(input_path)
     txt_paths = get_txt_filepaths_from_zip(zip_file)
-    with open(output_path, "w") as w:
-        for path in tqdm(txt_paths, total=len(txt_paths)):
-            full_text = parse_single_txt(path, zip_file)
-            lines = full_text.split("\n")
-            for batch_num, batch in enumerate(gen_batch(lines, 1000)):
-                text = "\n".join(batch)
-                w.write(json.dumps({
-                    "text": text,
-                    "meta": {
-                        "path": path,
-                        "part_num": batch_num
-                    }
-                }, ensure_ascii=False) + "\n")
+    archive = PlainArchive(output_path)
+    for path in tqdm(txt_paths, total=len(txt_paths)):
+        full_text = parse_single_txt(path, zip_file)
+        lines = full_text.split("\n")
+        for batch_num, batch in enumerate(gen_batch(lines, 1000)):
+            text = "\n".join(batch)
+            archive.add_data(
+                text=text,
+                meta={
+                    "source": "math",
+                    "path": path,
+                    "part_num": batch_num
+                }
+            )
