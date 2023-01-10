@@ -1,9 +1,0 @@
-{
-  "type": "n_gram",
-  "n": 3,
-  "cutoff_count": 2,
-  "vocab": {
-    "max_vocab_size": 500
-  },
-  "interpolation_lambdas": [0.01, 0.16, 0.4, 1.0]
-}
