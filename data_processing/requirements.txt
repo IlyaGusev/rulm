@@ -3,3 +3,5 @@ corus
 wikiextractor
 datasets
 zstandard
+tqdm
+datasketch

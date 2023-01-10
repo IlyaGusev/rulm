@@ -2,54 +2,43 @@ import json
 import sys
 
 from datasets import load_dataset
+from tqdm import tqdm
+
+from data_processing.util import normalize, PlainArchive, remove_non_printable
 
 output_path = sys.argv[1]
 
-with open(output_path, "w") as w:
-    gazeta = load_dataset('IlyaGusev/gazeta', revision="v2.0")["train"]
-    for row in gazeta:
-        record = {
-            "text": row["text"],
+archive = PlainArchive(output_path)
+gazeta = load_dataset('IlyaGusev/gazeta', revision="v2.0")["train"]
+for row in tqdm(gazeta):
+    archive.add_data(
+        text=remove_non_printable(normalize(row["text"])),
+        meta={
             "source": "gazeta",
-            "meta": {
-                "title": row["title"],
-                "date": row["date"],
-                "url": row["url"]
-            }
+            "title": row["title"],
+            "date": row["date"],
+            "url": row["url"]
         }
-        print(record)
-        w.write(json.dumps(record, ensure_ascii=False) + "\n")
-        break
+    )
 
-    medical_qa = load_dataset("blinoff/medical_qa_ru_data")["train"]
-    for row in medical_qa:
-        record = {
-            "text": row["desc"],
+medical_qa = load_dataset("blinoff/medical_qa_ru_data")["train"]
+for row in tqdm(medical_qa):
+    text = "Вопрос: " + row["desc"]
+    for i, answer in enumerate(row["ans"].split(";\n")):
+        text += f"; Ответ {i+1}: {answer}"
+    text = normalize(text)
+    text = " ".join(text.split())
+    text = remove_non_printable(text)
+    archive.add_data(
+        text=text,
+        meta={
             "source": "medical_qa",
-            "meta": {
-                "theme": row["theme"],
-                "date": row["date"],
-                "categ": row["categ"],
-                "spec10": row["spec10"]
-            }
+            "theme": row["theme"],
+            "date": row["date"],
+            "categ": row["categ"],
+            "spec10": row["spec10"]
         }
-        print(record)
-        w.write(json.dumps(record, ensure_ascii=False) + "\n")
-        for ans in row["ans"].split(";\n"):
-            record = {
-                "text": ans,
-                "source": "medical_qa",
-                "meta": {
-                    "theme": row["theme"],
-                    "date": row["date"],
-                    "categ": row["categ"],
-                    "spec10": row["spec10"]
-                }
-            }
-            print(record)
-            w.write(json.dumps(record, ensure_ascii=False) + "\n")
-        break
-
+    )
     #cc100 = load_dataset("cc100", lang="ru")
     #for row in cc100:
     #    print(row)

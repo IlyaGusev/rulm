@@ -1,3 +1,5 @@
+from itertools import tee
+from typing import List, Text
 import unicodedata
 import json
 
@@ -38,3 +40,36 @@ class PlainArchive:
 
     def commit(self):
         self.fh.flush()
+
+
+def ngrams(sequence: List[Text], n: int):
+    """
+    Return the ngrams generated from a sequence of items, as an iterator.
+    This is a modified version of nltk.util.ngrams.
+    """
+    iterables = tee(iter(sequence), n)
+    for i, sub_iterable in enumerate(iterables):
+        for _ in range(i):
+            next(sub_iterable, None)
+    return zip(*iterables)
+
+
+
+class UnionFind:
+    def __init__(self):
+        self.parent = {}
+
+    def find(self, x):
+        if x not in self.parent:
+            self.parent[x] = x
+            return x
+
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+
+        return self.parent[x]
+
+    def union(self, x, y):
+        px = self.find(x)
+        py = self.find(y)
+        self.parent[px] = self.parent[py] = min(px, py)
