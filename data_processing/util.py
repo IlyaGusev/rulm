@@ -13,6 +13,17 @@ def gen_batch(records, batch_size):
         yield batch
 
 
+def gen_batch_iter(records, batch_size):
+    batch = []
+    for record in records:
+        batch.append(record)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
 def normalize(text):
     text = unicodedata.normalize("NFKC", text)
     text = text.replace("\xa0", " ")

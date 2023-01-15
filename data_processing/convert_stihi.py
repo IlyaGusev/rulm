@@ -15,7 +15,8 @@ BAD_SUBSTRINGS = (
     "<a ",
     "<p ",
     ".jpg",
-    "http:"
+    "http:",
+    "https:"
 )
 
 input_path = sys.argv[1]
@@ -45,9 +46,9 @@ for record in tqdm(records):
         continue
 
     text = normalize(text)
-    text = " ".join(text.split())
     lines = [remove_non_printable(line.strip()) for line in text.split("\n")]
-    lines = [line for line in lines if line and line not in ("***", )]
+    lines = [line.strip("*").strip("=").strip("~") for line in lines]
+    lines = [" ".join(line.split()) for line in lines]
     fixed_lines = []
     for line in lines:
         if len(set(line.replace(" ", "").strip())) <= 1:

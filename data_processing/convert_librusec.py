@@ -21,7 +21,8 @@ BAD_SUBSTRINGS = (
     "<a ",
     "<p ",
     ".jpg",
-    "http:"
+    "http:",
+    "https:"
 )
 
 

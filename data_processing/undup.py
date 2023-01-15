@@ -11,24 +11,28 @@ from datasketch.minhash import MinHash
 from data_processing.util import read_jsonl, PlainArchive, ngrams, UnionFind
 
 
+B = 32
+
+def calc_fingerprint(text):
+    tokens = [token.text for token in razdel.tokenize(text)]
+    tokens = {" ".join(t) for t in ngrams(tokens, 11)}
+    tokens = [token.encode('utf-8') for token in tokens]
+    minhash = MinHash(num_perm=B)
+    minhash.update_batch(tokens)
+    return minhash
+
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
 archive = PlainArchive(output_path)
-B = 32
 uf = UnionFind()
 hash_tables = [defaultdict(list) for _ in range(B)]
 for idx, record in tqdm(enumerate(read_jsonl(input_path))):
     text = record["text"]
     meta = record["meta"]
     if meta["source"] in ("math", ):
-        archive.add_data(text=text, meta=meta)
         continue
-    tokens = [token.text for token in razdel.tokenize(text)]
-    tokens = {" ".join(t) for t in ngrams(tokens, 11)}
-    tokens = [token.encode('utf-8') for token in tokens]
-    minhash = MinHash(num_perm=B)
-    minhash.update_batch(tokens)
+    minhash = calc_fingerprint(text)
     for hv, hash_table in zip(minhash.hashvalues, hash_tables):
         hash_table[int(hv)].append(idx)
 
@@ -45,6 +49,7 @@ for idx, record in tqdm(enumerate(read_jsonl(input_path))):
     text = record["text"]
     meta = record["meta"]
     if meta["source"] in ("math", ):
+        archive.add_data(text=text, meta=meta)
         continue
 
     if uf.find(idx) == idx:
