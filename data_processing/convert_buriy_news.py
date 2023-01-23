@@ -5,8 +5,7 @@ from datetime import datetime
 from corus import load_buriy_news
 from tqdm import tqdm
 
-from data_processing.util import normalize, remove_non_printable, PlainArchive
-from data_processing.lang_detector import FasttextLanguageDetector
+from data_processing.util import TextProcessor, PlainArchive
 
 BAD_SUBSTRINGS = (
     "http",
@@ -26,14 +25,12 @@ BAD_SUBSTRINGS = (
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
-lang_detector = FasttextLanguageDetector()
+text_processor = TextProcessor(join_lines=True)
 archive = PlainArchive(output_path)
 
 for record in tqdm(load_buriy_news(input_path)):
-    text = record.text
-    text = normalize(text)
-    text = remove_non_printable(" ".join(text.split())).strip()
-    if lang_detector(text)[0] != "ru":
+    text = text_processor(record.text)
+    if not text:
         continue
     has_bad_ss = any(ss in text for ss in BAD_SUBSTRINGS)
     if has_bad_ss:

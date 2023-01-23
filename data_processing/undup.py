@@ -6,12 +6,12 @@ from tqdm import tqdm
 from collections import defaultdict
 
 import razdel
-from datasketch.minhash import MinHash
+from datasketch.minhash import MinHash, MinHashLSH
 
 from data_processing.util import read_jsonl, PlainArchive, ngrams, UnionFind
 
 
-B = 32
+B = 64
 
 def calc_fingerprint(text):
     tokens = [token.text for token in razdel.tokenize(text)]

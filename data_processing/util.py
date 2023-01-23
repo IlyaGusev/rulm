@@ -3,6 +3,20 @@ from typing import List, Text
 import unicodedata
 import json
 
+from data_processing.lang_detector import FasttextLanguageDetector
+
+BAD_SUBSTRINGS = (
+    "+79",
+    "@gmail",
+    "var ",
+    "<a ",
+    "<p ",
+    ".jpg",
+    "http:",
+    "https:"
+)
+
+lang_detector = FasttextLanguageDetector()
 
 def gen_batch(records, batch_size):
     batch_start = 0
@@ -24,15 +38,67 @@ def gen_batch_iter(records, batch_size):
         yield batch
 
 
-def normalize(text):
-    text = unicodedata.normalize("NFKC", text)
-    text = text.replace("\xa0", " ")
-    text = text.replace("&quot;", '"')
-    return text
+class TextProcessor:
+    def __init__(
+        self,
+        languages=("ru", ),
+        join_lines=False,
+        normalization="NFKC",
+        min_chars=30
+    ):
+        self.languages = languages
+        self.join_lines = join_lines
+        self.normalization = normalization
+        self.min_chars = min_chars
 
+    def remove_non_printable(self, text):
+        return "".join(c for c in text if c.isprintable())
 
-def remove_non_printable(text):
-    return "".join(c for c in text if c.isprintable())
+    def fix_punct(self, line):
+        line = " ".join(line.split()).strip()
+        line = line.strip("*").strip("=").strip("~").strip("•")
+        line = line.replace(" ,", ",")
+        line = line.replace(" .", ". ")
+        line = line.replace(",", ", ")
+        line = " ".join(line.split()).strip()
+        line = line.replace(". ,", ".,")
+        return line
+
+    def normalize(self, text):
+        text = unicodedata.normalize(self.normalization, text)
+        text = text.replace("\xa0", " ")
+        text = text.replace("&quot;", '"')
+        text = text.replace("&gt;", ">")
+        text = text.replace("&lt;", "<")
+        text = text.replace("&ge;", ">=")
+        text = text.replace("&le;", "<=")
+        text = text.replace("&amp;", "&")
+        text = text.replace("&nbsp;", " ")
+        lines = [self.remove_non_printable(line) for line in text.split("\n")]
+        lines = [self.fix_punct(line) for line in lines]
+        lines = [" ".join(line.split()).strip() for line in lines]
+        lines = [l for l in lines if len(set(l.replace(" ", "").strip())) > 1]
+        if self.join_lines:
+            text = " ".join(lines)
+        else:
+            text = "\n".join(lines)
+        return text
+
+    def has_bad_ss(self, text):
+        return any(ss in text for ss in BAD_SUBSTRINGS)
+
+    def has_bad_language(self, text):
+        return lang_detector(text)[0] not in self.languages
+
+    def __call__(self, text):
+        text = self.normalize(text)
+        if len(text) < self.min_chars:
+            return None
+        if self.has_bad_ss(text):
+            return None
+        if self.has_bad_language(text):
+            return None
+        return text
 
 
 def read_jsonl(path):
@@ -42,14 +108,22 @@ def read_jsonl(path):
 
 
 class PlainArchive:
-    def __init__(self, file_path):
+    def __init__(self, file_path, mode="w"):
         self.file_path = file_path
-        self.fh = open(file_path, "w")
+        self.fh = open(file_path, mode)
+        self.mode = mode
+
+    def __iter__(self):
+        assert self.mode == "r"
+        for line in self.fh:
+            yield json.loads(line)
 
     def add_data(self, text, meta={}):
+        assert self.mode == "w"
         self.fh.write(json.dumps({"text": text, "meta": meta}, ensure_ascii=False).strip() + "\n")
 
     def commit(self):
+        assert self.mode == "w"
         self.fh.flush()
 
 

@@ -7,7 +7,7 @@ from collections import Counter
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 
-from data_processing.util import gen_batch, normalize, remove_non_printable, PlainArchive
+from data_processing.util import gen_batch, TextProcessor, PlainArchive
 
 
 def get_xml_filepaths_from_zip(archive):
@@ -55,27 +55,26 @@ RM_SUBSTRINGS = (
     "Внимание!\nЭтот перевод, возможно, ещё не готов.\nЕго статус:",
 )
 
+
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
 zip_file = zipfile.ZipFile(input_path)
 archive = PlainArchive(output_path)
 xml_paths = get_xml_filepaths_from_zip(zip_file)
-bad_cnt = Counter()
+text_processor = TextProcessor()
 for path in tqdm(xml_paths, total=len(xml_paths)):
     full_text = parse_single_xml(path, zip_file)
     lines = full_text.split("\n")
     for batch_num, batch in enumerate(gen_batch(lines, 1000)):
         batch = [line for line in batch if len(line) > 3]
         text = "\n".join(batch)
-        for ss in BAD_SUBSTRINGS:
-            if ss in text:
-                bad_cnt[ss] += 1
         has_bad_ss = any(ss in text for ss in BAD_SUBSTRINGS)
         if has_bad_ss:
             continue
-        text = normalize(text)
-        text = "\n".join([remove_non_printable(line) for line in text.split("\n")])
+        text = text_processor(text)
+        if not text:
+            continue
         for ss in RM_SUBSTRINGS:
             text = text.replace(ss, "")
         if len(text) < 300:
@@ -88,4 +87,3 @@ for path in tqdm(xml_paths, total=len(xml_paths)):
                 "part_num": batch_num
             }
         )
-print(bad_cnt.most_common())

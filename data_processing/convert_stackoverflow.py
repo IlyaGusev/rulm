@@ -10,7 +10,7 @@ from collections import defaultdict
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from data_processing.util import PlainArchive, normalize, remove_non_printable
+from data_processing.util import PlainArchive, TextProcessor
 
 
 def remove_line_breaks(text):
@@ -82,6 +82,7 @@ class Converter:
         self.min_score = min_score
         self.max_responses = max_responses
         self.archive = PlainArchive(output_path)
+        self.processor = TextProcessor()
 
     def __call__(self):
         for event, elem in tqdm(etree.iterparse(self.xml_path, events=('end',)), desc="Parsing {} XML file".format(self.xml_path)):
@@ -152,11 +153,9 @@ class Converter:
                         out_str += 'Вопрос: '
                         if parent["Title"] is not None:
                             fragment = BeautifulSoup(parent["Title"], "html.parser").get_text()
-                            fragment = normalize(fragment)
                             out_str += '{} '.format(fragment)
                         if parent["Body"] is not None:
                             fragment = BeautifulSoup(parent["Body"], "html.parser").get_text()
-                            fragment = normalize(fragment)
                             out_str += '{} '.format(fragment)
                         if parent["Answers"] is not None:
                             key_score_dict = {}
@@ -168,11 +167,11 @@ class Converter:
                                 if count >= self.max_responses:
                                     break
                                 fragment = BeautifulSoup(parent["Answers"][k]["Body"], "html.parser").get_text()
-                                fragment = normalize(fragment)
                                 out_str += 'Ответ: {}\n'.format(fragment)
                                 count += 1
-                        text = out_str
-                        self.archive.add_data(text, meta={"source": "stackoverflow"})
+                        text = self.processor(out_str)
+                        if text and len(text) > 50:
+                            self.archive.add_data(text, meta={"source": "stackoverflow"})
         for key in keys_to_del:
             self.questions.pop(key, None)
 

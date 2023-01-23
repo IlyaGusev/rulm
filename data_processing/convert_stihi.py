@@ -4,26 +4,13 @@ import json
 from tqdm import tqdm
 from corus import load_taiga_stihi_metas, load_taiga_stihi
 
-from data_processing.lang_detector import FasttextLanguageDetector
-from data_processing.util import PlainArchive, remove_non_printable, normalize
-
-BAD_SUBSTRINGS = (
-    "• ",
-    "+79",
-    "@gmail",
-    "var ",
-    "<a ",
-    "<p ",
-    ".jpg",
-    "http:",
-    "https:"
-)
+from data_processing.util import PlainArchive, TextProcessor
 
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
-lang_detector = FasttextLanguageDetector()
-archive = PlainArchive(output_path)
+output_archive = PlainArchive(output_path)
+text_processor = TextProcessor()
 metas = load_taiga_stihi_metas(input_path)
 
 metas_dict = dict()
@@ -40,30 +27,13 @@ for record in tqdm(records):
     if meta is not None:
         author = meta.author.name
         title = meta.title
-
     text = record.text
-    if lang_detector(text)[0] != "ru":
-        continue
-
-    text = normalize(text)
-    lines = [remove_non_printable(line.strip()) for line in text.split("\n")]
-    lines = [line.strip("*").strip("=").strip("~") for line in lines]
-    lines = [" ".join(line.split()) for line in lines]
-    fixed_lines = []
-    for line in lines:
-        if len(set(line.replace(" ", "").strip())) <= 1:
-            continue
-        fixed_lines.append(line)
-
-    text = "\n".join(fixed_lines)
-    if len(text) < 100:
-        continue
-    has_bad_ss = any(ss in text for ss in BAD_SUBSTRINGS)
-    if has_bad_ss:
+    text = text_processor(text)
+    if not text:
         continue
     if text.count("...") >= 5:
         continue
-    archive.add_data(
+    output_archive.add_data(
         text=text,
         meta={
             "source": "stihi",

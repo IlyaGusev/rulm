@@ -9,7 +9,7 @@ from corus import load_wiki
 import razdel
 
 from data_processing.lang_detector import FasttextLanguageDetector
-from data_processing.util import normalize, remove_non_printable, PlainArchive
+from data_processing.util import PlainArchive, TextProcessor
 
 RE_MARKUP = re.compile(
     r'<br( [^>]+)?>|'               # e.g. <br>, <br style="clear: both">
@@ -69,13 +69,15 @@ def count_punct_part(sentence):
     return punct_count / all_count
 
 
+TEXT_PROCESSOR = TextProcessor()
+
 def preprocess_text(text):
-    text = normalize(text)
+    text = TEXT_PROCESSOR(text)
+    if not text:
+        return None
     paragraphs = text.split("\n")
-    paragraphs = [p.strip() for p in paragraphs if p.strip()]
     paragraphs = [p if p[-1] in string.punctuation else p + "." for p in paragraphs]
     text = " ".join(paragraphs)
-    text = remove_non_printable(text)
 
     # remove templates
     text = re.sub(r"\[\d+?\]", " ", text)
@@ -89,10 +91,8 @@ def preprocess_text(text):
     headers = RE_HEADERS.finditer(text)
     for header in headers:
         header = header.group()
-        #print(header)
         if len(header) > 100:
             continue
-        #new_header = " " + header.strip("=").strip() + ". "
         text = text.replace(header, " ")
     text = text.replace("=", " ")
 
@@ -106,13 +106,9 @@ def preprocess_text(text):
     # remove footnotes
     text = re.sub(r" \^ .+", " ", text)
 
-    text = text.replace(" ,", ",")
-    text = text.replace(" .", ". ")
-    text = text.replace(".", ". ")
-    text = text.replace(" .", ". ")
-    text = text.replace(" ,", ",")
-    text = " ".join(text.split())
-    text = text.replace(". ,", ".,")
+    text = TEXT_PROCESSOR(text)
+    if not text:
+        return None
 
     sentences = [s.text for s in razdel.sentenize(text)]
     sentences = [s for s in sentences if len(s) > 5]
@@ -125,7 +121,6 @@ def preprocess_text(text):
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
-lang_detector = FasttextLanguageDetector()
 records = load_wiki(input_path)
 archive = PlainArchive(output_path)
 for record in tqdm(records):
@@ -135,7 +130,7 @@ for record in tqdm(records):
     if len(text) < 300:
         continue
     text = preprocess_text(text)
-    if lang_detector(text)[0] != "ru":
+    if not text:
         continue
     if len(text) < 300:
         continue

@@ -6,30 +6,18 @@ import unicodedata
 import razdel
 from tqdm import tqdm
 
-from data_processing.lang_detector import FasttextLanguageDetector
-from data_processing.util import gen_batch, remove_non_printable, normalize, PlainArchive
+from data_processing.util import gen_batch, PlainArchive, TextProcessor
 
 
 RE_ID = re.compile(r'^(\d+)\.fb2')
 RE_BRACKETS = re.compile(r"\([^\)]*\)", flags=re.MULTILINE)
 RE_SQUARE_BRACKETS = re.compile(r"\[[^\]]*\]", flags=re.MULTILINE)
-BAD_SUBSTRINGS = (
-    "• ",
-    "+79",
-    "@gmail",
-    "var ",
-    "<a ",
-    "<p ",
-    ".jpg",
-    "http:",
-    "https:"
-)
-
+TEXT_PROCESSOR = TextProcessor(join_lines=True)
 
 def preprocess_text(text):
-    text = unicodedata.normalize("NFKC", text)
-    text = text.replace("\xa0", " ")
-    text = "".join(c for c in text if c.isprintable())
+    text = TEXT_PROCESSOR(text)
+    if text is None:
+        return
 
     brackets = RE_BRACKETS.finditer(text)
     for bracket in brackets:
@@ -51,33 +39,25 @@ def preprocess_text(text):
     for s in sentences:
         if len(s) > 1500:
             return
-        if any(ss in s for ss in BAD_SUBSTRINGS):
-            print(s)
-            return
 
-    text = " ".join(text.split())
-    text = normalize(text)
-    text = remove_non_printable(text)
-    return text.strip()
+    return " ".join(text.split()).strip()
 
 input_path = sys.argv[1]
 output_path = sys.argv[2]
 
-lang_detector = FasttextLanguageDetector()
 archive = PlainArchive(output_path)
 
 with open(input_path, "r") as r:
     def flush(text_id, fragments):
         text = " ".join(fragments)
-        sentences = [s.text for s in razdel.sentenize(text)]
         if text.count("...") > 100:
             return
         if text.count("!!!") > 100:
             return
+
+        sentences = [s.text for s in razdel.sentenize(text)]
         for fragment_num, fragment_sentences in enumerate(gen_batch(sentences, 500)):
             fragment = " ".join(fragment_sentences)
-            if lang_detector(fragment)[0] != "ru":
-                continue
             fragment = preprocess_text(fragment)
             if not fragment:
                 continue
