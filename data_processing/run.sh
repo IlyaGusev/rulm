@@ -25,3 +25,4 @@ python3 -m data_processing.convert_buriy_news $OUTPUT_DIR/buriy_news_2015_part2.
 python3 -m data_processing.save_hf $OUTPUT_DIR/hf.jsonl
 
 python3 -m data_processing.merge --output-path /data/corpora/merged.jsonl -f /data/corpora/math.jsonl /data/corpora/librusec.jsonl /data/corpora/buriy_news_1.jsonl /data/corpora/buriy_news_2.jsonl /data/corpora/buriy_news_3.jsonl /data/corpora/ruwiki.jsonl /data/corpora/stihi.jsonl /data/corpora/stackoverflow.jsonl /data/corpora/opensubtitles.jsonl /data/corpora/hf.jsonl
+sort /data/corpora/merged.jsonl -S 50% --random-sort > /data/corpora/merged_shuf.jsonl

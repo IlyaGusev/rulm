@@ -49,6 +49,8 @@ if __name__ == "__main__":
         lines = full_text.split("\n")
         for batch_num, batch in enumerate(gen_batch(lines, 1000)):
             text = "\n".join(batch)
+            if not text:
+                continue
             archive.add_data(
                 text=text,
                 meta={

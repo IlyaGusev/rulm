@@ -2,8 +2,22 @@ from itertools import tee
 from typing import List, Text
 import unicodedata
 import json
+import random
+import zstandard
+import io
+import jsonlines
+import simdjson
 
 from data_processing.lang_detector import FasttextLanguageDetector
+
+parser = simdjson.Parser()
+
+def parse_json(x):
+    try:
+        return parser.parse(x).as_dict()
+    except ValueError:
+        return
+
 
 BAD_SUBSTRINGS = (
     "+79",
@@ -104,7 +118,7 @@ class TextProcessor:
 def read_jsonl(path):
     with open(path) as f:
         for line in f:
-            yield json.loads(line)
+            yield parse_json(line)
 
 
 class PlainArchive:
@@ -116,7 +130,7 @@ class PlainArchive:
     def __iter__(self):
         assert self.mode == "r"
         for line in self.fh:
-            yield json.loads(line)
+            yield parse_json(line)
 
     def add_data(self, text, meta={}):
         assert self.mode == "w"

@@ -20,6 +20,7 @@ def tokenize(element, tokenizer, block_size):
 
 
 def train(
+    dataset_path,
     train_path,
     val_path,
     tokenizer_path,
@@ -28,14 +29,20 @@ def train(
     sample_rate,
     config_path
 ):
+    assert dataset_path or (train_path and val_path)
+
     with open(config_path) as r:
         config = json.load(r)
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    datasets = load_dataset("rulm/jsonl_loader.py", data_files={
-        "train": [train_path],
-        "val": [val_path]
-    }, streaming=True)
+
+    if dataset_path:
+        datasets = load_dataset(dataset_path, streaming=True)
+    else:
+        datasets = load_dataset("rulm/jsonl_loader.py", data_files={
+            "train": [train_path],
+            "val": [val_path]
+        }, streaming=True)
 
     block_size = config["block_size"]
     local_tokenize = lambda x: tokenize(x, tokenizer, block_size)
@@ -106,8 +113,9 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train-path", required=True)
-    parser.add_argument("--val-path", required=True)
+    parser.add_argument("--dataset-path", default=None)
+    parser.add_argument("--train-path", default=None)
+    parser.add_argument("--val-path", default=None)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--sample-rate", type=float, default=1.0)

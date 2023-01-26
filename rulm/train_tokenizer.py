@@ -9,12 +9,17 @@ from rulm.util import read_jsonl
 
 
 def train_tokenizer(
+    dataset_path,
     train_path,
     output_dir,
     sample_rate
 ):
+    assert train_path or dataset_path
+    if train_path:
+        dataset = load_dataset("rulm/jsonl_loader.py", data_files={"train": [train_path]}, streaming=True)["train"]
+    elif dataset_path:
+        dataset = load_dataset(dataset_path, streaming=True)["train"]
 
-    dataset = load_dataset("rulm/jsonl_loader.py", data_files={"train": [train_path]}, streaming=True)["train"]
     def read_texts():
         for r in dataset:
             if random.random() < sample_rate:
@@ -57,7 +62,8 @@ def train_tokenizer(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train-path", required=True)
+    parser.add_argument("--dataset-path", default=None)
+    parser.add_argument("--train-path", default=None)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--sample-rate", type=float, default=1.0)
     args = parser.parse_args()
