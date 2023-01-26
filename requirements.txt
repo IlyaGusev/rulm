@@ -4,5 +4,7 @@ pygtrie >= 2.2
 torch >= 1.10.0
 transformers
 datasets
+zstandard
+jsonlines
 pytest-cov >= 2.6.1
 codecov >= 2.0.15
