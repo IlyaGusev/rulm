@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+from itertools import chain
 
 from datasets import load_dataset
 from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
@@ -8,15 +9,29 @@ from transformers import DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
 
 
-def tokenize(element, tokenizer, block_size):
+def tokenize(examples, tokenizer):
     outputs = tokenizer(
-        element["text"],
-        truncation=True,
-        max_length=block_size,
-        return_overflowing_tokens=True,
-        padding=True
+        examples["text"],
+        truncation=False,
+        max_length=None,
+        padding=False
     )
-    return {"input_ids": outputs["input_ids"]}
+    return outputs
+
+
+def group(examples, block_size):
+    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+    total_length = len(concatenated_examples[list(examples.keys())[0]])
+
+    # Drop of reminder, fix me?
+    if total_length >= block_size:
+        total_length = (total_length // block_size) * block_size
+
+    result = {
+        k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+        for k, t in concatenated_examples.items()
+    }
+    return result
 
 
 def train(
@@ -50,15 +65,20 @@ def train(
         lambda x: random.random() < sample_rate
     )
 
-    block_size = config["block_size"]
     tokenized_datasets = datasets.map(
-        lambda x: tokenize(x, tokenizer, block_size),
+        lambda x: tokenize(x, tokenizer),
         batched=True,
         remove_columns=["text"]
     )
 
-    train_dataset = tokenized_datasets["train"]
-    val_dataset = tokenized_datasets["validation"]
+    block_size = config["block_size"]
+    grouped_datasets = tokenized_datasets.map(
+        lambda x: group(x, block_size),
+        batched=True
+    )
+
+    train_dataset = grouped_datasets["train"]
+    val_dataset = grouped_datasets["validation"]
     train_dataset.shuffle(seed=42, buffer_size=10000)
 
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
