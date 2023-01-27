@@ -23,10 +23,7 @@ def group(examples, block_size):
     concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
     total_length = len(concatenated_examples[list(examples.keys())[0]])
 
-    # Drop of reminder, fix me?
-    if total_length >= block_size:
-        total_length = (total_length // block_size) * block_size
-
+    # Padding for the last example is handled in data collator
     result = {
         k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
         for k, t in concatenated_examples.items()
@@ -61,27 +58,27 @@ def train(
             "val": [val_path]
         }, streaming=True)
 
+    block_size = config["block_size"]
     datasets = datasets.filter(
         lambda x: random.random() < sample_rate
-    )
-
-    tokenized_datasets = datasets.map(
+    ).map(
         lambda x: tokenize(x, tokenizer),
         batched=True,
         remove_columns=["text"]
-    )
-
-    block_size = config["block_size"]
-    grouped_datasets = tokenized_datasets.map(
+    ).map(
         lambda x: group(x, block_size),
         batched=True
     )
 
-    train_dataset = grouped_datasets["train"]
-    val_dataset = grouped_datasets["validation"]
+    train_dataset = datasets["train"]
+    val_dataset = datasets["validation"]
     train_dataset.shuffle(seed=42, buffer_size=10000)
 
-    data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer,
+        mlm=False,
+        pad_to_multiple_of=block_size
+    )
 
     model_params = config["model"]
     model_type = model_params.pop("type")

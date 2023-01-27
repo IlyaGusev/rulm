@@ -5,15 +5,26 @@ from transformers import AutoTokenizer
 from tqdm import tqdm
 
 
-def tokenize(element, tokenizer, block_size):
+def tokenize(examples, tokenizer):
     outputs = tokenizer(
-        element["text"],
-        truncation=True,
-        max_length=block_size,
-        return_overflowing_tokens=True,
-        padding=True
+        examples["text"],
+        truncation=False,
+        max_length=None,
+        padding=False
     )
-    return {"input_ids": outputs["input_ids"]}
+    return outputs
+
+
+def group(examples, block_size):
+    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+    total_length = len(concatenated_examples[list(examples.keys())[0]])
+
+    # Padding for the last example is handled in data collator
+    result = {
+        k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+        for k, t in concatenated_examples.items()
+    }
+    return result
 
 
 def calc_blocks(
@@ -25,13 +36,16 @@ def calc_blocks(
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
 
     datasets = load_dataset(dataset_path, streaming=streaming)
-    tokenized_datasets = datasets.map(
-        lambda x: tokenize(x, tokenizer, block_size),
+    datasets = datasets.map(
+        lambda x: tokenize(x, tokenizer),
         batched=True,
         remove_columns=["text"]
+    ).map(
+        lambda x: group(x, block_size),
+        batched=True
     )
 
-    train_dataset = tokenized_datasets["train"]
+    train_dataset = datasets["train"]
     count = 0
     for example in tqdm(train_dataset):
         count += 1
