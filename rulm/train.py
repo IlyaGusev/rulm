@@ -72,6 +72,7 @@ def train(
         eos_token_id=tokenizer.eos_token_id,
         **model_params
     )
+    print(model_config)
 
     model = AutoModelForCausalLM.from_config(model_config)
     model_size = sum(t.numel() for t in model.parameters())
@@ -95,12 +96,14 @@ def train(
         lr_scheduler_type=trainer_config.get("lr_scheduler_type", "cosine"),
         warmup_steps=trainer_config.get("warmup_steps", 1000),
         num_train_epochs=trainer_config.get("num_train_epochs", None),
-        max_steps=trainer_config.get("max_steps", 12000000),
+        max_steps=trainer_config.get("max_steps", 100000),
         gradient_accumulation_steps=trainer_config.get("gradient_accumulation_steps", 8),
         fp16=trainer_config.get("fp16", False),
         bf16=trainer_config.get("bf16", False),
+        half_precision_backend=trainer_config.get("half_precision_backend", "auto"),
+        fp16_opt_level=trainer_config.get("fp16_opt_level", "O2"),
         gradient_checkpointing=trainer_config.get("gradient_checkpointing", False),
-        optim=trainer_config.get("optim", "adamw_hf"),
+        optim=trainer_config.get("optim", "adamw_apex_fused"),
         save_total_limit=1,
         load_best_model_at_end=True,
         report_to="none",
