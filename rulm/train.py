@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import random
 from itertools import chain
 
@@ -8,22 +9,34 @@ from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
 from transformers import DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
 
+os.environ["WANDB_PROJECT"] = "rulm"
 
-def tokenize(examples, tokenizer):
+MAX_TOKENS = 10000000
+ZEROS = [0 for _ in range(MAX_TOKENS)]
+ONES = [1 for _ in range(MAX_TOKENS)]
+
+def tokenize(examples, tokenizer, position_ids):
     outputs = tokenizer(
         examples["text"],
-        truncation=False,
-        max_length=None,
-        padding=False
+        truncation=True,
+        max_length=MAX_TOKENS,
+        padding=False,
+        return_length=True
     )
+    lengths = outputs.pop("length")
+    outputs["position_ids"] = [position_ids[:l] for l in lengths]
+    outputs["token_type_ids"] = [ZEROS[:l] if i % 2 == 0 else ONES[:l] for i, l in enumerate(lengths)]
     return outputs
 
 
 def group(examples, block_size):
-    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-    total_length = len(concatenated_examples[list(examples.keys())[0]])
+    concatenated_examples = {k: list(chain(*v)) for k, v in examples.items()}
+    some_key = list(examples.keys())[0]
+    total_length = len(concatenated_examples[some_key])
 
-    # Padding for the last example is handled in data collator
+    # Remove reminder to skip padding handling
+    total_length = (total_length // block_size) * block_size
+
     result = {
         k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
         for k, t in concatenated_examples.items()
@@ -40,6 +53,7 @@ def train(
     checkpoint,
     sample_rate,
     config_path,
+    report_to,
     local_rank
 ):
     assert dataset_path or (train_path and val_path)
@@ -48,21 +62,14 @@ def train(
         config = json.load(r)
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    tokenizer.padding_side = "right"
-
-    if dataset_path:
-        datasets = load_dataset(dataset_path, streaming=True)
-    else:
-        datasets = load_dataset("rulm/jsonl_loader.py", data_files={
-            "train": [train_path],
-            "val": [val_path]
-        }, streaming=True)
+    datasets = load_dataset(dataset_path, streaming=True)
 
     block_size = config["block_size"]
+    position_ids = [i % block_size for i in range(MAX_TOKENS)]
     datasets = datasets.filter(
         lambda x: random.random() < sample_rate
     ).map(
-        lambda x: tokenize(x, tokenizer),
+        lambda x: tokenize(x, tokenizer, position_ids),
         batched=True,
         remove_columns=["text"]
     ).map(
@@ -76,8 +83,7 @@ def train(
 
     data_collator = DataCollatorForLanguageModeling(
         tokenizer,
-        mlm=False,
-        pad_to_multiple_of=block_size
+        mlm=False
     )
 
     model_params = config["model"]
@@ -121,9 +127,9 @@ def train(
         fp16_opt_level=trainer_config.get("fp16_opt_level", "O2"),
         gradient_checkpointing=trainer_config.get("gradient_checkpointing", False),
         optim=trainer_config.get("optim", "adamw_apex_fused"),
-        save_total_limit=1,
         load_best_model_at_end=True,
-        report_to="none",
+        save_total_limit=1,
+        report_to=report_to,
         deepspeed=deepspeed_config
     )
 
@@ -150,6 +156,7 @@ if __name__ == "__main__":
     parser.add_argument("--sample-rate", type=float, default=1.0)
     parser.add_argument("--config-path", required=True)
     parser.add_argument("--tokenizer-path", required=True)
+    parser.add_argument("--report-to", default="wandb")
     parser.add_argument("--local_rank", type=int, default=0)
     args = parser.parse_args()
     train(**vars(args))
