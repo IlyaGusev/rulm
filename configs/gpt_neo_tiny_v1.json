@@ -1,5 +1,5 @@
 {
-    "block_size": 1024,
+    "block_size": 512,
     "model": {
         "type": "EleutherAI/gpt-neo-125M",
         "num_layers": 6,
@@ -24,18 +24,19 @@
         ],
         "num_heads": 8,
         "hidden_size": 512,
+        "max_position_embeddings": 512,
         "use_cache": true
     },
     "trainer": {
-        "batch_size": 22,
+        "batch_size": 44,
         "gradient_accumulation_steps": 8,
-        "eval_steps": 2000,
+        "eval_steps": 1000,
         "logging_steps": 50,
         "learning_rate": 0.0006,
-        "max_steps": 40000,
+        "max_steps": 20000,
         "lr_scheduler_type": "cosine",
         "warmup_steps": 1000,
-        "weight_decay": 0.1,
+        "weight_decay": 0.01,
         "fp16": true,
         "gradient_checkpointing": false,
         "optim": "adamw_apex_fused",

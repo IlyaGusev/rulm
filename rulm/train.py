@@ -141,7 +141,7 @@ def train(
         eval_dataset=val_dataset,
         data_collator=data_collator
     )
-    result = trainer.train(checkpoint)
+    trainer.train(checkpoint)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
 
