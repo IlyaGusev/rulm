@@ -10,7 +10,7 @@ from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
 from transformers import DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
 
-os.environ["WANDB_PROJECT"] = "rulm"
+os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
 MAX_TOKENS = 10000000
 ZEROS = [0 for _ in range(MAX_TOKENS)]
@@ -142,10 +142,12 @@ def train(
         eval_dataset=val_dataset,
         data_collator=data_collator
     )
-    trainer.train(checkpoint)
-    model.save_pretrained(output_dir)
-    tokenizer.save_pretrained(output_dir)
-    wandb.save(output_dir + "/*")
+
+    with wandb.init(project="rulm", name=config_path) as run:
+        trainer.train(checkpoint)
+        model.save_pretrained(output_dir)
+        tokenizer.save_pretrained(output_dir)
+        wandb.save(output_dir + "/*")
 
 
 if __name__ == "__main__":
