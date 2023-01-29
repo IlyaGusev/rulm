@@ -1,4 +1,5 @@
 import argparse
+import random
 from itertools import chain
 
 from datasets import load_dataset
@@ -40,7 +41,6 @@ def group(examples, block_size):
     return result
 
 
-
 def preprocess(
     dataset_path,
     tokenizer_path,
@@ -53,7 +53,9 @@ def preprocess(
     datasets = load_dataset(dataset_path, streaming=streaming)
 
     position_ids = [i % block_size for i in range(MAX_TOKENS)]
-    datasets = datasets.map(
+    datasets = datasets.filter(
+        lambda x: random.random() < 1.0
+    ).map(
         lambda x: tokenize(x, tokenizer, position_ids),
         batched=True,
         remove_columns=["text"]
@@ -62,7 +64,7 @@ def preprocess(
         batched=True
     )
 
-    datasets.save_to_disk("rulm_tokenized", max_shard_size="1GB")
+    datasets.save_to_disk(output_path, max_shard_size="1GB")
 
 
 if __name__ == "__main__":
