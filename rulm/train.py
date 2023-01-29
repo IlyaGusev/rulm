@@ -4,6 +4,7 @@ import os
 import random
 from itertools import chain
 
+import wandb
 from datasets import load_dataset
 from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
 from transformers import DataCollatorForLanguageModeling
@@ -144,6 +145,7 @@ def train(
     trainer.train(checkpoint)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
+    wandb.save(output_dir + "/*")
 
 
 if __name__ == "__main__":
