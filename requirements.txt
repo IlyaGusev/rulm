@@ -1,11 +1,9 @@
 --extra-index-url https://download.pytorch.org/whl/cu115
 numpy >= 1.12.1
 scipy >= 1.0.1
-pygtrie >= 2.2
 torch == 1.11.0+cu115
 transformers
 datasets
 zstandard
 jsonlines
-pytest-cov >= 2.6.1
-codecov >= 2.0.15
+wandb
