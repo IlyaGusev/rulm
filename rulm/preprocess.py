@@ -65,8 +65,8 @@ def preprocess(
     ).cast(Features({
         "input_ids": Sequence(Value("uint16")),
         "position_ids": Sequence(Value("uint16")),
-        "token_type_ids": Sequence(Value("bool")),
-        "attention_mask": Sequence(Value("bool"))
+        "token_type_ids": Sequence(Value("uint8")),
+        "attention_mask": Sequence(Value("uint8"))
     }))
 
     datasets.save_to_disk(output_path, max_shard_size="1GB")
