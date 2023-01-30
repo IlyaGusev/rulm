@@ -2,7 +2,7 @@ import argparse
 import random
 from itertools import chain
 
-from datasets import load_dataset
+from datasets import load_dataset, Value, Features, Sequence
 from transformers import AutoTokenizer
 from tqdm import tqdm
 
@@ -62,7 +62,12 @@ def preprocess(
     ).map(
         lambda x: group(x, block_size),
         batched=True
-    )
+    ).cast(Features({
+        "input_ids": Sequence(Value("uint16")),
+        "position_ids": Sequence(Value("uint16")),
+        "token_type_ids": Sequence(Value("bool")),
+        "attention_mask": Sequence(Value("bool"))
+    }))
 
     datasets.save_to_disk(output_path, max_shard_size="1GB")
 

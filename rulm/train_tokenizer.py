@@ -12,7 +12,8 @@ def train_tokenizer(
     dataset_path,
     train_path,
     output_dir,
-    sample_rate
+    sample_rate,
+    vocab_size
 ):
     assert train_path or dataset_path
     if train_path:
@@ -31,11 +32,18 @@ def train_tokenizer(
         normalizers.Replace(Regex(" {2,}"), " "),
         normalizers.Strip()
     ])
-    tokenizer.pre_tokenizer = pre_tokenizers.Sequence([pre_tokenizers.Metaspace(), pre_tokenizers.Digits(individual_digits=True)])
+    tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.Metaspace(),
+        pre_tokenizers.Digits(individual_digits=True)
+    ])
     tokenizer.decoder = decoders.Metaspace()
 
     special_tokens = ["<pad>", "<unk>", "<s>", "</s>", "<sep>"]
-    trainer = trainers.UnigramTrainer(vocab_size=32768, special_tokens=special_tokens, unk_token="<unk>")
+    trainer = trainers.UnigramTrainer(
+        vocab_size=vocab_size,
+        special_tokens=special_tokens,
+        unk_token="<unk>"
+    )
     tokenizer.train_from_iterator(read_texts(), trainer=trainer)
 
     bos_token_id = tokenizer.token_to_id("<s>")
@@ -66,5 +74,6 @@ if __name__ == "__main__":
     parser.add_argument("--train-path", default=None)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--sample-rate", type=float, default=1.0)
+    parser.add_argument("--vocab-size", type=int, default=50000)
     args = parser.parse_args()
     train_tokenizer(**vars(args))
