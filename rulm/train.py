@@ -5,7 +5,7 @@ import random
 from itertools import chain
 
 import wandb
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
 from transformers import DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
@@ -25,22 +25,26 @@ def train(
     config_path,
     report_to,
     local_rank,
-    preprocess
-    streaming
+    preprocess,
+    streaming,
+    from_disk
 ):
     with open(config_path) as r:
         config = json.load(r)
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    datasets = load_dataset(dataset_path, streaming=streaming)
-    datasets = datasets.filter(
-        lambda x: random.random() < sample_rate
-    )
+
+    if not from_disk:
+        datasets = load_dataset(dataset_path, streaming=streaming)
+    else:
+        datasets = load_from_disk(dataset_path)
 
     block_size = config["block_size"]
     if preprocess:
         position_ids = [i % block_size for i in range(MAX_TOKENS)]
-        datasets = datasets.map(
+        datasets = datasets.filter(
+            lambda x: random.random() < sample_rate
+        ).map(
             lambda x: tokenize(x, tokenizer, position_ids),
             batched=True,
             remove_columns=["text"]
@@ -51,7 +55,6 @@ def train(
 
     train_dataset = datasets["train"]
     val_dataset = datasets["validation"]
-    train_dataset.shuffle(seed=42, buffer_size=10000)
 
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
@@ -103,6 +106,7 @@ def train(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-path", required=True)
+    parser.add_argument("--from-disk", action="store_true", default=False)
     parser.add_argument("--preprocess", action="store_true", default=False)
     parser.add_argument("--streaming", action="store_true", default=False)
     parser.add_argument("--output-dir", required=True)
