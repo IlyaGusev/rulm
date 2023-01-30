@@ -8,8 +8,6 @@ from tqdm import tqdm
 
 
 MAX_TOKENS = 10000000
-ZEROS = [0 for _ in range(MAX_TOKENS)]
-ONES = [1 for _ in range(MAX_TOKENS)]
 
 
 def tokenize(examples, tokenizer, position_ids):
@@ -20,9 +18,9 @@ def tokenize(examples, tokenizer, position_ids):
         padding=False,
         return_length=True
     )
+    outputs.pop("attention_mask")
     lengths = outputs.pop("length")
     outputs["position_ids"] = [position_ids[:l] for l in lengths]
-    outputs["token_type_ids"] = [ZEROS[:l] if i % 2 == 0 else ONES[:l] for i, l in enumerate(lengths)]
     return outputs
 
 
@@ -41,6 +39,11 @@ def group(examples, block_size):
     return result
 
 
+def process(examples, tokenizer, block_size, position_ids):
+    examples = tokenize(examples, tokenizer, position_ids)
+    return group(examples, block_size)
+
+
 def preprocess(
     dataset_path,
     tokenizer_path,
@@ -53,20 +56,14 @@ def preprocess(
     datasets = load_dataset(dataset_path, streaming=streaming)
 
     position_ids = [i % block_size for i in range(MAX_TOKENS)]
-    datasets = datasets.filter(
-        lambda x: random.random() < 1.0
-    ).map(
-        lambda x: tokenize(x, tokenizer, position_ids),
+
+    datasets = datasets.map(
+        lambda x: process(x, tokenizer, block_size, position_ids),
         batched=True,
         remove_columns=["text"]
-    ).map(
-        lambda x: group(x, block_size),
-        batched=True
     ).cast(Features({
         "input_ids": Sequence(Value("uint16")),
-        "position_ids": Sequence(Value("uint16")),
-        "token_type_ids": Sequence(Value("uint8")),
-        "attention_mask": Sequence(Value("uint8"))
+        "position_ids": Sequence(Value("uint16"))
     }))
 
     datasets.save_to_disk(output_path, max_shard_size="1GB")
