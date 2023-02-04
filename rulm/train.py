@@ -27,7 +27,8 @@ def train(
     local_rank,
     preprocess,
     streaming,
-    from_disk
+    from_disk,
+    in_memory
 ):
     with open(config_path) as r:
         config = json.load(r)
@@ -37,7 +38,7 @@ def train(
     if not from_disk:
         datasets = load_dataset(dataset_path, streaming=streaming)
     else:
-        datasets = load_from_disk(dataset_path)
+        datasets = load_from_disk(dataset_path, keep_in_memory=in_memory)
 
     block_size = config["block_size"]
     if preprocess:
@@ -107,6 +108,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-path", required=True)
     parser.add_argument("--from-disk", action="store_true", default=False)
+    parser.add_argument("--in-memory", action="store_true", default=None)
     parser.add_argument("--preprocess", action="store_true", default=False)
     parser.add_argument("--streaming", action="store_true", default=False)
     parser.add_argument("--output-dir", required=True)

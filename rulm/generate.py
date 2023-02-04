@@ -17,7 +17,7 @@ token_type_ids = tokens["token_type_ids"][:, :-1]
 print(tokens)
 output_ids = model.generate(
     input_ids=input_ids,
-    attention_mask=attention_mask, token_type_ids=token_type_ids,
+    #attention_mask=attention_mask, token_type_ids=token_type_ids,
     max_length=64, num_beams=1, do_sample=True, top_p=0.95
 )[0]
 print(tokenizer.decode(output_ids))
