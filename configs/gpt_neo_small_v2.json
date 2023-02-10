@@ -2,48 +2,29 @@
     "block_size": 512,
     "model": {
         "type": "EleutherAI/gpt-neo-125M",
-        "num_layers": 6,
         "attention_dropout": 0.0,
         "embed_dropout": 0.0,
-        "attention_layers": [
-            "global",
-            "local",
-            "global",
-            "local",
-            "global",
-            "local"
-        ],
-        "attention_types": [
-            [
-                [
-                    "global",
-                    "local"
-                ],
-                3
-            ]
-        ],
-        "num_heads": 8,
-        "hidden_size": 512,
         "max_position_embeddings": 512,
         "use_cache": true
     },
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 44,
-        "per_device_eval_batch_size": 44,
-        "gradient_accumulation_steps": 8,
-        "eval_steps": 1000,
-        "save_steps": 1000,
+        "per_device_train_batch_size": 24,
+        "per_device_eval_batch_size": 24,
+        "gradient_accumulation_steps": 16,
+        "eval_steps": 2000,
+        "save_steps": 2000,
         "logging_steps": 500,
         "learning_rate": 0.0006,
         "num_train_epochs": null,
-        "max_steps": 20000,
+        "max_steps": 30000,
         "lr_scheduler_type": "cosine",
         "warmup_steps": 1000,
         "weight_decay": 0.01,
         "fp16": true,
         "bf16": false,
         "gradient_checkpointing": false,
+        "torch_compile": true,
         "optim": "adamw_apex_fused",
         "half_precision_backend": "auto",
         "fp16_opt_level": "O2"

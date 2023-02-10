@@ -1,7 +1,7 @@
---extra-index-url https://download.pytorch.org/whl/cu115
+--extra-index-url https://download.pytorch.org/whl/nightly/cu118
 numpy >= 1.12.1
 scipy >= 1.0.1
-torch == 1.11.0+cu115
+torch[dynamo]
 transformers
 datasets
 zstandard
