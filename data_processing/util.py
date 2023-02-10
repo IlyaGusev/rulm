@@ -1,10 +1,13 @@
+import string
 from itertools import tee
 from typing import List, Text
 import unicodedata
 import json
 import random
-import zstandard
 import io
+import re
+
+import zstandard
 import jsonlines
 import simdjson
 
@@ -27,8 +30,11 @@ BAD_SUBSTRINGS = (
     "<p ",
     ".jpg",
     "http:",
-    "https:"
+    "https:",
+    "www."
 )
+
+STOP_BEFORE_LETTER = re.compile(r'\.(\w)')
 
 lang_detector = FasttextLanguageDetector()
 
@@ -58,22 +64,40 @@ class TextProcessor:
         languages=("ru", ),
         join_lines=False,
         normalization="NFKC",
-        min_chars=30
+        min_chars=30,
+        min_text_part=0.9,
+        fix_punct=True,
+        fix_spaces=True,
+        fix_short_lines=True,
+        check_languages=True,
+        check_bad_ss=True
     ):
         self.languages = languages
         self.join_lines = join_lines
         self.normalization = normalization
         self.min_chars = min_chars
+        self.min_text_part = min_text_part
+        self.fix_punct = fix_punct
+        self.fix_spaces = fix_spaces
+        self.fix_short_lines = fix_short_lines
+        self.check_languages = check_languages
+        self.check_bad_ss = check_bad_ss
 
     def remove_non_printable(self, text):
         return "".join(c for c in text if c.isprintable())
 
-    def fix_punct(self, line):
+    def fix_line_punct(self, line):
         line = " ".join(line.split()).strip()
         line = line.strip("*").strip("=").strip("~").strip("•")
         line = line.replace(" ,", ",")
         line = line.replace(" .", ". ")
-        line = line.replace(",", ", ")
+        line = STOP_BEFORE_LETTER.sub(r'. \1', line)
+        line = line.replace(" ?", "?")
+        line = line.replace(" !", "!")
+        line = line.replace(" %", "%")
+        line = line.replace(" ;", ";")
+        line = line.replace(" :", ":")
+        line = line.replace(":", ": ")
         line = " ".join(line.split()).strip()
         line = line.replace(". ,", ".,")
         return line
@@ -88,10 +112,17 @@ class TextProcessor:
         text = text.replace("&le;", "<=")
         text = text.replace("&amp;", "&")
         text = text.replace("&nbsp;", " ")
-        lines = [self.remove_non_printable(line) for line in text.split("\n")]
-        lines = [self.fix_punct(line) for line in lines]
-        lines = [" ".join(line.split()).strip() for line in lines]
-        lines = [l for l in lines if len(set(l.replace(" ", "").strip())) > 1]
+
+        lines = text.split("\n")
+        lines = [self.remove_non_printable(line) for line in lines]
+
+        if self.fix_punct:
+            lines = [self.fix_line_punct(line) for line in lines]
+        if self.fix_spaces:
+            lines = [" ".join(line.split()).strip() for line in lines]
+        if self.fix_short_lines:
+            lines = [l for l in lines if len(set(l.replace(" ", "").strip())) > 1]
+
         if self.join_lines:
             text = " ".join(lines)
         else:
@@ -104,13 +135,29 @@ class TextProcessor:
     def has_bad_language(self, text):
         return lang_detector(text)[0] not in self.languages
 
+    def count_text_part(self, sentence):
+        text_count = 0.0
+        all_count = 0.0
+        for ch in sentence:
+            all_count += 1.0
+            if ch in string.punctuation:
+                continue
+            if ch.isnumeric():
+                continue
+            if ch in string.ascii_letters:
+                continue
+            text_count += 1.0
+        return text_count / all_count
+
     def __call__(self, text):
         text = self.normalize(text)
         if len(text) < self.min_chars:
             return None
-        if self.has_bad_ss(text):
+        if self.check_bad_ss and self.has_bad_ss(text):
             return None
-        if self.has_bad_language(text):
+        if self.check_languages and self.has_bad_language(text):
+            return None
+        if self.count_text_part(text) < self.min_text_part:
             return None
         return text
 

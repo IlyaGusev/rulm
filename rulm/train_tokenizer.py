@@ -24,7 +24,7 @@ def train_tokenizer(
     def read_texts():
         for r in dataset:
             if random.random() < sample_rate:
-                yield r["text"]
+                yield " ".join(r["text"].split(" ")[:1000000])
 
     tokenizer = Tokenizer(models.Unigram())
     tokenizer.normalizer = normalizers.Sequence([
@@ -34,7 +34,9 @@ def train_tokenizer(
     ])
     tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
         pre_tokenizers.Metaspace(),
-        pre_tokenizers.Digits(individual_digits=True)
+        pre_tokenizers.Digits(individual_digits=True),
+        pre_tokenizers.Punctuation(behavior='isolated'),
+        pre_tokenizers.Split(pattern="\n", behavior="isolated")
     ])
     tokenizer.decoder = decoders.Metaspace()
 
@@ -54,7 +56,7 @@ def train_tokenizer(
         pair="<s>:0 $A:0 <sep>:0 $B:1 </s>:1",
         special_tokens=[("<sep>", sep_token_id), ("<s>", bos_token_id), ("</s>", eos_token_id)],
     )
-    encoding = tokenizer.encode("Привет! Как дела? 1994 + 11 = 2005")
+    encoding = tokenizer.encode("Привет! Как дела? 1994 + 11 = 2005\nПока!")
     print(encoding.tokens)
     wrapped_tokenizer = PreTrainedTokenizerFast(
         tokenizer_object=tokenizer,

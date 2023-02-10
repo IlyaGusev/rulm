@@ -1,10 +1,23 @@
 import json
 import os
+import io
 
+import zstandard
+import jsonlines
 import datasets
 
-
-_DOCUMENT = "text"
+try:
+    import simdjson
+    parser = simdjson.Parser()
+    def parse_json(x):
+        try:
+            return parser.parse(x).as_dict()
+        except ValueError:
+            return
+except ImportError:
+    import json
+    def parse_json(x):
+        return json.loads(x)
 
 
 class JsonlDataset(datasets.GeneratorBasedBuilder):
@@ -17,14 +30,17 @@ class JsonlDataset(datasets.GeneratorBasedBuilder):
     DEFAULT_CONFIG_NAME = "default"
 
     def _info(self):
-        features = datasets.Features(
-            {
-                _DOCUMENT: datasets.Value("string"),
+        features = datasets.Features({
+            "text": datasets.Value("string"),
+            "meta": {
+                "source": datasets.Value("string"),
+                "id": datasets.Value("string"),
+                "author": datasets.Value("string"),
+                "title": datasets.Value("string")
             }
-        )
+        })
         return datasets.DatasetInfo(
-            features=features,
-            supervised_keys=(_DOCUMENT,),
+            features=features
         )
 
     def _split_generators(self, dl_manager):
@@ -43,6 +59,6 @@ class JsonlDataset(datasets.GeneratorBasedBuilder):
         for f in files:
             with open(f, encoding="utf-8") as f:
                 for row in f:
-                    data = json.loads(row)
-                    yield global_id, {_DOCUMENT: data[_DOCUMENT]}
+                    data = parse_json(row)
+                    yield global_id, {"text": data["text"], "meta": data["meta"]}
                     global_id += 1

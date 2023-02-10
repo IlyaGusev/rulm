@@ -19,6 +19,7 @@ def tokenize(examples, tokenizer, position_ids):
         return_length=True
     )
     outputs.pop("attention_mask")
+    outputs.pop("token_type_ids")
     lengths = outputs.pop("length")
     outputs["position_ids"] = [position_ids[:l] for l in lengths]
     return outputs
@@ -39,7 +40,7 @@ def group(examples, block_size):
     return result
 
 
-def process(examples, tokenizer, block_size, position_ids):
+def run(examples, tokenizer, block_size, position_ids):
     examples = tokenize(examples, tokenizer, position_ids)
     return group(examples, block_size)
 
@@ -58,7 +59,7 @@ def preprocess(
     position_ids = [i % block_size for i in range(MAX_TOKENS)]
 
     datasets = datasets.map(
-        lambda x: process(x, tokenizer, block_size, position_ids),
+        lambda x: run(x, tokenizer, block_size, position_ids),
         batched=True,
         remove_columns=["text"]
     ).cast(Features({

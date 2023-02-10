@@ -5,3 +5,4 @@ datasets
 zstandard
 tqdm
 datasketch
+html2text

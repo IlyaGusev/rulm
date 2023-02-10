@@ -9,6 +9,7 @@ wget https://github.com/buriy/russian-nlp-datasets/releases/download/r4/news-art
 wget https://github.com/buriy/russian-nlp-datasets/releases/download/r4/news-articles-2015-part1.tar.bz2 -O $OUTPUT_DIR/buriy_news_2015_part1.tar.bz2
 wget https://github.com/buriy/russian-nlp-datasets/releases/download/r4/news-articles-2015-part2.tar.bz2 -O $OUTPUT_DIR/buriy_news_2015_part2.tar.bz2
 wget https://ia600107.us.archive.org/27/items/stackexchange/ru.stackoverflow.com.7z -O $OUTPUT_DIR/ru_stackoverflow.7z
+wget https://www.dropbox.com/s/ob6zfkbnhmtltqs/habr.7z -O $OUTPUT_DIR/habr.7z
 
 cd $OUTPUT_DIR && tar -xzvf retagged_taiga.tar.gz && rm retagged_taiga.tar.gz
 cd $OUTPUT_DIR && gunzip librusec_fb2.plain.gz
