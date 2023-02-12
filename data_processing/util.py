@@ -21,17 +21,38 @@ def parse_json(x):
     except ValueError:
         return
 
+SIMPLE_EMAIL_RE = re.compile(r"\S+@\S+")
 
-BAD_SUBSTRINGS = (
+PII_SUBSTRINGS = (
     "+79",
+    "+74",
+    "8 (",
+    "8(",
+    "+7 (",
+    "+7(",
+    "@mail",
     "@gmail",
+    "@yandex"
+)
+
+CODE_SUBSTRINGS = (
     "var ",
-    "<a ",
-    "<p ",
+    "<a",
+    "<p",
+    "<h",
+    "<th",
+    "<tr",
+    "<div",
+)
+
+LINKS_SUBSTRINGS = (
     ".jpg",
     "http:",
     "https:",
-    "www."
+    "www.",
+    ".com",
+    ".ru",
+    ".mp3"
 )
 
 STOP_BEFORE_LETTER = re.compile(r'\.(\w)')
@@ -62,15 +83,19 @@ class TextProcessor:
     def __init__(
         self,
         languages=("ru", ),
-        join_lines=False,
-        normalization="NFKC",
-        min_chars=30,
-        min_text_part=0.9,
-        fix_punct=True,
-        fix_spaces=True,
-        fix_short_lines=True,
-        check_languages=True,
-        check_bad_ss=True
+        join_lines: bool = False,
+        normalization: str = "NFKC",
+        min_chars: int = 30,
+        min_text_part: float = 0.9,
+        fix_punct: bool = True,
+        fix_spaces: bool = True,
+        fix_short_lines: bool = True,
+        check_languages: bool = True,
+        check_pii: bool = True,
+        check_code: bool = True,
+        check_links: bool = True,
+        check_email: bool = True,
+        check_text_part: bool = True
     ):
         self.languages = languages
         self.join_lines = join_lines
@@ -81,7 +106,11 @@ class TextProcessor:
         self.fix_spaces = fix_spaces
         self.fix_short_lines = fix_short_lines
         self.check_languages = check_languages
-        self.check_bad_ss = check_bad_ss
+        self.check_pii = check_pii
+        self.check_code = check_code
+        self.check_links = check_links
+        self.check_email = check_email
+        self.check_text_part = check_text_part
 
     def remove_non_printable(self, text):
         return "".join(c for c in text if c.isprintable())
@@ -97,7 +126,6 @@ class TextProcessor:
         line = line.replace(" %", "%")
         line = line.replace(" ;", ";")
         line = line.replace(" :", ":")
-        line = line.replace(":", ": ")
         line = " ".join(line.split()).strip()
         line = line.replace(". ,", ".,")
         return line
@@ -111,7 +139,13 @@ class TextProcessor:
         text = text.replace("&ge;", ">=")
         text = text.replace("&le;", "<=")
         text = text.replace("&amp;", "&")
+        text = text.replace("&apos;", "'")
         text = text.replace("&nbsp;", " ")
+        text = text.replace("&approx;", "≈")
+        text = text.replace("&lbrace;", "{")
+        text = text.replace("&rbrace;", "}")
+        text = text.replace("&lbrack;", "[")
+        text = text.replace("&rbrack;", "]")
 
         lines = text.split("\n")
         lines = [self.remove_non_printable(line) for line in lines]
@@ -130,7 +164,11 @@ class TextProcessor:
         return text
 
     def has_bad_ss(self, text):
-        return any(ss in text for ss in BAD_SUBSTRINGS)
+        has_email = self.check_email and SIMPLE_EMAIL_RE.search(text)
+        has_pii = self.check_pii and any(ss in text for ss in PII_SUBSTRINGS)
+        has_code = self.check_code and any(ss in text.lower() for ss in CODE_SUBSTRINGS)
+        has_links = self.check_links and any(ss in text.lower() for ss in LINKS_SUBSTRINGS)
+        return has_pii or has_code or has_links or has_email
 
     def has_bad_language(self, text):
         return lang_detector(text)[0] not in self.languages
@@ -153,11 +191,11 @@ class TextProcessor:
         text = self.normalize(text)
         if len(text) < self.min_chars:
             return None
-        if self.check_bad_ss and self.has_bad_ss(text):
+        if self.has_bad_ss(text):
             return None
         if self.check_languages and self.has_bad_language(text):
             return None
-        if self.count_text_part(text) < self.min_text_part:
+        if self.check_text_part and self.count_text_part(text) < self.min_text_part:
             return None
         return text
 
@@ -198,24 +236,3 @@ def ngrams(sequence: List[Text], n: int):
         for _ in range(i):
             next(sub_iterable, None)
     return zip(*iterables)
-
-
-
-class UnionFind:
-    def __init__(self):
-        self.parent = {}
-
-    def find(self, x):
-        if x not in self.parent:
-            self.parent[x] = x
-            return x
-
-        if self.parent[x] != x:
-            self.parent[x] = self.find(self.parent[x])
-
-        return self.parent[x]
-
-    def union(self, x, y):
-        px = self.find(x)
-        py = self.find(y)
-        self.parent[px] = self.parent[py] = min(px, py)
