@@ -210,7 +210,7 @@ def parse_comments(post_id):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--min-id", type=int, default=0)
-    parser.add_argument("--max-id", type=int, default=484181)
+    parser.add_argument("--max-id", type=int, default=716000)
     parser.add_argument("output_path", type=str)
     args = parser.parse_args()
 
