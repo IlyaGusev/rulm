@@ -1,5 +1,6 @@
 import argparse
 
+import re
 import os
 import hashlib
 import fcntl
@@ -9,15 +10,18 @@ import zstandard
 from tqdm import tqdm
 from collections import defaultdict
 
-import razdel
 from datasets import load_dataset
 from datasketch import MinHash, MinHashLSH, LeanMinHash
 
 from data_processing.util import read_jsonl, PlainArchive, ngrams
 
 
+def re_tokenize(text):
+    return re.findall(r'[а-яё-]+|[a-z-]+|\d+|\S', text, re.I)
+
+
 def calc_fingerprint(record, ngram_size: int = 1, num_perm: int = 128):
-    tokens = [token.text for token in razdel.tokenize(record["text"])]
+    tokens = re_tokenize(record["text"])
     if ngram_size > 1:
         tokens = {" ".join(t) for t in ngrams(tokens, ngram_size)}
     tokens = [token.encode('utf-8') for token in tokens]
@@ -50,15 +54,32 @@ def main(
     )
 
     archive = PlainArchive(output_path)
-    lsh = MinHashLSH(threshold=0.95, num_perm=num_perm)
+    
+    threshold = 0.95
+    false_positive_weight = 0.05
+    lsh = MinHashLSH(
+        threshold=threshold,
+        weights=(false_positive_weight, 1 - false_positive_weight),
+        num_perm=num_perm,
+    )
+
     for idx, record in tqdm(enumerate(dataset)):
         minhash = LeanMinHash.deserialize(record["minhash"])
-        result = lsh.query(minhash)
-        if not result:
-            lsh.insert(str(idx), minhash)
+
+        is_dup = False
+        for other_idx in lsh.query(minhash):
+            other_record = dataset[other_idx]
+            other_minhash = LeanMinHash.deserialize(other_record["minhash"])
+            if minhash.jaccard(other_minhash) > threshold:
+                is_dup = True
+                break
+
+        if not is_dup:
             text = record["text"]
             meta = record["meta"]
             archive.add_data(text=text, meta=meta)
+
+        lsh.insert(idx, minhash)
 
 
 if __name__ == "__main__":
