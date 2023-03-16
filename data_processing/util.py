@@ -26,8 +26,6 @@ SIMPLE_EMAIL_RE = re.compile(r"\S+@\S+")
 PII_SUBSTRINGS = (
     "+79",
     "+74",
-    "8 (",
-    "8(",
     "+7 (",
     "+7(",
     "@mail",
@@ -55,7 +53,10 @@ LINKS_SUBSTRINGS = (
     ".mp3"
 )
 
+
 STOP_BEFORE_LETTER = re.compile(r'\.(\w)')
+RE_SQUARE_BRACKETS = re.compile(r"\[[^\]]*\]", flags=re.MULTILINE)
+
 
 lang_detector = FasttextLanguageDetector()
 
@@ -86,7 +87,7 @@ class TextProcessor:
         join_lines: bool = False,
         normalization: str = "NFKC",
         min_chars: int = 30,
-        min_text_part: float = 0.9,
+        min_text_part: float = 0.85,
         fix_punct: bool = True,
         fix_spaces: bool = True,
         fix_short_lines: bool = True,
@@ -174,18 +175,16 @@ class TextProcessor:
         return lang_detector(text)[0] not in self.languages
 
     def count_text_part(self, sentence):
-        text_count = 0.0
-        all_count = 0.0
-        for ch in sentence:
-            all_count += 1.0
-            if ch in string.punctuation:
-                continue
-            if ch.isnumeric():
-                continue
-            if ch in string.ascii_letters:
-                continue
-            text_count += 1.0
+        all_count = len(sentence)
+        text_count = sum(1 for ch in sentence if '\u0400' <= ch <= '\u04FF' or ch.isspace())
         return text_count / all_count
+
+    def remove_square_brackets(self, text):
+        brackets = RE_SQUARE_BRACKETS.finditer(text)
+        for bracket in brackets:
+            bracket = bracket.group()
+            text = text.replace(bracket, " ")
+        return text
 
     def __call__(self, text):
         text = self.normalize(text)

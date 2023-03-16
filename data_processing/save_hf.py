@@ -1,10 +1,13 @@
 import argparse
 import json
+import random
+from collections import defaultdict
 
+import razdel
 from datasets import load_dataset
 from tqdm import tqdm
 
-from data_processing.util import TextProcessor, PlainArchive
+from data_processing.util import TextProcessor, PlainArchive, gen_batch
 
 
 def revert_flattening(records):
@@ -82,15 +85,13 @@ def dump_habr(archive):
         comments_text = ""
         for comment in comments:
             comments_text = handle_comment(comment, comments_text)
-        final_text = text + "\n\n" + comments_text.strip()
+        final_text = row["title"] + "\n" + text + "\n\n" + comments_text.strip()
 
         archive.add_data(
             text=final_text,
             meta= {
                 "source": "habr",
-                "title": row["title"],
-                "url": row["url"],
-                "timestamp": row["time_published"]
+                "url": row["url"]
             }
         )
 
@@ -163,7 +164,113 @@ def dump_stackoverflow(archive):
             text=final_text,
             meta={
                 "source": "stackoverflow",
-                "timestamp": row["timestamp"],
+                "url": row["url"]
+            }
+        )
+
+
+def dump_pikabu(archive):
+    post_text_processor = TextProcessor(
+        min_chars=50,
+        min_text_part=0.7,
+        fix_punct=False,
+        fix_spaces=False,
+        fix_short_lines=False,
+        check_code=True,
+        check_pii=True,
+        check_links=True,
+        check_languages=True,
+        check_email=True,
+        check_text_part=True
+    )
+    comments_text_processor = TextProcessor(
+        min_chars=5,
+        min_text_part=0.0,
+        fix_punct=False,
+        fix_spaces=False,
+        fix_short_lines=False,
+        check_code=False,
+        check_pii=True,
+        check_links=False,
+        check_languages=False,
+        check_email=True,
+        check_text_part=False
+    )
+
+    pikabu = load_dataset("IlyaGusev/pikabu", split="train", streaming=True)
+    for row in tqdm(pikabu):
+        final_text = ""
+        title = row["title"]
+        if title:
+            final_text += title + "\n"
+        text = row["text_markdown"]
+        if text:
+            final_text += text
+        final_text = post_text_processor(final_text)
+        if not final_text:
+            continue
+
+        comments = revert_flattening(row["comments"])
+        comments.sort(key=lambda x: x["timestamp"])
+        id2children = defaultdict(list)
+        for comment in comments:
+            parent_id = comment["parent_id"]
+            if parent_id == 0:
+                continue
+            id2children[parent_id].append(comment["id"])
+        id2comment = {c["id"]: c for c in comments}
+
+        users, users_set = list(), set()
+        for comment in comments:
+            user = comment["username"]
+            if user in users_set:
+                continue
+            if not user:
+                continue
+            users.append(user)
+            users_set.add(user)
+        user2id = {user: user_id for user_id, user in enumerate(users)}
+
+        saved_comments = set()
+        def handle_comment(comment, current_text):
+            comment_id = comment["id"]
+            if comment_id in saved_comments:
+                return current_text
+
+            author = "Пользователь {}".format(user2id[comment["username"]])
+            reply = ""
+            parent_id = comment["parent_id"]
+            if parent_id and parent_id in id2comment:
+                parent_author = user2id[id2comment[parent_id]["username"]]
+                reply = " (в ответ {})".format(parent_author)
+            message = comment["text_markdown"]
+            if not message and comment["images"]:
+                message = "<картинка>"
+            else:
+                if not message:
+                    message = ""
+                message = comments_text_processor(message)
+                if not message:
+                    return current_text
+                orig_message = message
+                for user in users:
+                    message = message.replace("@" + user, "@" + str(user2id[user]))
+            current_text += "{}{}:\n{}\n".format(author, reply, message)
+            saved_comments.add(comment_id)
+            children = id2children[comment["id"]]
+            for child_id in children:
+                child = id2comment[child_id]
+                current_text = handle_comment(child, current_text)
+            return current_text
+
+        comments_text = ""
+        for comment in comments:
+            comments_text = handle_comment(comment, comments_text)
+        final_text = "{}\n\nКомментарии:\n{}".format(final_text, comments_text)
+        archive.add_data(
+            text=final_text,
+            meta={
+                "source": "pikabu",
                 "url": row["url"]
             }
         )
@@ -182,61 +289,68 @@ def dump_gazeta(archive):
             text=final_text,
             meta={
                 "source": "gazeta",
-                "date": row["date"],
                 "url": row["url"]
             }
         )
 
 
-def dump_medical_qa(archive):
-    text_processor = TextProcessor(join_lines=False)
-    medical_qa = load_dataset("blinoff/medical_qa_ru_data", split="train")
-    for row in tqdm(medical_qa):
-        text = "Вопрос: " + row["desc"]
-        for i, answer in enumerate(row["ans"].split(";\n")):
-            text += f"\nОтвет {i+1}: {answer}"
+def dump_librusec(archive, sample_rate=0.15):
+    max_sentences_count = 100
+    text_processor = TextProcessor()
+    librusec = load_dataset("IlyaGusev/librusec", split="train", streaming=True)
+    for row in tqdm(librusec):
+        text = row["text"]
+        sentences = [s.text for s in razdel.sentenize(text)]
+        for batch in gen_batch(sentences, batch_size=max_sentences_count):
+            fragment = " ".join(batch)
+            if fragment.count("//") > 5:
+                continue
+            if text_processor.count_text_part(fragment) < 0.85:
+                continue
+            if random.random() > sample_rate:
+                continue
+            archive.add_data(
+                text=fragment,
+                meta={
+                    "source": "librusec",
+                    "url": None
+                }
+            )
+
+
+def dump_news(archive):
+    text_processor = TextProcessor()
+    news = load_dataset("IlyaGusev/ru_news", split="train", streaming=True)
+    for row in tqdm(news):
+        text = row["text"]
+        url = row["url"]
+        source = row["source"]
         text = text_processor(text)
         if not text:
             continue
         archive.add_data(
             text=text,
             meta={
-                "source": "medical_qa",
-                "theme": row["theme"],
-                "date": row["date"],
-                "categ": row["categ"],
-                "spec10": row["spec10"]
-            }
-        )
-
-
-def dump_sentiment(archive):
-    text_processor = TextProcessor(join_lines=True)
-    sentiment = load_dataset("Tatyana/ru_sentiment_dataset", split="train")
-    labels = {
-        0: "NEUTRAL",
-        1: "POSITIVE",
-        2: "NEGATIVE"
-    }
-    for row in tqdm(sentiment):
-        text = text_processor(row["text"])
-        if not text:
-            continue
-        archive.add_data(
-            text=text,
-            meta={
-                "source": "sentiment",
-                "sentiment": labels[int(row["sentiment"])]
+                "source": source,
+                "url": url
             }
         )
 
 
 def main(output_path):
     archive = PlainArchive(output_path)
-    dump_medical_qa(archive)
-    dump_sentiment(archive)
+
+    print("==== Librusec ====")
+    dump_librusec(archive)
+    print("==== News ====")
+    dump_news(archive)
+    print("==== Pikabu ====")
+    dump_pikabu(archive)
+    print("==== Gazeta ====")
     dump_gazeta(archive)
+    print("==== StackOverflow ====")
     dump_stackoverflow(archive)
+    print("==== Habr ====")
     dump_habr(archive)
 
 

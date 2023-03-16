@@ -1,5 +1,5 @@
 import argparse
-
+import json
 import re
 import os
 import hashlib
@@ -39,8 +39,7 @@ def calc_fingerprint(record, ngram_size: int = 1, num_perm: int = 128):
 def main(
     input_path,
     output_path,
-    num_perm,
-    hashes_path
+    num_perm
 ):
     dataset = load_dataset("rulm/jsonl_loader.py", data_files={"train": [input_path]})["train"]
     dataset = dataset.map(
@@ -54,7 +53,8 @@ def main(
     )
 
     archive = PlainArchive(output_path)
-    
+    #out = open(output_path, "w")
+
     threshold = 0.95
     false_positive_weight = 0.05
     lsh = MinHashLSH(
@@ -75,6 +75,8 @@ def main(
                 break
 
         if not is_dup:
+            record.pop("minhash")
+            #out.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
             text = record["text"]
             meta = record["meta"]
             archive.add_data(text=text, meta=meta)
@@ -86,7 +88,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_path", type=str)
     parser.add_argument("output_path", type=str)
-    parser.add_argument("--hashes-path", type=str, default="hashes.txt")
     parser.add_argument("--num-perm", type=int, default=128)
     args = parser.parse_args()
     main(**vars(args))

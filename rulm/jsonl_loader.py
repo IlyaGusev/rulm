@@ -31,12 +31,9 @@ class JsonlDataset(datasets.GeneratorBasedBuilder):
 
     def _info(self):
         features = datasets.Features({
-            "text": datasets.Value("string"),
             "meta": {
                 "source": datasets.Value("string"),
-                "id": datasets.Value("string"),
-                "author": datasets.Value("string"),
-                "title": datasets.Value("string")
+                "url": datasets.Value("string")
             }
         })
         return datasets.DatasetInfo(
