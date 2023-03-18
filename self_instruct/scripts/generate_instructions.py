@@ -17,52 +17,71 @@ import utils
 
 def encode_prompt(prompt_instructions, prompt_path):
     with open(prompt_path) as r:
-        prompt = r.read() + "\n"
+        messages = [json.loads(line) for line in r]
+        prompt = messages[-1]["content"]
     for idx, task_dict in enumerate(prompt_instructions):
         instruction, inp, out = task_dict["instruction"], task_dict["input"], task_dict["output"]
         instruction = re.sub(r"\s+", " ", instruction).strip().rstrip(":")
         inp = "<noinput>" if not inp else inp
-        prompt += f"###\n"
+        prompt += f"\n###\n"
         prompt += f"{idx + 1}. Задание: {instruction}\n"
         prompt += f"{idx + 1}. Вход:\n{inp}\n"
         prompt += f"{idx + 1}. Выход:\n{out}\n"
-    prompt += f"###\n"
-    prompt += f"{idx + 2}. Задание:"
-    return prompt
+    messages[-1]["content"] = prompt
+    return messages
 
 
-def post_process_gpt3_response(num_prompt_instructions, response, blacklist_path):
-    if response is None:
+def post_process(response, num_prompt_instructions, blacklist_path):
+    if not response:
         return []
-    raw_instructions = f"{num_prompt_instructions+1}. Задание:" + response["text"]
-    raw_instructions = re.split("###", raw_instructions)
+
+    raw_instructions = response["message"]["content"]
+    if raw_instructions.count("###") > 2:
+        raw_instructions = re.split("###", raw_instructions)
+    else:
+        raw_instructions = raw_instructions.split("\n\n")
+
     instructions = []
     for idx, inst in enumerate(raw_instructions):
         # if the decoding stops due to length, the last example is likely truncated so we discard it
         if idx == len(raw_instructions) - 1 and response["finish_reason"] == "length":
             continue
+
+        final_data = None
         idx += num_prompt_instructions + 1
-        splitted_data = re.split(f"{idx}\.\s+(Задание|Вход|Выход):", inst)
-        if len(splitted_data) != 7:
+        for idx_ in (idx, idx - 1, idx + 1):
+            splitted_data = re.split(f"{idx_}\.\s+(Задание|Вход|Выход):", inst)
+            if len(splitted_data) == 7:
+                final_data = splitted_data
+                break
+        if not final_data:
+            print("Skip fields:", inst)
             continue
-        else:
-            inst = splitted_data[2].strip()
-            inp = splitted_data[4].strip()
-            inp = "" if inp.lower() == "<noinput>" else inp
-            out = splitted_data[6].strip()
+
+        inst = final_data[2].strip()
+        inp = final_data[4].strip()
+        inp = "" if "<noinput>" in inp.strip().lower() else inp
+        out = final_data[6].strip()
 
         # filter out too short or too long instructions
         if len(inst.split()) <= 3 or len(inst.split()) > 150:
+            print("Skip length:", inst)
             continue
 
         # filter based on keywords that are not suitable for language models.
+        has_bad_words = False
         with open(blacklist_path) as r:
             blacklist = [l.strip() for l in r.readlines()]
-        if any(find_word_in_string(word, inst) for word in blacklist):
+            for word in blacklist:
+                if word in inst.lower() or word in inp.lower():
+                    has_bad_words = True
+        if has_bad_words:
+            print("Skip blacklist:", inst + inp)
             continue
 
         # filter those starting with punctuation
         if inst[0] in string.punctuation:
+            print("Skip punct:", inst)
             continue
 
         instructions.append({"instruction": inst, "input": inp, "output": out})
@@ -70,19 +89,15 @@ def post_process_gpt3_response(num_prompt_instructions, response, blacklist_path
     return instructions
 
 
-def find_word_in_string(w, s):
-    return re.compile(r"\b({0})\b".format(w), flags=re.IGNORECASE).search(s)
-
-
 def generate_instructions(
     output_path,
     seed_tasks_path,
     prompt_path,
     blacklist_path,
-    num_instructions_to_generate=10,
-    model_name="text-davinci-003",
-    num_prompt_instructions=2,
-    request_batch_size=5,
+    num_instructions_to_generate=50,
+    model_name="gpt-3.5-turbo",
+    num_prompt_instructions=4,
+    request_batch_size=1,
     temperature=1.0,
     top_p=1.0,
     num_cpus=8,
@@ -112,41 +127,46 @@ def generate_instructions(
     progress_bar = tqdm.tqdm(total=num_instructions_to_generate)
     if machine_instruction_data:
         progress_bar.update(len(machine_instruction_data))
+
+    is_prompt_printed = False
+    is_output_printed = False
     while len(machine_instruction_data) < num_instructions_to_generate:
         request_idx += 1
 
-        batch_inputs = []
-        for _ in range(request_batch_size):
-            prompt_instructions = random.sample(seed_instruction_data, num_prompt_instructions)
-            prompt = encode_prompt(prompt_instructions, prompt_path)
-            batch_inputs.append(prompt)
+        prompt_instructions = random.sample(seed_instruction_data, num_prompt_instructions)
+        messages = encode_prompt(prompt_instructions, prompt_path)
+        if not is_prompt_printed:
+            is_prompt_printed = True
+            print("Prompt example:")
+            for message in messages:
+                print("Role: {}, content: {}".format(message["role"], message["content"]))
 
         request_start = time.time()
-        #print(batch_inputs[0])
-        results = utils.openai_completion(
-            prompts=batch_inputs,
+        result = utils.openai_completion(
+            messages=messages,
             model_name=model_name,
-            batch_size=request_batch_size,
             decoding_args=utils.OpenAIDecodingArguments(
                 temperature=temperature,
-                n=1, max_tokens=1024,
-                top_p=top_p, stop=["\n5", "5.", "5."]
-            ),
-            logit_bias={"50256": -100},  # prevent the <|endoftext|> token from being generated
+                top_p=top_p,
+                stop=["\n11", "11.", "11."]
+            )
         )
-        print(results)
+        if not is_output_printed:
+            is_output_printed = True
+            print("Output example:")
+            print(result.message["content"])
         request_duration = time.time() - request_start
 
         process_start = time.time()
-        instruction_data = []
-        for result in results:
-            new_instructions = post_process_gpt3_response(num_prompt_instructions, result, blacklist_path)
-            instruction_data += new_instructions
+        instruction_data = post_process(
+            result,
+            num_prompt_instructions=num_prompt_instructions,
+            blacklist_path=blacklist_path
+        )
 
         total = len(instruction_data)
         keep = 0
         for instruction_data_entry in instruction_data:
-            # computing similarity with the pre-tokenzied instructions
             new_instruction_tokens = scorer._tokenizer.tokenize(instruction_data_entry["instruction"])
             with Pool(num_cpus) as p:
                 rouge_scores = p.map(
