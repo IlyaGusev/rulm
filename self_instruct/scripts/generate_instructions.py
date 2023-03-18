@@ -36,7 +36,7 @@ def post_process(response, num_prompt_instructions, blacklist_path):
         return []
 
     raw_instructions = response["message"]["content"]
-    if raw_instructions.count("###") > 2:
+    if raw_instructions.count("###") >= 2:
         raw_instructions = re.split("###", raw_instructions)
     else:
         raw_instructions = raw_instructions.split("\n\n")
@@ -84,6 +84,9 @@ def post_process(response, num_prompt_instructions, blacklist_path):
             print("Skip punct:", inst)
             continue
 
+        if "Задание:" in out or "Задание:" in inp:
+            continue
+
         instructions.append({"instruction": inst, "input": inp, "output": out})
 
     return instructions
@@ -94,10 +97,9 @@ def generate_instructions(
     seed_tasks_path,
     prompt_path,
     blacklist_path,
-    num_instructions_to_generate=50,
+    num_instructions_to_generate=5000,
     model_name="gpt-3.5-turbo",
     num_prompt_instructions=4,
-    request_batch_size=1,
     temperature=1.0,
     top_p=1.0,
     num_cpus=8,
