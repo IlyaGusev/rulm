@@ -7,6 +7,7 @@ import string
 import shutil
 from functools import partial
 from multiprocessing import Pool
+from jinja2 import Environment, FileSystemLoader
 
 import fire
 import numpy as np
@@ -17,6 +18,7 @@ import re
 import utils
 
 
+JINJA_ENV = Environment(loader=FileSystemLoader("."))
 NON_ALPHANUM_RE = re.compile(r"[^a-zа-яё0-9]+")
 
 def tokenize(text):
@@ -25,47 +27,42 @@ def tokenize(text):
     return text.split()
 
 
-def encode_prompt(prompt_instructions, prompt_path):
-    with open(prompt_path) as r:
-        messages = [json.loads(line) for line in r]
-        prompt = messages[-1]["content"]
-    for idx, task_dict in enumerate(prompt_instructions):
-        instruction, inp, out = task_dict["instruction"], task_dict["input"], task_dict["output"]
-        instruction = re.sub(r"\s+", " ", instruction).strip().rstrip(":")
-        inp = "<noinput>" if not inp else inp
-        prompt += f"\n###\n"
-        prompt += f"{idx + 1}. Задание: {instruction}\n"
-        prompt += f"{idx + 1}. Вход:\n{inp}\n"
-        prompt += f"{idx + 1}. Выход:\n{out}\n"
-    messages[-1]["content"] = prompt
-    return messages
+def encode_prompt(example_instructions, settings, template_path):
+    template = JINJA_ENV.get_template(template_path)
+    for idx, task in enumerate(example_instructions):
+        task["instruction"] = re.sub(r"\s+", " ", task["instruction"]).strip().rstrip(":")
+        task["input"] = "<noinput>" if not task["input"] else task["input"]
+        task["index"] = idx + 1
+    return template.render(
+        num_tasks=settings["num_tasks"],
+        example_tasks=example_instructions
+    ).strip() + "\n"
 
 
-def post_process(response, num_prompt_instructions, blacklist_path):
+def post_process(response, settings):
     if not response:
         return []
-
     raw_instructions = response["message"]["content"]
-    if raw_instructions.count("###") >= 2:
-        raw_instructions = re.split("###", raw_instructions)
-    else:
-        raw_instructions = raw_instructions.split("\n\n")
+    if raw_instructions.count("###") < 2:
+        return []
+    raw_instructions = re.split("###", raw_instructions)
+    if response["finish_reason"] == "length":
+        raw_instructions = raw_instructions[:-1]
+    raw_instructions = [i for i in raw_instructions if i.strip()]
 
     instructions = []
-    for idx, inst in enumerate(raw_instructions):
-        # if the decoding stops due to length, the last example is likely truncated so we discard it
-        if idx == len(raw_instructions) - 1 and response["finish_reason"] == "length":
-            continue
-
+    for idx, fragment in enumerate(raw_instructions):
         final_data = None
-        idx += num_prompt_instructions + 1
+        idx = idx + settings["num_example_tasks"] + 1
         for idx_ in (idx, idx - 1, idx + 1):
-            splitted_data = re.split(f"{idx_}\.\s+(Задание|Вход|Выход):", inst)
+            special_tokens_re = "(" + "|".join(settings["special_tokens"]) + ")"
+            splitted_data = re.split(f"{idx_}\.\s+{special_tokens_re}", fragment)
             if len(splitted_data) == 7:
                 final_data = splitted_data
                 break
+
         if not final_data:
-            print("Skip fields:", inst)
+            print("Skip fields:", fragment)
             continue
 
         inst = final_data[2].strip()
@@ -75,26 +72,29 @@ def post_process(response, num_prompt_instructions, blacklist_path):
 
         # filter out too short or too long instructions
         if len(inst.split()) <= 3 or len(inst.split()) > 150:
-            print("Skip length:", inst)
+            print("Skip length:", fragment)
             continue
 
         # filter based on keywords that are not suitable for language models.
         has_bad_words = False
-        with open(blacklist_path) as r:
-            blacklist = [l.strip() for l in r.readlines()]
-            for word in blacklist:
-                if word in inst.lower() or word in inp.lower():
-                    has_bad_words = True
+        for word in settings["blacklist"]:
+            if word in inst.lower() or word in inp.lower():
+                has_bad_words = True
         if has_bad_words:
-            print("Skip blacklist:", inst + inp)
+            print("Skip blacklist:", fragment)
             continue
 
         # filter those starting with punctuation
         if inst[0] in string.punctuation:
-            print("Skip punct:", inst)
+            print("Skip punct:", fragment)
             continue
 
-        if "Задание:" in out or "Задание:" in inp:
+        has_spec_token = False
+        for token in settings["special_tokens"]:
+            if token in inp or token in out:
+                has_spec_token = True
+        if has_spec_token:
+            print("Skip incorrect parsing:", fragment)
             continue
 
         instructions.append({"instruction": inst, "input": inp, "output": out})
@@ -105,23 +105,23 @@ def post_process(response, num_prompt_instructions, blacklist_path):
 def generate_instructions(
     output_path,
     seed_tasks_path,
-    prompt_path,
-    blacklist_path,
+    settings_path,
+    template_path,
     num_instructions_to_generate=5000,
     model_name="gpt-3.5-turbo",
-    num_prompt_instructions=4,
     temperature=1.0,
     top_p=0.95,
     num_cpus=8,
 ):
+    with open(settings_path) as r:
+        settings = json.load(r)
+
     seed_tasks = [json.loads(l) for l in open(seed_tasks_path, "r")]
-    seed_instruction_data = [
-        {
-            "instruction": t["instruction"],
-            "input": t["instances"][0]["input"],
-            "output": t["instances"][0]["output"]
-        } for t in seed_tasks
-    ]
+    seed_instruction_data = [{
+        "instruction": t["instruction"],
+        "input": t["instances"][0]["input"],
+        "output": t["instances"][0]["output"]
+    } for t in seed_tasks]
     print(f"Loaded {len(seed_instruction_data)} human-written seed instructions")
 
     machine_instruction_data = []
@@ -145,8 +145,9 @@ def generate_instructions(
     while len(machine_instruction_data) < num_instructions_to_generate:
         request_idx += 1
 
-        prompt_instructions = random.sample(seed_instruction_data, num_prompt_instructions)
-        messages = encode_prompt(prompt_instructions, prompt_path)
+        prompt_instructions = random.sample(seed_instruction_data, settings["num_example_tasks"])
+        prompt = encode_prompt(prompt_instructions, settings, template_path)
+        messages = [{"role": "user", "content": prompt}]
         if not is_prompt_printed:
             is_prompt_printed = True
             print("Prompt example:")
@@ -154,13 +155,14 @@ def generate_instructions(
                 print("Role: {}, content: {}".format(message["role"], message["content"]))
 
         request_start = time.time()
+        num_tasks =  settings["num_tasks"]
         result = utils.openai_completion(
             messages=messages,
             model_name=model_name,
             decoding_args=utils.OpenAIDecodingArguments(
                 temperature=temperature,
                 top_p=top_p,
-                stop=["\n11", "11.", "11."]
+                stop=[f"\n{num_tasks + 1}", "{num_tasks + 1}."]
             )
         )
         if not is_output_printed:
@@ -172,8 +174,7 @@ def generate_instructions(
         process_start = time.time()
         instruction_data = post_process(
             result,
-            num_prompt_instructions=num_prompt_instructions,
-            blacklist_path=blacklist_path
+            settings=settings
         )
 
         total = len(instruction_data)
@@ -185,12 +186,13 @@ def generate_instructions(
                     partial(rouge_scorer._score_lcs, new_instruction_tokens),
                     all_instruction_tokens,
                 )
-            rouge_scores = [score.fmeasure for score in rouge_scores]
+                rouge_scores = [score.fmeasure for score in rouge_scores]
+            if max(rouge_scores) > 0.7:
+                continue
+
             most_similar_instructions = {
                 all_instructions[i]: rouge_scores[i] for i in np.argsort(rouge_scores)[-10:][::-1]
             }
-            if max(rouge_scores) > 0.7:
-                continue
 
             keep += 1
             instruction_data_entry["most_similar_instructions"] = most_similar_instructions

@@ -16,7 +16,7 @@ if openai_org is not None:
 
 @dataclass
 class OpenAIDecodingArguments(object):
-    max_tokens: int = 2048
+    max_tokens: int = 2560
     temperature: float = 0.2
     top_p: float = 1.0
     n: int = 1
@@ -46,7 +46,7 @@ def openai_completion(
             break
         except openai.error.OpenAIError as e:
             logging.warning(f"OpenAIError: {e}.")
-            if "Please reduce your prompt" in str(e):
+            if "Please reduce" in str(e):
                 sample_decoding_args.max_tokens = int(sample_decoding_args.max_tokens * 0.8)
                 logging.warning(f"Reducing target length to {sample_decoding_args.max_tokens}, Retrying...")
             else:
