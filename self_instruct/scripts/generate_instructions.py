@@ -205,6 +205,7 @@ def generate_instructions(
         process_duration = time.time() - process_start
         print(f"Request {request_idx} took {request_duration:.2f}s, processing took {process_duration:.2f}s")
         print(f"Generated {total} instructions, kept {keep} instructions")
+        print("===================================")
 
         with open(output_path + "_tmp", "w") as w:
             json.dump(machine_instruction_data, w, indent=4, ensure_ascii=False)
