@@ -71,7 +71,7 @@ def post_process(response, settings):
         out = final_data[6].strip()
 
         # filter out too short or too long instructions
-        if len(inst.split()) <= 3 or len(inst.split()) > 150:
+        if len(inst.split()) <= 2 or len(inst.split()) > 150:
             print("Skip length:", fragment)
             continue
 
