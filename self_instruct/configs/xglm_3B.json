@@ -1,9 +1,9 @@
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 16,
-        "per_device_eval_batch_size": 16,
-        "gradient_accumulation_steps": 2,
+        "per_device_train_batch_size": 2,
+        "per_device_eval_batch_size": 2,
+        "gradient_accumulation_steps": 16,
         "eval_steps": 20,
         "save_steps": 20,
         "logging_steps": 10,
@@ -19,7 +19,7 @@
         "half_precision_backend": "auto",
         "fp16_opt_level": "O2"
     },
-    "model_name": "sberbank-ai/rugpt3small_based_on_gpt2",
+    "model_name": "facebook/xglm-2.9B",
     "max_source_tokens_count": 256,
     "max_target_tokens_count": 256
 }
