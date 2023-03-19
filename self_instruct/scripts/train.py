@@ -65,7 +65,6 @@ def train(
     # Default model generation params
     model.config.num_beams = 5
     max_tokens_count = max_target_tokens_count + max_source_tokens_count
-    model.config.max_length = max_tokens_count
     model.config.max_new_tokens = max_target_tokens_count
 
     deepspeed_config = config.get("deepspeed")

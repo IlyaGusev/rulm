@@ -1,2 +1,4 @@
 gen1000.jsonl filter=lfs diff=lfs merge=lfs -text
 gen3000.jsonl filter=lfs diff=lfs merge=lfs -text
+train.jsonl filter=lfs diff=lfs merge=lfs -text
+val.jsonl filter=lfs diff=lfs merge=lfs -text
