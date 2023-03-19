@@ -69,23 +69,14 @@ def train(
     model.config.max_new_tokens = max_target_tokens_count
 
     deepspeed_config = config.get("deepspeed")
+    trainer_config = config["trainer"]
     training_args = TrainingArguments(
         output_dir=output_dir,
-        per_device_train_batch_size=config["batch_size"],
-        per_device_eval_batch_size=config["batch_size"],
-        logging_steps=config["logging_steps"],
-        eval_steps=config["eval_steps"],
-        save_steps=config["save_steps"],
-        learning_rate=config["learning_rate"],
-        warmup_steps=config["warmup_steps"],
-        num_train_epochs=config["num_train_epochs"],
-        gradient_accumulation_steps=config["gradient_accumulation_steps"],
-        evaluation_strategy="steps",
         save_total_limit=1,
         load_best_model_at_end=True,
         report_to=report_to,
-        fp16=config.get("fp16", False),
-        deepspeed=deepspeed_config
+        deepspeed=deepspeed_config,
+        **trainer_config
     )
 
     trainer = Trainer(
