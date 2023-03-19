@@ -4,6 +4,7 @@ import os
 import random
 import re
 import string
+import shutil
 from functools import partial
 from multiprocessing import Pool
 
@@ -11,8 +12,17 @@ import fire
 import numpy as np
 import tqdm
 from rouge_score import rouge_scorer
+import re
 
 import utils
+
+
+NON_ALPHANUM_RE = re.compile(r"[^a-zа-яё0-9]+")
+
+def tokenize(text):
+    text = text.lower()
+    text = NON_ALPHANUM_RE.sub(" ", text)
+    return text.split()
 
 
 def encode_prompt(prompt_instructions, prompt_path):
@@ -101,7 +111,7 @@ def generate_instructions(
     model_name="gpt-3.5-turbo",
     num_prompt_instructions=4,
     temperature=1.0,
-    top_p=1.0,
+    top_p=0.95,
     num_cpus=8,
 ):
     seed_tasks = [json.loads(l) for l in open(seed_tasks_path, "r")]
@@ -123,7 +133,7 @@ def generate_instructions(
     scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
 
     all_instructions = [d["instruction"] for d in seed_instruction_data + machine_instruction_data]
-    all_instruction_tokens = [scorer._tokenizer.tokenize(inst) for inst in all_instructions]
+    all_instruction_tokens = [tokenize(inst) for inst in all_instructions]
 
     request_idx = 0
     progress_bar = tqdm.tqdm(total=num_instructions_to_generate)
@@ -169,7 +179,7 @@ def generate_instructions(
         total = len(instruction_data)
         keep = 0
         for instruction_data_entry in instruction_data:
-            new_instruction_tokens = scorer._tokenizer.tokenize(instruction_data_entry["instruction"])
+            new_instruction_tokens = tokenize(instruction_data_entry["instruction"])
             with Pool(num_cpus) as p:
                 rouge_scores = p.map(
                     partial(rouge_scorer._score_lcs, new_instruction_tokens),
@@ -194,8 +204,10 @@ def generate_instructions(
         print(f"Request {request_idx} took {request_duration:.2f}s, processing took {process_duration:.2f}s")
         print(f"Generated {total} instructions, kept {keep} instructions")
 
-        with open(output_path, "w") as w:
+        with open(output_path + "_tmp", "w") as w:
             json.dump(machine_instruction_data, w, indent=4, ensure_ascii=False)
+        shutil.move(output_path + "_tmp", output_path)
+
 
 
 def main(task, **kwargs):
