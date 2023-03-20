@@ -107,8 +107,9 @@ def generate_instructions(
     seed_tasks_path,
     settings_path,
     template_path,
-    num_instructions_to_generate=5000,
+    num_instructions_to_generate=10000,
     model_name="gpt-3.5-turbo",
+    request_batch_size=5,
     temperature=1.0,
     top_p=0.95,
     num_cpus=8,
@@ -145,19 +146,31 @@ def generate_instructions(
     while len(machine_instruction_data) < num_instructions_to_generate:
         request_idx += 1
 
-        prompt_instructions = random.sample(seed_instruction_data, settings["num_example_tasks"])
-        prompt = encode_prompt(prompt_instructions, settings, template_path)
-        messages = [{"role": "user", "content": prompt}]
+        batch = []
+
+        for _ in range(request_batch_size):
+            prompt_instructions = random.sample(seed_instruction_data, settings["num_example_tasks"] - 1)
+            prompt_machine_instructions = random.sample(machine_instruction_data, 1)
+            prompt_instructions += prompt_machine_instructions
+            random.shuffle(prompt_instructions)
+
+            prompt = encode_prompt(prompt_instructions, settings, template_path)
+            messages = [
+                {"role": "system", "content": settings["system_message"]},
+                {"role": "user", "content": prompt}
+            ]
+            batch.append(messages)
+
         if not is_prompt_printed:
             is_prompt_printed = True
             print("Prompt example:")
-            for message in messages:
+            for message in batch[0]:
                 print("Role: {}, content: {}".format(message["role"], message["content"]))
 
         request_start = time.time()
         num_tasks =  settings["num_tasks"]
-        result = utils.openai_completion(
-            messages=messages,
+        results = utils.openai_batch_completion(
+            batch=batch,
             model_name=model_name,
             decoding_args=utils.OpenAIDecodingArguments(
                 temperature=temperature,
@@ -168,14 +181,13 @@ def generate_instructions(
         if not is_output_printed:
             is_output_printed = True
             print("Output example:")
-            print(result.message["content"])
+            print(results[0].message["content"])
         request_duration = time.time() - request_start
 
         process_start = time.time()
-        instruction_data = post_process(
-            result,
-            settings=settings
-        )
+        instruction_data = []
+        for result in results:
+            instruction_data.extend(post_process(result, settings=settings))
 
         total = len(instruction_data)
         keep = 0

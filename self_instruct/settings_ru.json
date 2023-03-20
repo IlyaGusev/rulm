@@ -1,7 +1,7 @@
 {
     "special_tokens": ["Задание:", "Вход:", "Выход:"],
     "num_tasks": 15,
-    "num_example_tasks": 4,
+    "num_example_tasks": 5,
     "blacklist": [
         "картинка",
         "картинки",
@@ -16,6 +16,9 @@
         "видео",
         "клип",
         "аудио",
-        "диаграмма"
-    ]
+        "диаграмма",
+        "свою",
+        "свой"
+    ],
+    "system_message": "You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible. Отвечай на русском, старайся давать максимально длинные и полные ответы."
 }

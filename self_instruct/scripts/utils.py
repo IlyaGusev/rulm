@@ -5,17 +5,12 @@ import time
 import random
 from dataclasses import dataclass
 from typing import Optional, Sequence
+from multiprocessing.pool import ThreadPool
 
 import torch
 import numpy as np
 import openai
 import copy
-
-
-openai_org = os.getenv("OPENAI_ORG")
-if openai_org is not None:
-    openai.organization = openai_org
-    logging.warning(f"Switching to organization: {openai_org} for OAI API key.")
 
 
 @dataclass
@@ -32,31 +27,44 @@ class OpenAIDecodingArguments(object):
 
 def openai_completion(
     messages,
-    decoding_args: OpenAIDecodingArguments,
-    model_name="gpt-3.5-turbo",
-    sleep_time=2
+    decoding_args,
+    model_name,
+    sleep_time
 ):
     assert decoding_args.n == 1
-    completions = []
-    sample_decoding_args = copy.deepcopy(decoding_args)
     while True:
         try:
-            completion = openai.ChatCompletion.create(
+            completions = openai.ChatCompletion.create(
                 messages=messages,
                 model=model_name,
-                **sample_decoding_args.__dict__
+                **decoding_args.__dict__
             )
-            completions = completion.choices
             break
         except openai.error.OpenAIError as e:
             logging.warning(f"OpenAIError: {e}.")
             if "Please reduce" in str(e):
-                sample_decoding_args.max_tokens = int(sample_decoding_args.max_tokens * 0.8)
+                decoding_args.max_tokens = int(sample_decoding_args.max_tokens * 0.8)
                 logging.warning(f"Reducing target length to {sample_decoding_args.max_tokens}, Retrying...")
             else:
                 logging.warning("Hit request rate limit; retrying...")
                 time.sleep(sleep_time)
-    return completions[0]
+    return completions.choices[0]
+
+
+def openai_batch_completion(
+    batch,
+    decoding_args: OpenAIDecodingArguments,
+    model_name="gpt-3.5-turbo",
+    sleep_time=2
+):
+    completions = []
+    with ThreadPool(len(batch)) as pool:
+        results = pool.starmap(openai_completion, [
+            (messages, decoding_args, model_name, sleep_time) for messages in batch
+        ])
+        for result in results:
+            completions.append(result)
+    return completions
 
 
 def read_jsonl(file_name):

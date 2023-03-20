@@ -7,3 +7,4 @@ datasets
 zstandard
 jsonlines
 wandb
+openai
