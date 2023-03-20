@@ -1,16 +1,25 @@
-OUTPUT_DIR=/data/corpora
+#!/bin/bash
+set -euo pipefail
 
-wget https://linghub.ru/static/Taiga/retagged_taiga.tar.gz -O $OUTPUT_DIR/retagged_taiga.tar.gz
+OUTPUT_DIR=/data/corpora
+CACHE_DIR=/data/cache
+
+rm -f $OUTPUT_DIR/ruwiki-latest-pages-articles.xml.bz2
+rm -f $OUTPUT_DIR/dm_math_ru.zip
+
 wget https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles.xml.bz2 -O $OUTPUT_DIR/ruwiki-latest-pages-articles.xml.bz2
-wget https://opus.nlpl.eu/download.php?f=OpenSubtitles/v2018/raw/ru.zip -O $OUTPUT_DIR/open_subtitles_ru.zip
 wget https://www.dropbox.com/s/h8d47dhaka3xn9i/dm_math_ru.zip -O $OUTPUT_DIR/dm_math_ru.zip
 
-cd $OUTPUT_DIR && tar -xzvf retagged_taiga.tar.gz && rm retagged_taiga.tar.gz
-
 python3 -m data_processing.convert_wiki $OUTPUT_DIR/ruwiki-latest-pages-articles.xml.bz2 $OUTPUT_DIR/ruwiki.jsonl
-python3 -m data_processing.convert_opensubtitles $OUTPUT_DIR/open_subtitles_ru.zip $OUTPUT_DIR/opensubtitles.jsonl
 python3 -m data_processing.convert_math $OUTPUT_DIR/dm_math_ru.zip $OUTPUT_DIR/math.jsonl
-python3 -m data_processing.save_hf $OUTPUT_DIR/hf.jsonl
+HF_DATASETS_CACHE=$CACHE_DIR python3 -m data_processing.save_hf $OUTPUT_DIR/hf.jsonl
 
-python3 -m data_processing.merge --output-path /data/corpora/merged.jsonl -f /data/corpora/math.jsonl /data/corpora/ruwiki.jsonl /data/corpora/opensubtitles.jsonl /data/corpora/hf.jsonl
-sort /data/corpora/merged.jsonl -S 50% --random-sort > /data/corpora/merged_shuf.jsonl
+python3 -m data_processing.merge --output-path $OUTPUT_DIR/merged.jsonl -f $OUTPUT_DIR/ruwiki.jsonl $OUTPUT_DIR/hf.jsonl
+HF_DATASETS_CACHE=$CACHE_DIR python3 -m data_processing.undup $OUTPUT_DIR/merged.jsonl $OUTPUT_DIR/merged_undup.jsonl
+mv $OUTPUT_DIR/merged_undup.jsonl $OUTPUT_DIR/merged.jsonl
+
+python3 -m data_processing.merge --output-path $OUTPUT_DIR/merged_math.jsonl -f $OUTPUT_DIR/merged.jsonl $OUTPUT_DIR/math.jsonl
+mv $OUTPUT_DIR/merged_math.jsonl $OUTPUT_DIR/merged.jsonl
+
+sort /data/corpora/merged.jsonl -S 50% --random-sort > $OUTPUT_DIR/merged_shuf.jsonl
+python3 -m data_processing.split --input-path $OUTPUT_DIR/merged_shuf.jsonl --train-path $OUTPUT_DIR/train.jsonl --validation-path $OUTPUT_DIR/validations.jsonl --test-path $OUTPUT_DIR/test.jsonl

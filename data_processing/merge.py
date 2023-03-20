@@ -15,7 +15,7 @@ def sha256str(s):
 
 
 sample_rates = defaultdict(lambda: 1.0)
-sample_rates["librusec"] = 0.15
+#sample_rates["librusec"] = 1.0
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f','--files', nargs='+', dest='files', type=str, required=True)

@@ -172,8 +172,7 @@ def main(
             text=text,
             meta={
                 "source": "wiki",
-                "title": title,
-                "id": rid
+                "url": f"https://ru.wikipedia.org/?curid={rid}"
             }
         )
 

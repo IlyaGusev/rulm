@@ -9,7 +9,7 @@ from datetime import datetime
 from corus import load_buriy_news, load_lenta2, load_ods_tass, load_taiga_fontanka, load_taiga_fontanka_metas
 from tqdm import tqdm
 
-from data_processing.util import TextProcessor
+from data_processing.util import TextProcessor, read_jsonl
 
 
 BAD_SUBSTRINGS = (
@@ -77,11 +77,27 @@ def main(
     fontanka_path,
     lenta_path,
     tass_path,
+    telegram_path,
     output_path
 ):
     text_processor = TextProcessor(join_lines=False, min_chars=200)
 
     with open(output_path, "w") as w:
+        for record in tqdm(read_jsonl(telegram_path)):
+            text = text_processor(record["text"])
+            if not text:
+                continue
+            has_bad_ss = any(ss in text for ss in BAD_SUBSTRINGS)
+            if has_bad_ss:
+                continue
+            w.write(json.dumps({
+                "title": record["title"],
+                "text": record["text"],
+                "url": record["url"],
+                "timestamp": record["timestamp"],
+                "source": "telegram_contest"
+            }, ensure_ascii=False).strip() + "\n")
+
         for record in tqdm(load_ods_tass(tass_path)):
             text = record.text.replace(".n", ".\n")
             text = record.text.replace("!n", "!\n")
@@ -173,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument("--lenta-path", type=str, required=True)
     parser.add_argument("--fontanka-path", type=str, required=True)
     parser.add_argument("--tass-path", type=str, required=True)
+    parser.add_argument("--telegram-path", type=str, required=True)
     parser.add_argument("output_path", type=str)
     args = parser.parse_args()
     main(**vars(args))

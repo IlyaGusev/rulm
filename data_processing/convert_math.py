@@ -1,6 +1,7 @@
 import sys
 import zipfile
 import os
+import random
 import json
 from collections import Counter
 
@@ -37,25 +38,26 @@ def parse_single_txt(path_to_txt, zip_file):
         assert len(answer) < len(question), f"{answer} vs {question}"
         example =  question + " Ответ: " + answer
         examples.append(example)
-    return "\n".join(examples)
+    return examples
 
 
 if __name__ == "__main__":
     zip_file = zipfile.ZipFile(input_path)
     txt_paths = get_txt_filepaths_from_zip(zip_file)
     archive = PlainArchive(output_path)
+    all_examples = []
     for path in tqdm(txt_paths, total=len(txt_paths)):
-        full_text = parse_single_txt(path, zip_file)
-        lines = full_text.split("\n")
-        for batch_num, batch in enumerate(gen_batch(lines, 1000)):
-            text = "\n".join(batch)
-            if not text:
-                continue
-            archive.add_data(
-                text=text,
-                meta={
-                    "source": "math",
-                    "path": path,
-                    "part_num": batch_num
-                }
-            )
+        examples = parse_single_txt(path, zip_file)
+        all_examples.extend(examples)
+    random.shuffle(all_examples)
+    for batch_num, batch in enumerate(gen_batch(all_examples, 1000)):
+        text = "\n".join(batch)
+        if not text:
+            continue
+        archive.add_data(
+            text=text,
+            meta={
+                "source": "math",
+                "url": None
+            }
+        )

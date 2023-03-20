@@ -337,11 +337,26 @@ def dump_news(archive):
         )
 
 
+def dump_stihi(archive):
+    stihi = load_dataset("IlyaGusev/stihi_ru", split="train", streaming=True)
+    for row in tqdm(stihi):
+        text = row["text"]
+        archive.add_data(
+            text=text,
+            meta={
+                "source": "stihi",
+                "url": None
+            }
+        )
+
+
 def main(output_path):
     archive = PlainArchive(output_path)
 
     print("==== Librusec ====")
     dump_librusec(archive)
+    print("==== Stihi ====")
+    dump_stihi(archive)
     print("==== News ====")
     dump_news(archive)
     print("==== Pikabu ====")

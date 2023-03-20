@@ -53,7 +53,6 @@ def main(
     )
 
     archive = PlainArchive(output_path)
-    #out = open(output_path, "w")
 
     threshold = 0.95
     false_positive_weight = 0.05
@@ -74,9 +73,8 @@ def main(
                 is_dup = True
                 break
 
-        if not is_dup:
+        if not is_dup or record["meta"]["source"] == "math":
             record.pop("minhash")
-            #out.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
             text = record["text"]
             meta = record["meta"]
             archive.add_data(text=text, meta=meta)
