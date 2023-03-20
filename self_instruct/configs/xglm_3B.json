@@ -1,12 +1,12 @@
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 2,
-        "per_device_eval_batch_size": 2,
-        "gradient_accumulation_steps": 16,
-        "eval_steps": 20,
-        "save_steps": 20,
-        "logging_steps": 10,
+        "per_device_train_batch_size": 1,
+        "per_device_eval_batch_size": 1,
+        "gradient_accumulation_steps": 8,
+        "eval_steps": 150,
+        "save_steps": 150,
+        "logging_steps": 5,
         "learning_rate": 0.00005,
         "num_train_epochs": 4,
         "lr_scheduler_type": "cosine",
@@ -18,6 +18,28 @@
         "optim": "adamw_torch",
         "half_precision_backend": "auto",
         "fp16_opt_level": "O2"
+    },
+    "deepspeed": {
+        "fp16": {
+            "enabled": true,
+            "min_loss_scale": 0.01,
+            "opt_level": "O2"
+        },
+        "zero_optimization": {
+            "stage": 2,
+            "offload_optimizer": {
+                "device": "cpu",
+                "pin_memory": true
+            },
+            "allgather_partitions": true,
+            "allgather_bucket_size": 5e8,
+            "reduce_bucket_size": 5e8,
+            "reduce_scatter": true,
+            "overlap_comm": true,
+            "contiguous_gradients": true
+        },
+        "train_batch_size": "auto",
+        "gradient_accumulation_steps": "auto"
     },
     "model_name": "facebook/xglm-2.9B",
     "max_source_tokens_count": 256,
