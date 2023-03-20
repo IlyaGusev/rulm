@@ -34,6 +34,7 @@ def train(
     model_name = config["model_name"]
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer = fix_tokenizer(tokenizer)
+    tokenizer.save_pretrained(output_dir)
 
     train_records = read_jsonl(train_file)
     val_records = read_jsonl(val_file)
@@ -84,8 +85,7 @@ def train(
         train_dataset=train_dataset,
         eval_dataset=val_dataset
     )
-    trainer.train()
-    tokenizer.save_pretrained(output_dir)
+    trainer.train(checkpoint)
     model.save_pretrained(output_dir)
 
 
