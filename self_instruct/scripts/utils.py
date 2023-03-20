@@ -31,6 +31,7 @@ def openai_completion(
     model_name,
     sleep_time
 ):
+    decoding_args = copy.deepcopy(decoding_args)
     assert decoding_args.n == 1
     while True:
         try:
@@ -43,8 +44,8 @@ def openai_completion(
         except openai.error.OpenAIError as e:
             logging.warning(f"OpenAIError: {e}.")
             if "Please reduce" in str(e):
-                decoding_args.max_tokens = int(sample_decoding_args.max_tokens * 0.8)
-                logging.warning(f"Reducing target length to {sample_decoding_args.max_tokens}, Retrying...")
+                decoding_args.max_tokens = int(decoding_args.max_tokens * 0.8)
+                logging.warning(f"Reducing target length to {decoding_args.max_tokens}, Retrying...")
             else:
                 logging.warning("Hit request rate limit; retrying...")
                 time.sleep(sleep_time)

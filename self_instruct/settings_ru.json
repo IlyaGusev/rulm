@@ -16,9 +16,7 @@
         "видео",
         "клип",
         "аудио",
-        "диаграмма",
-        "свою",
-        "свой"
+        "диаграмма"
     ],
     "system_message": "You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible. Отвечай на русском, старайся давать максимально длинные и полные ответы."
 }
