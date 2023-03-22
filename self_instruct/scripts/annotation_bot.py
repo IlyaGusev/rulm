@@ -26,15 +26,19 @@ class Client:
         print("Bot is ready!")
 
     def write_result(self, result, chat_id):
+        if result == "skip":
+            return True
+
         username = self.chat2username.get(chat_id)
-        last_record = self.last_records[username]
+        last_record = self.last_records.get(chat_id)
         if not last_record:
-            return
+            return False
 
         last_record["label"] = result
         last_record["username"] = username
         last_record["chat_id"] = chat_id
         self.db.insert(last_record)
+        return True
 
     def run(self):
         self.updater.start_polling()
@@ -50,13 +54,19 @@ class Client:
         data = query.data
         chat_id = update.effective_chat.id
 
-        self.write_result(data, chat_id)
-        self.show(update, context)
+        if self.write_result(data, chat_id):
+            self.show(update, context)
+        else:
+            context.bot.send_message(text="Нужно перезапустить бот через '/start'", chat_id=chat_id)
 
-    def sample_record(self, retries=50):
+    def sample_record(self, username, retries=50, max_overlap=3):
         for _ in range(retries):
             record = random.choice(self.records)
-            if not self.db.contains(where("instruction") == record["instruction"]):
+            instruction = record["instruction"]
+            count = self.db.count(where("instruction") == instruction)
+            if count >= max_overlap:
+                continue
+            if not self.db.contains((where("instruction") == instruction) & (where("username") == username)):
                 break
         return record
 
@@ -68,20 +78,21 @@ class Client:
         else:
             username = self.chat2username[chat_id]
 
-        record = self.sample_record()
-        self.last_records[username] = record
+        record = self.sample_record(username)
+        self.last_records[chat_id] = record
         text = f"Задание: {record['instruction']}\n\n"
         if record["input"].strip() and record["input"].strip() != "<noinput>":
             text += f"Вход: {record['input']}\n\n"
-        text += f"Выход: {record['output']}"
+        text += f"Ответ: {record['output']}"
 
         keyboard = [
             [
-                InlineKeyboardButton("Ошибка в ответе", callback_data="ok"),
-                InlineKeyboardButton("Ошибка в задании/входе", callback_data="bad")
+                InlineKeyboardButton("Плохой ответ", callback_data="ok"),
+                InlineKeyboardButton("Плохое задание или вход", callback_data="bad")
             ],
             [
-                InlineKeyboardButton("Всё идеально", callback_data="all_ok")
+                InlineKeyboardButton("Всё идеально", callback_data="all_ok"),
+                InlineKeyboardButton("Пропустить", callback_data="skip")
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
