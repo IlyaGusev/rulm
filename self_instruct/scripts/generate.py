@@ -12,11 +12,13 @@ inputs = [
     "Задание: Сочини длинный рассказ, обязательно упоминая следующие объекты.\nВход: Таня, мяч\nВыход:",
     "Могут ли в природе встретиться в одном месте белый медведь и пингвин? Если нет, то почему?\n\n",
     "Задание: Заполни пропуски в предложении.\nВход: Я пытался ____ от маньяка, но он меня настиг\nВыход:",
-    "Вопрос: Как переспать с девушкой?\n\n"
+    "Вопрос: Как переспать с девушкой?\n\n",
+    "Как приготовить лазанью?\n\n"
 ]
 
 for inp in inputs:
     data = tokenizer([inp], return_tensors="pt")
+    print(data)
     data = {k: v.to("cuda") for k, v in data.items() if k in ("input_ids", "attention_mask")}
     output_ids = model.generate(
         **data,
@@ -25,7 +27,8 @@ for inp in inputs:
         do_sample=True,
         top_p=0.95,
         temperature=0.5,
-        repetition_penalty=1.2
+        repetition_penalty=1.2,
+        no_repeat_ngram_size=4
     )[0]
     print(tokenizer.decode(output_ids))
     print()
