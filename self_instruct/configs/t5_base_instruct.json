@@ -1,0 +1,27 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 6,
+        "per_device_eval_batch_size": 6,
+        "gradient_accumulation_steps": 6,
+        "eval_steps": 60,
+        "save_steps": 60,
+        "logging_steps": 10,
+        "learning_rate": 0.00003,
+        "num_train_epochs": 3,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 60,
+        "fp16": false,
+        "bf16": true,
+        "gradient_checkpointing": false,
+        "torch_compile": false,
+        "optim": "adamw_torch",
+        "half_precision_backend": "auto",
+        "fp16_opt_level": "O2"
+    },
+    "model_name": "sberbank-ai/ruT5-base",
+    "model_type": "seq2seq",
+    "max_source_tokens_count": 256,
+    "max_target_tokens_count": 256
+}
+

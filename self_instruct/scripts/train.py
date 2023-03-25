@@ -32,6 +32,7 @@ def train(
         config = json.load(r)
 
     model_name = config["model_name"]
+
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer = fix_tokenizer(tokenizer)
     tokenizer.save_pretrained(output_dir)
@@ -41,6 +42,7 @@ def train(
     random.shuffle(train_records)
     print(train_records[0])
 
+    model_type = config.get("model_type", "causal")
     max_source_tokens_count = config["max_source_tokens_count"]
     max_target_tokens_count = config["max_target_tokens_count"]
     train_dataset = InstructDataset(
@@ -48,7 +50,8 @@ def train(
         tokenizer,
         max_source_tokens_count=max_source_tokens_count,
         max_target_tokens_count=max_target_tokens_count,
-        sample_rate=train_sample_rate
+        sample_rate=train_sample_rate,
+        input_type=model_type
     )
     print(train_dataset[0])
 
@@ -57,16 +60,21 @@ def train(
         tokenizer,
         max_source_tokens_count=max_source_tokens_count,
         max_target_tokens_count=max_target_tokens_count,
-        sample_rate=val_sample_rate
+        sample_rate=val_sample_rate,
+        input_type=model_type
     )
 
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model_types = {
+        "causal": AutoModelForCausalLM,
+        "seq2seq": AutoModelForSeq2SeqLM
+    }
+    model = model_types[model_type].from_pretrained(model_name)
     model = fix_model(model, tokenizer, max_target_tokens_count)
 
     # Default model generation params
     model.config.num_beams = 5
     max_tokens_count = max_target_tokens_count + max_source_tokens_count
-    model.config.max_length = max_tokens_count
+    model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
 
     deepspeed_config = config.get("deepspeed")
     trainer_config = config["trainer"]

@@ -40,7 +40,8 @@ class InstructDataset(Dataset):
         max_source_tokens_count: int,
         max_target_tokens_count: int,
         sample_rate: float = 1.0,
-        only_target_loss: bool = True
+        only_target_loss: bool = True,
+        input_type: str = "causal"
     ):
         self.original_records = original_records
         self.sample_rate = sample_rate
@@ -48,6 +49,7 @@ class InstructDataset(Dataset):
         self.max_source_tokens_count = max_source_tokens_count
         self.max_target_tokens_count = max_target_tokens_count
         self.only_target_loss = only_target_loss
+        self.input_type = input_type
 
         self.records = []
         for record in tqdm(original_records):
@@ -73,7 +75,14 @@ class InstructDataset(Dataset):
             prompt_template, completion_template = random.choice(TEMPLATES_NO_INPUT)
             source = prompt_template.format(instruction=instruction.strip())
         target = completion_template.format(out=out.strip())
+        if self.input_type == "causal":
+            return self.convert_causal(source, target)
+        elif self.input_type == "seq2seq":
+            return self.convert_seq2seq(source, target)
+        else:
+            assert False
 
+    def convert_causal(self, source, target=None):
         source_tokens = self.tokenizer(
             source,
             add_special_tokens=False,
@@ -106,3 +115,27 @@ class InstructDataset(Dataset):
             "labels": labels,
             "attention_mask": attention_mask
         }
+
+    def convert_seq2seq(self, source, target=None):
+        inputs = self.tokenizer(
+            source,
+            add_special_tokens=True,
+            max_length=self.max_source_tokens_count,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt"
+        )
+        inputs = {k: v.squeeze(0) for k, v in inputs.items()}
+        if target is not None:
+            outputs = self.tokenizer(
+                target,
+                add_special_tokens=True,
+                max_length=self.max_target_tokens_count,
+                padding="max_length",
+                truncation=True,
+                return_tensors="pt"
+            )
+            labels = outputs["input_ids"].squeeze(0)
+            labels[outputs["attention_mask"].squeeze(0) == 0] = -100
+            inputs["labels"] = labels
+        return inputs
