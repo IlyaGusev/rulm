@@ -1,9 +1,9 @@
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 1,
-        "per_device_eval_batch_size": 1,
-        "gradient_accumulation_steps": 32,
+        "per_device_train_batch_size": 3,
+        "per_device_eval_batch_size": 3,
+        "gradient_accumulation_steps": 11,
         "eval_steps": 150,
         "save_steps": 150,
         "logging_steps": 10,
@@ -11,18 +11,15 @@
         "num_train_epochs": 3,
         "lr_scheduler_type": "cosine",
         "warmup_steps": 100,
-        "fp16": true,
-        "bf16": false,
+        "bf16": true,
         "gradient_checkpointing": false,
         "torch_compile": false,
         "half_precision_backend": "auto",
         "fp16_opt_level": "O2"
     },
     "deepspeed": {
-        "fp16": {
-            "enabled": true,
-            "min_loss_scale": 0.01,
-            "opt_level": "O2"
+        "bf16": {
+            "enabled": true
         },
         "optimizer": {
             "type": "AdamW",
@@ -39,12 +36,8 @@
                 "device": "cpu",
                 "pin_memory": true
             },
-            "allgather_partitions": true,
-            "allgather_bucket_size": 5e8,
-            "reduce_bucket_size": 5e8,
-            "reduce_scatter": true,
             "overlap_comm": true,
-            "contiguous_gradients": true
+            "round_robin_gradients": true
         },
         "train_batch_size": "auto",
         "gradient_accumulation_steps": "auto"
