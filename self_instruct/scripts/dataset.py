@@ -91,14 +91,14 @@ class InstructDataset(Dataset):
                 truncation=True
             )["input_ids"]
             input_ids += target_tokens + [self.tokenizer.eos_token_id]
-            max_length = self.max_source_tokens_count + self.max_target_tokens_count + 2
+            max_length = self.max_source_tokens_count + self.max_target_tokens_count + 1
             padding = [self.tokenizer.pad_token_id for i in range(len(input_ids), max_length)]
             input_ids.extend(padding)
         input_ids = torch.LongTensor(input_ids)
         labels = input_ids.clone()
         labels[labels == self.tokenizer.pad_token_id] = -100
         if self.only_target_loss:
-            for i in range(len(source_tokens) + 1):
+            for i in range(len(source_tokens)):
                 labels[i] = -100
         attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
         return {
