@@ -1,10 +1,16 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM
 import sys
 
 model_name = sys.argv[1]
+model_type = sys.argv[2]
+model_types = {
+    "causal": AutoModelForCausalLM,
+    "seq2seq": AutoModelForSeq2SeqLM
+}
 
+assert model_type in model_types
 
-model = AutoModelForCausalLM.from_pretrained(model_name).to("cuda")
+model = model_types[model_type].from_pretrained(model_name).to("cuda")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 inputs = [
