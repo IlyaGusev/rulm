@@ -31,6 +31,17 @@ def train(
     with open(config_file, "r") as r:
         config = json.load(r)
 
+    deepspeed_config = config.get("deepspeed")
+    trainer_config = config["trainer"]
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        save_total_limit=1,
+        load_best_model_at_end=True,
+        report_to=report_to,
+        deepspeed=deepspeed_config,
+        **trainer_config
+    )
+
     model_name = config["model_name"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -75,17 +86,6 @@ def train(
     model.config.num_beams = 5
     max_tokens_count = max_target_tokens_count + max_source_tokens_count
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
-
-    deepspeed_config = config.get("deepspeed")
-    trainer_config = config["trainer"]
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        save_total_limit=1,
-        load_best_model_at_end=True,
-        report_to=report_to,
-        deepspeed=deepspeed_config,
-        **trainer_config
-    )
 
     trainer = Trainer(
         model=model,
