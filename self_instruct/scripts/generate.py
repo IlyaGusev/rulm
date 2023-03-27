@@ -12,7 +12,7 @@ model_types = {
 
 assert model_type in model_types
 
-if model_type == "lora_seq2seq"
+if model_type == "lora_seq2seq":
     config = PeftConfig.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(
         config.base_model_name_or_path,
@@ -47,7 +47,7 @@ for inp in inputs:
         repetition_penalty=1.2,
         no_repeat_ngram_size=4
     )[0]
-    if model_type == "seq2seq":
+    if "seq2seq" in model_type:
         print(tokenizer.decode(data["input_ids"][0].tolist() + output_ids.tolist()))
     else:
         print(tokenizer.decode(output_ids))
