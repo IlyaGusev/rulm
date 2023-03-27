@@ -114,6 +114,7 @@ def generate_instructions(
     top_p=0.95,
     num_cpus=8,
 ):
+    random.seed(43)
     with open(settings_path) as r:
         settings = json.load(r)
 
