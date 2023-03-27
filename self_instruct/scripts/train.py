@@ -32,6 +32,17 @@ def train(
     with open(config_file, "r") as r:
         config = json.load(r)
 
+    deepspeed_config = config.get("deepspeed")
+    trainer_config = config["trainer"]
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        save_total_limit=1,
+        load_best_model_at_end=True,
+        report_to=report_to,
+        deepspeed=deepspeed_config,
+        **trainer_config
+    )
+
     model_name = config["model_name"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
