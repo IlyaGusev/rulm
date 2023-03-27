@@ -1,16 +1,28 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM
+from peft import PeftModel, PeftConfig
 import sys
 
 model_name = sys.argv[1]
 model_type = sys.argv[2]
 model_types = {
     "causal": AutoModelForCausalLM,
-    "seq2seq": AutoModelForSeq2SeqLM
+    "seq2seq": AutoModelForSeq2SeqLM,
+    "lora_seq2seq": AutoModelForSeq2SeqLM
 }
 
 assert model_type in model_types
 
-model = model_types[model_type].from_pretrained(model_name).to("cuda")
+if model_type == "lora_seq2seq"
+    config = PeftConfig.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(
+        config.base_model_name_or_path,
+        torch_dtype="auto",
+        device_map="auto"
+    )
+    model = PeftModel.from_pretrained(model, model_name)
+else:
+    model = model_types[model_type].from_pretrained(model_name).to("cuda")
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 inputs = [

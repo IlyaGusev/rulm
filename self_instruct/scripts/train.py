@@ -7,12 +7,30 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 from transformers import Trainer, TrainingArguments, logging
+from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
 from dataset import InstructDataset
 from utils import set_random_seed, fix_tokenizer, fix_model, read_jsonl
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+class SavePeftModelCallback(TrainerCallback):
+    def on_save(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ):
+        checkpoint_folder = os.path.join(
+            args.output_dir, f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}"
+        )
+
+        peft_model_path = os.path.join(checkpoint_folder, "adapter_model")
+        kwargs["model"].save_pretrained(peft_model_path)
+        return control
 
 
 def train(
@@ -34,12 +52,15 @@ def train(
 
     deepspeed_config = config.get("deepspeed")
     trainer_config = config["trainer"]
+    lora_config = config.get("lora")
+    callbacks = [SavePeftModelCallback] if lora_config else []
     training_args = TrainingArguments(
         output_dir=output_dir,
         save_total_limit=1,
         load_best_model_at_end=True,
         report_to=report_to,
         deepspeed=deepspeed_config,
+        callbacks=callbacks,
         **trainer_config
     )
 
@@ -98,7 +119,6 @@ def train(
     max_tokens_count = max_target_tokens_count + max_source_tokens_count
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
 
-    lora_config = config.get("lora")
     if lora_config:
         lora_config = LoraConfig(**lora_config)
         model = get_peft_model(model, lora_config)
