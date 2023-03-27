@@ -6,7 +6,7 @@ import os
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
-from transformers import Trainer, TrainingArguments, logging
+from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
@@ -60,7 +60,6 @@ def train(
         load_best_model_at_end=True,
         report_to=report_to,
         deepspeed=deepspeed_config,
-        callbacks=callbacks,
         **trainer_config
     )
 
@@ -138,7 +137,8 @@ def train(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset
+        eval_dataset=val_dataset,
+        callbacks=callbacks
     )
     trainer.train(checkpoint)
     model.save_pretrained(output_dir)
