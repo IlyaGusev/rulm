@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 from transformers import Trainer, TrainingArguments, logging
-from peft import get_peft_model, LoraConfig
+from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
 from dataset import InstructDataset
 from utils import set_random_seed, fix_tokenizer, fix_model, read_jsonl
@@ -87,9 +87,11 @@ def train(
             load_in_8bit=True,
             device_map="auto"
         )
+        model = fix_model(model, tokenizer, max_target_tokens_count, use_resize=False)
+        model = prepare_model_for_int8_training(model)
     else:
         model = model_types[model_type].from_pretrained(model_name)
-    model = fix_model(model, tokenizer, max_target_tokens_count)
+        model = fix_model(model, tokenizer, max_target_tokens_count)
 
     # Default model generation params
     model.config.num_beams = 5
