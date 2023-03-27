@@ -24,7 +24,6 @@ inputs = [
 
 for inp in inputs:
     data = tokenizer([inp], return_tensors="pt")
-    print(data)
     data = {k: v.to("cuda") for k, v in data.items() if k in ("input_ids", "attention_mask")}
     output_ids = model.generate(
         **data,
@@ -36,7 +35,10 @@ for inp in inputs:
         repetition_penalty=1.2,
         no_repeat_ngram_size=4
     )[0]
-    print(tokenizer.decode(output_ids))
+    if model_type == "seq2seq":
+        print(tokenizer.decode(data["input_ids"][0].tolist() + output_ids.tolist()))
+    else:
+        print(tokenizer.decode(output_ids))
     print()
     print("==============================")
     print()

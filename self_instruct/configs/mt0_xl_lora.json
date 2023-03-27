@@ -1,0 +1,35 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 2,
+        "per_device_eval_batch_size": 2,
+        "gradient_accumulation_steps": 16,
+        "eval_steps": 150,
+        "save_steps": 150,
+        "logging_steps": 10,
+        "learning_rate": 0.00005,
+        "num_train_epochs": 3,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 100,
+        "fp16": false,
+        "bf16": true,
+        "gradient_checkpointing": false,
+        "torch_compile": false,
+        "optim": "adamw_torch",
+        "half_precision_backend": "auto",
+        "fp16_opt_level": "O2"
+    },
+    "lora": {
+        "r": 8,
+        "lora_alpha": 32,
+        "lora_dropout": 0.1,
+        "inference_mode": false,
+        "task_type": "SEQ_2_SEQ_LM"
+    },
+    "load_in_8bit": true,
+    "model_name": "bigscience/mt0-xl",
+    "model_type": "seq2seq",
+    "max_source_tokens_count": 256,
+    "max_target_tokens_count": 256
+}
+

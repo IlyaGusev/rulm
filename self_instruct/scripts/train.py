@@ -7,6 +7,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 from transformers import Trainer, TrainingArguments, logging
+from peft import get_peft_model, LoraConfig
 
 from dataset import InstructDataset
 from utils import set_random_seed, fix_tokenizer, fix_model, read_jsonl
@@ -68,13 +69,26 @@ def train(
         "causal": AutoModelForCausalLM,
         "seq2seq": AutoModelForSeq2SeqLM
     }
-    model = model_types[model_type].from_pretrained(model_name)
+    load_in_8bit = bool(config.get("load_in_8bit", False))
+    if load_in_8bit:
+        model = model_types[model_type].from_pretrained(
+            model_name,
+            load_in_8bit=True,
+            device_map="auto"
+        )
+    else:
+        model = model_types[model_type].from_pretrained(model_name)
     model = fix_model(model, tokenizer, max_target_tokens_count)
 
     # Default model generation params
     model.config.num_beams = 5
     max_tokens_count = max_target_tokens_count + max_source_tokens_count
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
+
+    lora_config = config.get("lora")
+    if lora_config:
+        lora_config = LoraConfig(**lora_config)
+        model = get_peft_model(model, lora_config)
 
     deepspeed_config = config.get("deepspeed")
     trainer_config = config["trainer"]
