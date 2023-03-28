@@ -78,6 +78,8 @@ def train(
     max_source_tokens_count = config["max_source_tokens_count"]
     max_target_tokens_count = config["max_target_tokens_count"]
     template_category = config.get("template_category", "causal_newlines")
+    target_field = config.get("target_field", "output")
+    source_field = config.get("source_field", "input")
     train_dataset = InstructDataset(
         train_records,
         tokenizer,
@@ -85,7 +87,9 @@ def train(
         max_target_tokens_count=max_target_tokens_count,
         sample_rate=train_sample_rate,
         input_type=model_type,
-        template_category=template_category
+        template_category=template_category,
+        target_field=target_field,
+        source_field=source_field
     )
     print(train_dataset[0])
 
@@ -96,7 +100,9 @@ def train(
         max_target_tokens_count=max_target_tokens_count,
         sample_rate=val_sample_rate,
         input_type=model_type,
-        template_category=template_category
+        template_category=template_category,
+        target_field=target_field,
+        source_field=source_field
     )
 
     model_types = {

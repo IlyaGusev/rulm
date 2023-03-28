@@ -58,7 +58,9 @@ class InstructDataset(Dataset):
         template_category: str,
         sample_rate: float = 1.0,
         only_target_loss: bool = True,
-        input_type: str = "causal"
+        input_type: str = "causal",
+        target_field: str = "output",
+        source_field: str = "input"
     ):
         self.original_records = original_records
         self.sample_rate = sample_rate
@@ -68,6 +70,8 @@ class InstructDataset(Dataset):
         self.only_target_loss = only_target_loss
         self.input_type = input_type
         self.template_category = template_category
+        self.target_field = target_field
+        self.source_field = source_field
         self.is_printed = False
 
         self.records = []
@@ -85,8 +89,8 @@ class InstructDataset(Dataset):
 
     def convert_record(self, record):
         instruction = record["instruction"]
-        inp = record["input"]
-        out = record["output"]
+        inp = record[self.source_field]
+        out = record[self.target_field]
         if inp.strip() != "":
             templates = TEMPLATES[self.template_category]["with_input"]
             prompt_template, completion_template = random.choice(templates)
