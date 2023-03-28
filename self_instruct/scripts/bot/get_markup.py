@@ -4,9 +4,10 @@ from statistics import mean
 from collections import Counter, defaultdict
 from tinydb import TinyDB, Query
 
-output_path = sys.argv[1]
+db_path = sys.argv[1]
+output_path = sys.argv[2]
 
-db = TinyDB("db.json", ensure_ascii=False)
+db = TinyDB(db_path, ensure_ascii=False)
 
 key = ("instruction", "input")
 
