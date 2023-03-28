@@ -8,28 +8,44 @@ from transformers import AutoTokenizer
 from tqdm import tqdm
 
 
-TEMPLATES_WITH_INPUT = [
-    ("{instruction}\nВход: {inp}\nВыход:", " {out}"),
-    ("{instruction}\n\nВход: {inp}\n\nОтвет: ", "{out}"),
-    ("Задание: {instruction}\nВход: {inp}\nВыход:", " {out}"),
-    ("Инструкция: {instruction}\nДано: {inp}\nВыход:", " {out}"),
-    ("{instruction}\n\n{inp}\n\nОтвет:", " {out}"),
-    ("{instruction}\n\n{inp}\n\n", "{out}"),
-    ("{instruction}\n{inp}\n\n", "{out}"),
-    ("{instruction}\n{inp}\n", "{out}"),
-    ("Задание: {instruction}\n\n{inp}\n\n", "{out}"),
-]
-
-TEMPLATES_NO_INPUT = [
-    ("{instruction} Ответ:", " {out}"),
-    ("{instruction} Выход:", " {out}"),
-    ("{instruction}\nВыход:", " {out}"),
-    ("{instruction}\n\nОтвет:", " {out}"),
-    ("{instruction}\n", "{out}"),
-    ("{instruction}\n\n", "{out}"),
-    ("Задание: {instruction}\n\n", "{out}"),
-    ("Инструкция: {instruction}\n\n", "{out}"),
-]
+TEMPLATES = {
+    "causal_newlines": {
+        "with_input": [
+            ("{instruction}\nВход: {inp}\nВыход: ", "{out}"),
+            ("{instruction}\n\nВход: {inp}\n\nОтвет: ", "{out}"),
+            ("Задание: {instruction}\nВход: {inp}\nВыход: ", "{out}"),
+            ("Инструкция: {instruction}\nДано: {inp}\nВыход: ", "{out}"),
+            ("{instruction}\n\n{inp}\n\nОтвет: ", "{out}"),
+            ("{instruction}\n\n{inp}\n\n", "{out}"),
+            ("{instruction}\n{inp}\n\n", "{out}"),
+            ("{instruction}\n{inp}\n", "{out}"),
+            ("Задание: {instruction}\n\n{inp}\n\n", "{out}"),
+        ],
+        "no_input": [
+            ("{instruction} Ответ: ", "{out}"),
+            ("{instruction} Выход: ", "{out}"),
+            ("{instruction}\nВыход: ", "{out}"),
+            ("{instruction}\n\nОтвет: ", "{out}"),
+            ("{instruction}\n", "{out}"),
+            ("{instruction}\n\n", "{out}"),
+            ("Задание: {instruction}\n\n", "{out}"),
+            ("Инструкция: {instruction}\n\n", "{out}"),
+        ],
+    },
+    "seq2seq_no_newlines": {
+        "with_input": [
+            ("{instruction} | Вход: {inp}", "{out}"),
+            ("Задание: {instruction} | Вход: {inp}", "{out}"),
+            ("Инструкция: {instruction} - Дано: {inp}", "{out}"),
+            ("{instruction} | Вход: {inp}", "{out}"),
+        ],
+        "no_input": [
+            ("{instruction}", "{out}"),
+            ("Задание: {instruction}", "{out}"),
+            ("Инструкция: {instruction}", "{out}"),
+        ]
+    }
+}
 
 
 class InstructDataset(Dataset):
@@ -39,6 +55,7 @@ class InstructDataset(Dataset):
         tokenizer: AutoTokenizer,
         max_source_tokens_count: int,
         max_target_tokens_count: int,
+        template_category: str,
         sample_rate: float = 1.0,
         only_target_loss: bool = True,
         input_type: str = "causal"
@@ -50,6 +67,8 @@ class InstructDataset(Dataset):
         self.max_target_tokens_count = max_target_tokens_count
         self.only_target_loss = only_target_loss
         self.input_type = input_type
+        self.template_category = template_category
+        self.is_printed = False
 
         self.records = []
         for record in tqdm(original_records):
@@ -69,12 +88,20 @@ class InstructDataset(Dataset):
         inp = record["input"]
         out = record["output"]
         if inp.strip() != "":
-            prompt_template, completion_template = random.choice(TEMPLATES_WITH_INPUT)
+            templates = TEMPLATES[self.template_category]["with_input"]
+            prompt_template, completion_template = random.choice(templates)
             source = prompt_template.format(instruction=instruction.strip(), inp=inp.strip())
         else:
-            prompt_template, completion_template = random.choice(TEMPLATES_NO_INPUT)
+            templates = TEMPLATES[self.template_category]["no_input"]
+            prompt_template, completion_template = random.choice(templates)
             source = prompt_template.format(instruction=instruction.strip())
-        target = completion_template.format(out=out.strip())
+        target = completion_template.format(out=out.strip()).strip()
+        if not self.is_printed:
+            print("SOURCE:")
+            print(source)
+            print("TARGET:")
+            print(target)
+            self.is_printed = True
         if self.input_type == "causal":
             return self.convert_causal(source, target)
         elif self.input_type == "seq2seq":

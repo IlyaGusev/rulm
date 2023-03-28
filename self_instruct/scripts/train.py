@@ -77,13 +77,15 @@ def train(
     model_type = config.get("model_type", "causal")
     max_source_tokens_count = config["max_source_tokens_count"]
     max_target_tokens_count = config["max_target_tokens_count"]
+    template_category = config.get("template_category", "causal_newlines")
     train_dataset = InstructDataset(
         train_records,
         tokenizer,
         max_source_tokens_count=max_source_tokens_count,
         max_target_tokens_count=max_target_tokens_count,
         sample_rate=train_sample_rate,
-        input_type=model_type
+        input_type=model_type,
+        template_category=template_category
     )
     print(train_dataset[0])
 
@@ -93,7 +95,8 @@ def train(
         max_source_tokens_count=max_source_tokens_count,
         max_target_tokens_count=max_target_tokens_count,
         sample_rate=val_sample_rate,
-        input_type=model_type
+        input_type=model_type,
+        template_category=template_category
     )
 
     model_types = {

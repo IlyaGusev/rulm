@@ -7,7 +7,7 @@
         "eval_steps": 150,
         "save_steps": 150,
         "logging_steps": 10,
-        "learning_rate": 0.0002,
+        "learning_rate": 0.0003,
         "num_train_epochs": 3,
         "lr_scheduler_type": "cosine",
         "warmup_steps": 100,
@@ -17,16 +17,17 @@
         "optim": "adamw_torch"
     },
     "lora": {
-        "r": 8,
+        "r": 4,
         "lora_alpha": 32,
-        "lora_dropout": 0.1,
+        "lora_dropout": 0.02,
         "inference_mode": false,
         "task_type": "SEQ_2_SEQ_LM"
     },
     "load_in_8bit": true,
     "model_name": "bigscience/mt0-xxl-mt",
     "model_type": "seq2seq",
-    "max_source_tokens_count": 256,
-    "max_target_tokens_count": 256
+    "template_category": "seq2seq_no_newlines",
+    "max_source_tokens_count": 400,
+    "max_target_tokens_count": 400
 }
 
