@@ -1,6 +1,7 @@
+import sys
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel, PeftConfig
-import sys
+import torch
 
 model_name = sys.argv[1]
 model_type = sys.argv[2]
@@ -21,7 +22,7 @@ if model_type == "lora_seq2seq":
     )
     model = PeftModel.from_pretrained(model, model_name)
 else:
-    model = model_types[model_type].from_pretrained(model_name).to("cuda")
+    model = model_types[model_type].from_pretrained(model_name, device_map="auto")
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -36,14 +37,14 @@ inputs = [
 
 for inp in inputs:
     data = tokenizer([inp], return_tensors="pt")
-    data = {k: v.to("cuda") for k, v in data.items() if k in ("input_ids", "attention_mask")}
+    data = {k: v.to(model.device) for k, v in data.items() if k in ("input_ids", "attention_mask")}
     output_ids = model.generate(
         **data,
-        num_beams=1,
+        num_beams=2,
         max_length=512,
         do_sample=True,
         top_p=0.95,
-        temperature=0.5,
+        temperature=1.0,
         repetition_penalty=1.2,
         no_repeat_ngram_size=4
     )[0]
