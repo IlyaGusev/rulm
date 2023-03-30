@@ -121,8 +121,11 @@ class InstructDataset(Dataset):
             padding=False,
             truncation=True
         )["input_ids"]
-        input_ids = source_tokens + []
+        if self.tokenizer.bos_token_id:
+            source_tokens.insert(0, self.tokenizer.bos_token_id)
+        input_ids = source_tokens[:]
         actual_length = len(input_ids)
+        max_length = self.max_source_tokens_count + self.max_target_tokens_count + 2
         if target is not None:
             target_tokens = self.tokenizer(
                 target,
@@ -133,7 +136,6 @@ class InstructDataset(Dataset):
             )["input_ids"]
             input_ids += target_tokens + [self.tokenizer.eos_token_id]
             actual_length = len(input_ids)
-            max_length = self.max_source_tokens_count + self.max_target_tokens_count + 1
             padding = [self.tokenizer.pad_token_id for i in range(len(input_ids), max_length)]
             input_ids.extend(padding)
 
@@ -144,6 +146,7 @@ class InstructDataset(Dataset):
         attention_mask[actual_length:] = 0
         if self.only_target_loss:
             labels[:len(source_tokens)] = -100
+        assert input_ids.size(0) == labels.size(0) == attention_mask.size(0) == max_length
 
         return {
             "input_ids": input_ids,

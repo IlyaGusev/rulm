@@ -106,8 +106,8 @@ def fix_tokenizer(tokenizer):
         special_tokens["sep_token"] = special_tokens["bos_token"]
 
     if tokenizer.pad_token_id in (None, tokenizer.vocab_size) and "pad_token" not in special_tokens:
-        if tokenizer.eos_token_id is not None:
-            special_tokens["pad_token"] = tokenizer.eos_token
+        if tokenizer.unk_token_id is not None:
+            special_tokens["pad_token"] = tokenizer.unk_token
         else:
             special_tokens["pad_token"] = "<|pad|>"
 
