@@ -15,7 +15,7 @@ model_types = {
 assert model_type in model_types
 
 config = PeftConfig.from_pretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(
+model = model_types[model_type].from_pretrained(
     config.base_model_name_or_path,
     torch_dtype=torch.float16,
 )
