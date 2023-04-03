@@ -6,13 +6,13 @@ Steps:
 * Fix pad, bos, eos tokens everywhere. And also a name of the tokenizer.
 * Run training.
 
-Installation:
+Install libraries:
 ```
 sudo apt-get install git-lfs
 pip install git+https://github.com/huggingface/transformers peft bitsandbytes
 ```
 
-Downloading a base model:
+Download a base model:
 ```
 git clone https://huggingface.co/decapoda-research/llama-7b-hf
 ```
@@ -62,13 +62,7 @@ Correct generation_config.json:
 }
 ```
 
-An example of a training script run:
-
-```python
-python3 scripts/train.py --config-file configs/llama_7b_lora.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/llama_7b_lora
-```
-
-A config example:
+A training config example:
 ```
 {
     "trainer": {
@@ -104,4 +98,10 @@ A config example:
     "max_source_tokens_count": 256,
     "max_target_tokens_count": 512
 }
+```
+
+Run training script:
+
+```python
+python3 scripts/train.py --config-file configs/llama_7b_lora.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/llama_7b_lora
 ```
