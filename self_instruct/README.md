@@ -1,3 +1,4 @@
+## Training
 Steps:
 * Install dev versions of transformers, peft and bitsandbytes.
 * Prepare your data as two JSONL files, with three fields: "instruction", "input", "output".
