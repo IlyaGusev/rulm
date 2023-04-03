@@ -1,10 +1,21 @@
 ## Training
 Steps:
-* Install dev versions of transformers, peft and bitsandbytes.
+* Install a dev version of transformers, peft and bitsandbytes.
 * Prepare your data as two JSONL files, with three fields: "instruction", "input", "output".
-* Download base model, for example, decapoda-research/llama-7b-hf. 
+* Download some base model, for example, decapoda-research/llama-7b-hf. 
 * Fix pad, bos, eos tokens everywhere. And also a name of the tokenizer.
 * Run training.
+
+Installation:
+```
+sudo apt-get install git-lfs
+pip install git+https://github.com/huggingface/transformers peft bitsandbytes
+```
+
+Downloading a base model:
+```
+git clone https://huggingface.co/decapoda-research/llama-7b-hf
+```
 
 Correct tokenizer_config.json:
 ```
