@@ -25,7 +25,6 @@
         "task_type": "CAUSAL_LM"
     },
     "load_in_8bit": true,
-    "target_field": "alternative_output",
     "only_target_loss": false,
     "model_name": "models/llama-7b-hf",
     "model_type": "causal",
