@@ -80,6 +80,7 @@ def train(
     template_category = config.get("template_category", "causal_newlines")
     target_field = config.get("target_field", "output")
     source_field = config.get("source_field", "input")
+    only_target_loss = config.get("only_target_loss", True)
     train_dataset = InstructDataset(
         train_records,
         tokenizer,
@@ -89,7 +90,8 @@ def train(
         input_type=model_type,
         template_category=template_category,
         target_field=target_field,
-        source_field=source_field
+        source_field=source_field,
+        only_target_loss=only_target_loss
     )
     print(train_dataset[0])
 
@@ -102,7 +104,8 @@ def train(
         input_type=model_type,
         template_category=template_category,
         target_field=target_field,
-        source_field=source_field
+        source_field=source_field,
+        only_target_loss=only_target_loss
     )
 
     model_types = {
@@ -124,7 +127,7 @@ def train(
 
     # Default model generation params
     model.config.num_beams = 5
-    max_tokens_count = max_target_tokens_count + max_source_tokens_count
+    max_tokens_count = max_target_tokens_count + max_source_tokens_count + 1
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
 
     if lora_config:

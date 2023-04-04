@@ -8,7 +8,8 @@ model_type = sys.argv[2]
 model_types = {
     "causal": AutoModelForCausalLM,
     "seq2seq": AutoModelForSeq2SeqLM,
-    "lora_seq2seq": AutoModelForSeq2SeqLM
+    "lora_seq2seq": AutoModelForSeq2SeqLM,
+    "lora_causal": AutoModelForCausalLM
 }
 
 assert model_type in model_types
@@ -16,6 +17,14 @@ assert model_type in model_types
 if model_type == "lora_seq2seq":
     config = PeftConfig.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(
+        config.base_model_name_or_path,
+        torch_dtype="auto",
+        device_map="auto"
+    )
+    model = PeftModel.from_pretrained(model, model_name)
+elif model_type == "lora_causal":
+    config = PeftConfig.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
         config.base_model_name_or_path,
         torch_dtype="auto",
         device_map="auto"
@@ -41,7 +50,7 @@ for inp in inputs:
     output_ids = model.generate(
         **data,
         num_beams=2,
-        max_length=512,
+        max_length=256,
         do_sample=True,
         top_p=0.95,
         temperature=1.0,
