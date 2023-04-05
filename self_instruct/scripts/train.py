@@ -3,10 +3,11 @@ import random
 import json
 import os
 
+import wandb
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
-from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl
+from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl, DataCollatorForSeq2Seq
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
@@ -77,7 +78,7 @@ def train(
     model_type = config.get("model_type", "causal")
     max_source_tokens_count = config["max_source_tokens_count"]
     max_target_tokens_count = config["max_target_tokens_count"]
-    template_category = config.get("template_category", "causal_newlines")
+    templates_path = config.get("templates_path", "ru_alpaca_template.json")
     target_field = config.get("target_field", "output")
     source_field = config.get("source_field", "input")
     only_target_loss = config.get("only_target_loss", True)
@@ -88,12 +89,11 @@ def train(
         max_target_tokens_count=max_target_tokens_count,
         sample_rate=train_sample_rate,
         input_type=model_type,
-        template_category=template_category,
+        templates_path=templates_path,
         target_field=target_field,
         source_field=source_field,
         only_target_loss=only_target_loss
     )
-    print(train_dataset[0])
 
     val_dataset = InstructDataset(
         val_records,
@@ -102,11 +102,16 @@ def train(
         max_target_tokens_count=max_target_tokens_count,
         sample_rate=val_sample_rate,
         input_type=model_type,
-        template_category=template_category,
+        templates_path=templates_path,
         target_field=target_field,
         source_field=source_field,
         only_target_loss=only_target_loss
     )
+    data_collator = DataCollatorForSeq2Seq(
+        tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+    )
+
+    print(data_collator([train_dataset[0], train_dataset[1]]))
 
     model_types = {
         "causal": AutoModelForCausalLM,
@@ -144,16 +149,18 @@ def train(
         deepspeed=deepspeed_config,
         **trainer_config
     )
-
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        callbacks=callbacks
+        callbacks=callbacks,
+        data_collator=data_collator
     )
-    trainer.train(checkpoint)
-    model.save_pretrained(output_dir)
+
+    with wandb.init(project="rulm_self_instruct", name=config_file) as run:
+        trainer.train(checkpoint)
+        model.save_pretrained(output_dir)
 
 
 if __name__ == "__main__":
@@ -166,7 +173,7 @@ if __name__ == "__main__":
     parser.add_argument("--train-sample-rate", type=float, default=1.0)
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--report-to", type=str, default="none")
+    parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--local_rank", type=int, default=0)
     args = parser.parse_args()
     train(**vars(args))

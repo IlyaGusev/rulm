@@ -1,0 +1,14 @@
+{
+    "description": "Template used by Russian seq2seq models without line breaks.",
+    "prompts_input": [
+        "{instruction} | Вход: {inp}",
+        "Задание: {instruction} | Вход: {inp}",
+        "Инструкция: {instruction} - Дано: {inp}",
+        "{instruction} | Вход: {inp}"
+    ],
+    "prompts_no_input": [
+        "{instruction}",
+        "Задание: {instruction}",
+        "Инструкция: {instruction}"
+    ]
+}

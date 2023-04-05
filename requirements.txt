@@ -1,8 +1,10 @@
 --extra-index-url https://download.pytorch.org/whl/nightly/cu118
 numpy >= 1.12.1
 scipy >= 1.0.1
-torch[dynamo]
-transformers
+torch >= 2.0.0
+bitsandbytest
+peft
+git+https://github.com/huggingface/transformers.git
 datasets
 zstandard
 jsonlines

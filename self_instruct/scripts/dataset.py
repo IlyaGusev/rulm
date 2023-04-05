@@ -1,4 +1,5 @@
 import random
+import json
 from typing import List, Dict, Tuple, Any
 
 import torch
@@ -8,46 +9,6 @@ from transformers import AutoTokenizer
 from tqdm import tqdm
 
 
-TEMPLATES = {
-    "causal_newlines": {
-        "with_input": [
-            ("{instruction}\nВход: {inp}\nВыход: ", "{out}"),
-            ("{instruction}\n\nВход: {inp}\n\nОтвет: ", "{out}"),
-            ("Задание: {instruction}\nВход: {inp}\nВыход: ", "{out}"),
-            ("Инструкция: {instruction}\nДано: {inp}\nВыход: ", "{out}"),
-            ("{instruction}\n\n{inp}\n\nОтвет: ", "{out}"),
-            ("{instruction}\n\n{inp}\n\n", "{out}"),
-            ("{instruction}\n{inp}\n\n", "{out}"),
-            ("{instruction}\n{inp}\n", "{out}"),
-            ("Задание: {instruction}\n\n{inp}\n\n", "{out}"),
-        ],
-        "no_input": [
-            ("{instruction} Ответ: ", "{out}"),
-            ("{instruction} Выход: ", "{out}"),
-            ("{instruction}\nВыход: ", "{out}"),
-            ("{instruction}\n\nОтвет: ", "{out}"),
-            ("{instruction}\n", "{out}"),
-            ("{instruction}\n\n", "{out}"),
-            ("Задание: {instruction}\n\n", "{out}"),
-            ("Инструкция: {instruction}\n\n", "{out}"),
-        ],
-    },
-    "seq2seq_no_newlines": {
-        "with_input": [
-            ("{instruction} | Вход: {inp}", "{out}"),
-            ("Задание: {instruction} | Вход: {inp}", "{out}"),
-            ("Инструкция: {instruction} - Дано: {inp}", "{out}"),
-            ("{instruction} | Вход: {inp}", "{out}"),
-        ],
-        "no_input": [
-            ("{instruction}", "{out}"),
-            ("Задание: {instruction}", "{out}"),
-            ("Инструкция: {instruction}", "{out}"),
-        ]
-    }
-}
-
-
 class InstructDataset(Dataset):
     def __init__(
         self,
@@ -55,12 +16,13 @@ class InstructDataset(Dataset):
         tokenizer: AutoTokenizer,
         max_source_tokens_count: int,
         max_target_tokens_count: int,
-        template_category: str,
+        templates_path: str,
         sample_rate: float = 1.0,
         only_target_loss: bool = True,
         input_type: str = "causal",
         target_field: str = "output",
-        source_field: str = "input"
+        source_field: str = "input",
+        use_padding: bool = False
     ):
         self.original_records = original_records
         self.sample_rate = sample_rate
@@ -69,10 +31,13 @@ class InstructDataset(Dataset):
         self.max_target_tokens_count = max_target_tokens_count
         self.only_target_loss = only_target_loss
         self.input_type = input_type
-        self.template_category = template_category
         self.target_field = target_field
         self.source_field = source_field
+        self.use_padding = use_padding
         self.is_printed = False
+
+        with open(templates_path) as r:
+            self.templates = json.load(r)
 
         self.records = []
         for record in tqdm(original_records):
@@ -92,14 +57,14 @@ class InstructDataset(Dataset):
         inp = record[self.source_field]
         out = record[self.target_field]
         if inp.strip() != "":
-            templates = TEMPLATES[self.template_category]["with_input"]
-            prompt_template, completion_template = random.choice(templates)
+            templates = self.templates["prompts_input"]
+            prompt_template = random.choice(templates)
             source = prompt_template.format(instruction=instruction.strip(), inp=inp.strip())
         else:
-            templates = TEMPLATES[self.template_category]["no_input"]
-            prompt_template, completion_template = random.choice(templates)
+            templates = self.templates["prompts_no_input"]
+            prompt_template = random.choice(templates)
             source = prompt_template.format(instruction=instruction.strip())
-        target = completion_template.format(out=out.strip()).strip()
+        target = out.strip()
         if not self.is_printed:
             print("SOURCE:")
             print(source)
@@ -136,17 +101,19 @@ class InstructDataset(Dataset):
             )["input_ids"]
             input_ids += target_tokens + [self.tokenizer.eos_token_id]
             actual_length = len(input_ids)
-            padding = [self.tokenizer.pad_token_id for i in range(len(input_ids), max_length)]
-            input_ids.extend(padding)
+            if self.use_padding:
+                padding = [self.tokenizer.pad_token_id for i in range(len(input_ids), max_length)]
+                input_ids.extend(padding)
 
         input_ids = torch.LongTensor(input_ids)
         labels = input_ids.clone()
         attention_mask = input_ids.new_ones(input_ids.size())
-        labels[actual_length:] = -100
-        attention_mask[actual_length:] = 0
+        if self.use_padding:
+            labels[actual_length:] = -100
+            attention_mask[actual_length:] = 0
         if self.only_target_loss:
             labels[:len(source_tokens)] = -100
-        assert input_ids.size(0) == labels.size(0) == attention_mask.size(0) == max_length
+        assert input_ids.size(0) == labels.size(0) == attention_mask.size(0) <= max_length
 
         return {
             "input_ids": input_ids,
