@@ -1,11 +1,14 @@
 import random
 import json
+from typing import Optional
+from dataclasses import dataclass
 from typing import List, Dict, Tuple, Any
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from tqdm import tqdm
 
 
@@ -144,3 +147,35 @@ class InstructDataset(Dataset):
             labels[outputs["attention_mask"].squeeze(0) == 0] = -100
             inputs["labels"] = labels
         return inputs
+
+
+@dataclass
+class CustomDataCollator:
+    tokenizer: PreTrainedTokenizerBase
+    pad_to_multiple_of: Optional[int] = 8
+    label_pad_token_id: int = -100
+
+    def __call__(self, features):
+        labels = [feature["labels"] for feature in features]
+        max_length = max(len(l) for l in labels)
+        if (max_length % self.pad_to_multiple_of != 0):
+            max_length = ((max_length // self.pad_to_multiple_of) + 1) * self.pad_to_multiple_of
+        padding_side = self.tokenizer.padding_side
+        for feature in features:
+            remainder = [self.label_pad_token_id] * (max_length - len(feature["labels"]))
+            if padding_side == "right":
+                feature["labels"] = np.concatenate([feature["labels"], remainder]).astype(np.int64)
+            else:
+                feature["labels"] = np.concatenate([remainder, feature["labels"]]).astype(np.int64)
+        features = self.tokenizer.pad(
+            features,
+            padding=True,
+            max_length=None,
+            pad_to_multiple_of=self.pad_to_multiple_of,
+            return_tensors="pt"
+        )
+        labels_size = features["labels"][0].size(0)
+        inputs_size = features["input_ids"][0].size(0)
+        assert labels_size == inputs_size, f"{labels_size} vs {inputs_size}"
+        return features
+

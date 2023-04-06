@@ -7,11 +7,11 @@ import wandb
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
-from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl, DataCollatorForSeq2Seq
+from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
-from dataset import InstructDataset
+from dataset import InstructDataset, CustomDataCollator
 from utils import set_random_seed, fix_tokenizer, fix_model, read_jsonl
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -107,8 +107,8 @@ def train(
         source_field=source_field,
         only_target_loss=only_target_loss
     )
-    data_collator = DataCollatorForSeq2Seq(
-        tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+    data_collator = CustomDataCollator(
+        tokenizer, pad_to_multiple_of=8
     )
 
     print(data_collator([train_dataset[0], train_dataset[1]]))

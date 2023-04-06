@@ -1,9 +1,9 @@
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 6,
-        "per_device_eval_batch_size": 6,
-        "gradient_accumulation_steps": 21,
+        "per_device_train_batch_size": 4,
+        "per_device_eval_batch_size": 4,
+        "gradient_accumulation_steps": 32,
         "eval_steps": 150,
         "save_steps": 150,
         "logging_steps": 5,
@@ -30,5 +30,5 @@
     "model_type": "causal",
     "template_category": "causal_newlines",
     "max_source_tokens_count": 512,
-    "max_target_tokens_count": 1024
+    "max_target_tokens_count": 832
 }
