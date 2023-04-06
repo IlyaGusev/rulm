@@ -85,7 +85,6 @@ def set_random_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 
-
 def fix_tokenizer(tokenizer):
     # Fixing broken tokenizers
     special_tokens = dict()

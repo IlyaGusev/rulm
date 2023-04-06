@@ -5,5 +5,6 @@
     ],
     "prompts_no_input": [
         "### Задание: {instruction}\n### Ответ: "
-    ]
+    ],
+    "output_separator": "Ответ: "
 }
