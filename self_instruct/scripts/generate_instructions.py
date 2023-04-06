@@ -151,8 +151,9 @@ def generate_instructions(
 
         for _ in range(request_batch_size):
             prompt_instructions = random.sample(seed_instruction_data, settings["num_example_tasks"] - 1)
-            prompt_machine_instructions = random.sample(machine_instruction_data, 1)
-            prompt_instructions += prompt_machine_instructions
+            if machine_instruction_data:
+                prompt_machine_instructions = random.sample(machine_instruction_data, 1)
+                prompt_instructions += prompt_machine_instructions
             random.shuffle(prompt_instructions)
 
             prompt = encode_prompt(prompt_instructions, settings, template_path)
