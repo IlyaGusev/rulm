@@ -1,0 +1,33 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 4,
+        "per_device_eval_batch_size": 4,
+        "gradient_accumulation_steps": 32,
+        "eval_steps": 75,
+        "save_steps": 75,
+        "logging_steps": 5,
+        "learning_rate": 0.0003,
+        "num_train_epochs": 3,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 50,
+        "fp16": true,
+        "bf16": false,
+        "torch_compile": false,
+        "optim": "adamw_torch"
+    },
+    "lora": {
+        "r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "inference_mode": false,
+        "task_type": "SEQ_2_SEQ_LM"
+    },
+    "load_in_8bit": true,
+    "templates_path": "ru_alpaca_seq2seq_template.json",
+    "model_name": "ai-forever/FRED-T5-1.7B",
+    "model_type": "seq2seq",
+    "max_source_tokens_count": 512,
+    "max_target_tokens_count": 512
+}
+

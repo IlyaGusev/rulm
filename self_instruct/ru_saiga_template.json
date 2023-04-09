@@ -1,11 +1,7 @@
 {
-    "description": "Chat template for Saiga.",
+    "system_prompt": "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им.",
     "message_template": "<start>{role}\n{content} <end>\n",
     "start_token_id": 2962,
     "end_token_id": 355,
-    "bot_token_id": 7451,
-    "role_mapping": {
-        "assistant": "bot"
-    },
-    "system_message": {"role": "system", "content": "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."}
+    "bot_token_id": 7451
 }
