@@ -127,7 +127,7 @@ def fix_tokenizer(tokenizer):
     return tokenizer
 
 
-def fix_model(model, tokenizer, max_target_tokens_count, use_resize=True):
+def fix_model(model, tokenizer, use_resize=True):
     model.config.pad_token_id = tokenizer.pad_token_id
     assert model.config.pad_token_id is not None
 

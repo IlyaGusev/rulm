@@ -11,7 +11,7 @@ from transformers import Trainer, TrainingArguments, logging, TrainerCallback, T
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
-from dataset import InstructDataset
+from dataset import InstructDataset, ChatDataset
 from utils import set_random_seed, fix_tokenizer, fix_model, read_jsonl
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -76,37 +76,63 @@ def train(
     print(train_records[0])
 
     model_type = config.get("model_type", "causal")
-    max_source_tokens_count = config["max_source_tokens_count"]
-    max_target_tokens_count = config["max_target_tokens_count"]
     templates_path = config.get("templates_path", "ru_alpaca_template.json")
-    target_field = config.get("target_field", "output")
-    source_field = config.get("source_field", "input")
     only_target_loss = config.get("only_target_loss", True)
-    train_dataset = InstructDataset(
-        train_records,
-        tokenizer,
-        max_source_tokens_count=max_source_tokens_count,
-        max_target_tokens_count=max_target_tokens_count,
-        sample_rate=train_sample_rate,
-        input_type=model_type,
-        templates_path=templates_path,
-        target_field=target_field,
-        source_field=source_field,
-        only_target_loss=only_target_loss
-    )
+    mode = config.get("model", "instruct")
+    if mode == "instruct":
+        max_source_tokens_count = config["max_source_tokens_count"]
+        max_target_tokens_count = config["max_target_tokens_count"]
+        target_field = config.get("target_field", "output")
+        source_field = config.get("source_field", "input")
 
-    val_dataset = InstructDataset(
-        val_records,
-        tokenizer,
-        max_source_tokens_count=max_source_tokens_count,
-        max_target_tokens_count=max_target_tokens_count,
-        sample_rate=val_sample_rate,
-        input_type=model_type,
-        templates_path=templates_path,
-        target_field=target_field,
-        source_field=source_field,
-        only_target_loss=only_target_loss
-    )
+        train_dataset = InstructDataset(
+            train_records,
+            tokenizer,
+            max_source_tokens_count=max_source_tokens_count,
+            max_target_tokens_count=max_target_tokens_count,
+            sample_rate=train_sample_rate,
+            input_type=model_type,
+            templates_path=templates_path,
+            target_field=target_field,
+            source_field=source_field,
+            only_target_loss=only_target_loss
+        )
+
+        val_dataset = InstructDataset(
+            val_records,
+            tokenizer,
+            max_source_tokens_count=max_source_tokens_count,
+            max_target_tokens_count=max_target_tokens_count,
+            sample_rate=val_sample_rate,
+            input_type=model_type,
+            templates_path=templates_path,
+            target_field=target_field,
+            source_field=source_field,
+            only_target_loss=only_target_loss
+        )
+    elif mode == "chat":
+        max_tokens_count = config["max_tokens_count"]
+
+        train_dataset = ChatDataset(
+            train_records,
+            tokenizer,
+            max_tokens_count=max_tokens_count,
+            sample_rate=train_sample_rate,
+            templates_path=templates_path,
+            only_target_loss=only_target_loss
+        )
+
+        val_dataset = ChatDataset(
+            val_records,
+            tokenizer,
+            max_tokens_count=max_tokens_count,
+            sample_rate=train_sample_rate,
+            templates_path=templates_path,
+            only_target_loss=only_target_loss
+        )
+    else:
+        assert False
+
     data_collator = DataCollatorForTokenClassification(
         tokenizer, pad_to_multiple_of=8
     )
@@ -124,15 +150,16 @@ def train(
             load_in_8bit=True,
             device_map="auto"
         )
-        model = fix_model(model, tokenizer, max_target_tokens_count, use_resize=False)
+        model = fix_model(model, tokenizer, use_resize=False)
         model = prepare_model_for_int8_training(model)
     else:
         model = model_types[model_type].from_pretrained(model_name)
-        model = fix_model(model, tokenizer, max_target_tokens_count)
+        model = fix_model(model, tokenizer)
 
     # Default model generation params
     model.config.num_beams = 5
-    max_tokens_count = max_target_tokens_count + max_source_tokens_count + 1
+    if mode == "instruction":
+        max_tokens_count = max_target_tokens_count + max_source_tokens_count + 1
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
 
     if lora_config:
