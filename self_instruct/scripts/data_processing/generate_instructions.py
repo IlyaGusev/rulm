@@ -7,7 +7,7 @@ import string
 import shutil
 from functools import partial
 from multiprocessing import Pool
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Template
 
 import fire
 import numpy as np
@@ -18,7 +18,6 @@ import re
 import utils
 
 
-JINJA_ENV = Environment(loader=FileSystemLoader("."))
 NON_ALPHANUM_RE = re.compile(r"[^a-zа-яё0-9]+")
 
 def tokenize(text):
@@ -28,7 +27,8 @@ def tokenize(text):
 
 
 def encode_prompt(example_instructions, settings, template_path):
-    template = JINJA_ENV.get_template(template_path)
+    with open(template_path) as f:
+        template = Template(f.read())
     for idx, task in enumerate(example_instructions):
         task["instruction"] = re.sub(r"\s+", " ", task["instruction"]).strip().rstrip(":")
         task["input"] = "<noinput>" if not task["input"] else task["input"]

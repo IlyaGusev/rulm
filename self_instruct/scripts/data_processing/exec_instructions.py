@@ -2,16 +2,15 @@ import json
 import os
 
 import fire
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Template
 from tqdm import tqdm
 
 import utils
 
 
-JINJA_ENV = Environment(loader=FileSystemLoader("."))
-
 def encode_prompt(record, template_path):
-    template = JINJA_ENV.get_template(template_path)
+    with open(template_path) as f:
+        template = Template(f.read())
     return template.render(task=record).strip() + "\n"
 
 
