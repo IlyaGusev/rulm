@@ -79,7 +79,7 @@ def train(
     model_type = config.get("model_type", "causal")
     templates_path = config.get("templates_path", "ru_alpaca_template.json")
     only_target_loss = config.get("only_target_loss", True)
-    mode = config.get("model", "instruct")
+    mode = config.get("mode", "instruct")
     if mode == "instruct":
         max_source_tokens_count = config["max_source_tokens_count"]
         max_target_tokens_count = config["max_target_tokens_count"]

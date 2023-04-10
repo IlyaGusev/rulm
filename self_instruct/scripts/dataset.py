@@ -228,7 +228,7 @@ class ChatDataset(Dataset):
                     cur_end_idx = input_ids.index(end_token_id, cur_start_idx + 1)
                     cur_is_bot = input_ids.index(bot_token_id, cur_start_idx + 1) < cur_end_idx
                     if not cur_is_bot:
-                        spans.append((cur_start_idx - 1, cur_end_idx + 2))
+                        spans.append((cur_start_idx - 1, cur_end_idx + 3))
                 except ValueError:
                     break
             for start_idx, end_idx in spans:
