@@ -150,6 +150,9 @@ def fix_model(model, tokenizer, use_resize=True):
         if eos_candidate is not None:
             break
     assert model.config.eos_token_id is not None
+
+    model.config.decoder_start_token_id = tokenizer.bos_token_id
+
     if use_resize:
         model.resize_token_embeddings(len(tokenizer))
 
@@ -209,8 +212,7 @@ class Conversation:
         for message in self.messages:
             message_text = self.message_template.format(**message)
             final_text += message_text
-        final_text += "<start>"
-        return final_text
+        return final_text.strip()
 
     @classmethod
     def from_template(cls, file_name):

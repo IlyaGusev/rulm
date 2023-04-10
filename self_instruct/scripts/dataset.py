@@ -11,6 +11,8 @@ from torch.utils.data import Dataset
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from tqdm import tqdm
 
+from utils import Conversation
+
 
 class InstructDataset(Dataset):
     def __init__(
@@ -37,6 +39,7 @@ class InstructDataset(Dataset):
         self.target_field = target_field
         self.source_field = source_field
         self.use_padding = use_padding
+        self.is_printed = False
 
         with open(templates_path) as r:
             self.templates = json.load(r)
@@ -67,6 +70,11 @@ class InstructDataset(Dataset):
             prompt_template = random.choice(templates)
             source = prompt_template.format(instruction=instruction.strip())
         target = out.strip()
+        if not self.is_printed:
+            print("Source and target examples")
+            print(source)
+            print(target)
+            self.is_printed = True
         if self.input_type == "causal":
             return self.convert_causal(source, target)
         elif self.input_type == "seq2seq":
@@ -122,7 +130,7 @@ class InstructDataset(Dataset):
             source,
             add_special_tokens=True,
             max_length=self.max_source_tokens_count,
-            padding="max_length",
+            padding=False,
             truncation=True,
             return_tensors="pt"
         )
@@ -132,13 +140,16 @@ class InstructDataset(Dataset):
                 target,
                 add_special_tokens=True,
                 max_length=self.max_target_tokens_count,
-                padding="max_length",
+                padding=False,
                 truncation=True,
                 return_tensors="pt"
             )
-            labels = outputs["input_ids"].squeeze(0)
-            labels[outputs["attention_mask"].squeeze(0) == 0] = -100
-            inputs["labels"] = labels
+            labels = outputs["input_ids"].squeeze(0).tolist()
+            if labels[0] != self.tokenizer.bos_token_id:
+                labels.insert(0, self.tokenizer.bos_token_id)
+            if labels[-1] != self.tokenizer.eos_token_id:
+                labels.append(self.tokenizer.eos_token_id)
+            inputs["labels"] = torch.LongTensor(labels)
         return inputs
 
 
@@ -150,18 +161,15 @@ class ChatDataset(Dataset):
         max_tokens_count: int,
         templates_path: str,
         sample_rate: float = 1.0,
-        only_target_loss: bool = True,
-        use_padding: bool = False
+        only_target_loss: bool = True
     ):
+        self.templates_path = templates_path
         self.original_records = original_records
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
         self.max_tokens_count = max_tokens_count
         self.only_target_loss = only_target_loss
-        self.use_padding = use_padding
-
-        with open(templates_path) as r:
-            self.templates = json.load(r)
+        self.is_printed = False
 
         self.records = []
         for record in tqdm(original_records):
@@ -185,19 +193,13 @@ class ChatDataset(Dataset):
         )["input_ids"]
 
     def convert_record(self, record):
-        message_template = self.templates["message_template"]
-        role_mapping = self.templates["role_mapping"]
-
-        system_message = self.templates["system_message"]
-        system_message_text = message_template.format(**system_message)
-        full_text = system_message_text
-
-        messages = record["messages"]
-        for message in messages:
-            role = message["role"]
-            message["role"] = role_mapping.get(role, role)
-            message_text = message_template.format(**message)
-            full_text += message_text
+        conversation = Conversation.from_template(self.templates_path)
+        conversation.expand(record["messages"])
+        full_text = conversation.get_prompt()
+        if not self.is_printed:
+            print("Prompt example")
+            print(full_text)
+            self.is_printed = True
 
         input_ids = self.get_tokens(full_text)
         input_ids.insert(0, self.tokenizer.bos_token_id)
@@ -205,21 +207,14 @@ class ChatDataset(Dataset):
         input_ids.append(self.tokenizer.eos_token_id)
         actual_length = len(input_ids)
 
-        if self.use_padding:
-            padding = [self.tokenizer.pad_token_id for i in range(len(input_ids), self.max_tokens_count)]
-            input_ids.extend(padding)
-
         input_ids = torch.LongTensor(input_ids)
         labels = input_ids.clone()
         attention_mask = input_ids.new_ones(input_ids.size())
-        if self.use_padding:
-            labels[actual_length:] = -100
-            attention_mask[actual_length:] = 0
 
         if self.only_target_loss:
-            start_token_id = self.templates["start_token_id"]
-            end_token_id = self.templates["end_token_id"]
-            bot_token_id = self.templates["bot_token_id"]
+            start_token_id = conversation.get_start_token_id()
+            end_token_id = conversation.get_end_token_id()
+            bot_token_id = conversation.get_bot_token_id()
 
             spans = []
             cur_start_idx = -1

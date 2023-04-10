@@ -6,7 +6,7 @@ import os
 import wandb
 import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, DataCollatorForTokenClassification
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, DataCollatorForTokenClassification, DataCollatorForSeq2Seq
 from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
@@ -133,11 +133,17 @@ def train(
     else:
         assert False
 
-    data_collator = DataCollatorForTokenClassification(
-        tokenizer, pad_to_multiple_of=8
-    )
+    if "seq2seq" in model_type:
+        data_collator = DataCollatorForSeq2Seq(tokenizer, pad_to_multiple_of=8)
+    else:
+        data_collator = DataCollatorForTokenClassification(tokenizer, pad_to_multiple_of=8)
 
-    print(data_collator([train_dataset[0], train_dataset[1]]))
+    print("INPUT_IDS")
+    print(data_collator([train_dataset[0], train_dataset[1]])["input_ids"][0])
+    print("MASK")
+    print(data_collator([train_dataset[0], train_dataset[1]])["attention_mask"][0])
+    print("LABELS")
+    print(data_collator([train_dataset[0], train_dataset[1]])["labels"][0])
 
     model_types = {
         "causal": AutoModelForCausalLM,

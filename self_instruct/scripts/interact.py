@@ -65,6 +65,7 @@ def interact(model_name, template_path):
             continue
         conversation.add_user_message(user_message)
         prompt = conversation.get_prompt()
+        prompt += "\n<start>"
         output = generate(
             model=model,
             tokenizer=tokenizer,

@@ -1,0 +1,9 @@
+{
+    "description": "seq2seq template",
+    "prompts_input": [
+        "{instruction}\nДано: {inp}"
+    ],
+    "prompts_no_input": [
+        "{instruction}"
+    ]
+}
