@@ -51,6 +51,7 @@ def train(
     with open(config_file, "r") as r:
         config = json.load(r)
 
+    device_map = "auto"
     deepspeed_config = config.get("deepspeed")
     trainer_config = config["trainer"]
     lora_config = config.get("lora")
@@ -154,7 +155,7 @@ def train(
         model = model_types[model_type].from_pretrained(
             model_name,
             load_in_8bit=True,
-            device_map="auto"
+            device_map=device_map
         )
         model = fix_model(model, tokenizer, use_resize=False)
         model = prepare_model_for_int8_training(model)
@@ -167,6 +168,10 @@ def train(
     if mode == "instruction":
         max_tokens_count = max_target_tokens_count + max_source_tokens_count + 1
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
+
+    if torch.cuda.device_count() > 1:
+        model.is_parallelizable = True
+        model.model_parallel = True
 
     if lora_config:
         lora_config = LoraConfig(**lora_config)
