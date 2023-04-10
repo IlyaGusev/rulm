@@ -2,6 +2,7 @@ import json
 import sys
 import random
 from datasets import load_dataset
+from tqdm import tqdm
 
 train_path = sys.argv[1]
 val_path = sys.argv[2]
@@ -19,18 +20,26 @@ def revert_flattening(records):
     return fixed_records
 
 
-for row in load_dataset("IlyaGusev/ru_turbo_saiga", split="train"):
+for row in tqdm(load_dataset("IlyaGusev/ru_turbo_saiga", split="train")):
     row["messages"] = revert_flattening(row["messages"])
     records.append(row)
 
-for row in load_dataset("IlyaGusev/ru_turbo_alpaca", split="train"):
+for row in tqdm(load_dataset("IlyaGusev/ru_sharegpt_cleaned", split="train")):
+    row["messages"] = revert_flattening(row["messages"])
+    records.append(row)
+
+for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
     row["output"] = row.pop("alternative_output")
     row = {key: value for key, value in row.items() if key in ("input", "output", "instruction")}
     row["messages"] = [
-        {"role": "user", "content": row["instruction"] + "\nДано: " + row["input"]},
+        {"role": "user", "content": (row["instruction"] + "\nДано: " + row["input"]) if row["input"] else row["instruction"]},
         {"role": "assistant", "content": row["output"]}
     ]
-    records.append(row)
+    if random.random() < 0.5:
+        records.append(row)
+    else:
+        index = random.randrange(len(records))
+        records[index]["messages"] += row["messages"]
 
 random.shuffle(records)
 border = int(0.95 * len(records))
