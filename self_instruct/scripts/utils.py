@@ -151,8 +151,6 @@ def fix_model(model, tokenizer, use_resize=True):
             break
     assert model.config.eos_token_id is not None
 
-    model.config.decoder_start_token_id = tokenizer.bos_token_id
-
     if use_resize:
         model.resize_token_embeddings(len(tokenizer))
 
