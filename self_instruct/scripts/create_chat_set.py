@@ -24,10 +24,10 @@ for row in tqdm(load_dataset("IlyaGusev/ru_turbo_saiga", split="train")):
     row["messages"] = revert_flattening(row["messages"])
     records.append(row)
 
-for row in tqdm(load_dataset("IlyaGusev/ru_sharegpt_cleaned", split="train")):
-    row["messages"] = revert_flattening(row["messages"])
-    records.append(row)
+max_length = max([sum([len(m["content"]) for m in r["messages"]]) for r in records])
+print("Max Saiga length:", max_length)
 
+alpaca_records = []
 for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
     row["output"] = row.pop("alternative_output")
     row = {key: value for key, value in row.items() if key in ("input", "output", "instruction")}
@@ -35,11 +35,54 @@ for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
         {"role": "user", "content": (row["instruction"] + "\nДано: " + row["input"]) if row["input"] else row["instruction"]},
         {"role": "assistant", "content": row["output"]}
     ]
+    alpaca_records.append(row)
+
+merged_alpaca_records = []
+prev_record_idx = None
+print("Before merge:", len(alpaca_records))
+for idx, record in enumerate(alpaca_records):
+    text_length = sum([len(m["content"]) for m in record["messages"]])
+    if text_length > 1000:
+        merged_alpaca_records.append(record)
+        continue
+    if prev_record_idx is None:
+        prev_record_idx = idx
+        continue
+    messages = alpaca_records[prev_record_idx]["messages"] + record["messages"]
+    merged_alpaca_records.append({
+        "messages": messages
+    })
+    prev_record_idx = None
+print("After merge:", len(merged_alpaca_records))
+alpaca_records = merged_alpaca_records
+
+max_length = max([sum([len(m["content"]) for m in r["messages"]]) for r in alpaca_records])
+print("Max Alpaca length:", max_length)
+
+excluded_indices = set()
+for record in tqdm(alpaca_records):
+    text_length = sum([len(m["content"]) for m in record["messages"]])
+    if text_length > 1500:
+        records.append(record)
+        continue
     if random.random() < 0.5:
-        records.append(row)
-    else:
+        records.append(record)
+        continue
+    index = random.randrange(len(records))
+    while index in excluded_indices:
         index = random.randrange(len(records))
-        records[index]["messages"] += row["messages"]
+    excluded_indices.add(index)
+    records[index]["messages"] += record["messages"]
+
+for row in tqdm(load_dataset("IlyaGusev/ru_sharegpt_cleaned", split="train")):
+    row["messages"] = revert_flattening(row["messages"])
+    text_length = sum([len(m["content"]) for m in row["messages"]])
+    if text_length > 6000:
+        continue
+    records.append(row)
+
+max_length = max([sum([len(m["content"]) for m in r["messages"]]) for r in records])
+print("Max length:", max_length)
 
 random.shuffle(records)
 border = int(0.95 * len(records))

@@ -159,7 +159,7 @@ def fix_model(model, tokenizer, use_resize=True):
     return model
 
 
-DEFAULT_MESSAGE_TEMPLATE = "<start>{role}\n{content} <end>\n",
+DEFAULT_MESSAGE_TEMPLATE = "<start>{role}\n{content} <end>\n"
 DEFAULT_SYSTEM_PROMPT = "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
 DEFAULT_START_TOKEN_ID = 2962
 DEFAULT_END_TOKEN_ID = 355

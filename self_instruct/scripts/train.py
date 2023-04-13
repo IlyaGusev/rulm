@@ -52,6 +52,12 @@ def train(
         config = json.load(r)
 
     device_map = "auto"
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    ddp = world_size != 1
+    if ddp:
+        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+        gradient_accumulation_steps = gradient_accumulation_steps // world_size
+
     deepspeed_config = config.get("deepspeed")
     trainer_config = config["trainer"]
     lora_config = config.get("lora")
@@ -169,7 +175,7 @@ def train(
         max_tokens_count = max_target_tokens_count + max_source_tokens_count + 1
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
 
-    if torch.cuda.device_count() > 1:
+    if not ddp and torch.cuda.device_count() > 1:
         model.is_parallelizable = True
         model.model_parallel = True
 
@@ -184,6 +190,7 @@ def train(
         save_total_limit=1,
         load_best_model_at_end=True,
         report_to=report_to,
+        ddp_find_unused_parameters=False if ddp else None,
         deepspeed=deepspeed_config,
         **trainer_config
     )
