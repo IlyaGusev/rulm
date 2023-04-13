@@ -2,9 +2,10 @@
 numpy >= 1.12.1
 scipy >= 1.0.1
 torch >= 2.0.0
-bitsandbytest
-peft
-git+https://github.com/huggingface/transformers.git
+accelerate
+bitsandbytes
+git+https://github.com/huggingface/peft.git
+git+https://github.com/huggingface/transformers.git@15641892985b1d77acc74c9065c332cd7c3f7d7f
 datasets
 zstandard
 jsonlines
