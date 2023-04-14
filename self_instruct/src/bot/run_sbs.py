@@ -18,7 +18,7 @@ class Client:
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.button))
 
         with open(input_path, "r") as r:
-            self.records = json.load(r)
+            self.records = [json.loads(line) for line in r]
             random.shuffle(self.records)
 
         self.last_records = defaultdict(None)
@@ -59,7 +59,7 @@ class Client:
         else:
             context.bot.send_message(text="Нужно перезапустить бот через '/start'", chat_id=chat_id)
 
-    def sample_record(self, username, retries=50, max_overlap=3):
+    def sample_record(self, username, retries=50, max_overlap=1):
         for _ in range(retries):
             record = random.choice(self.records)
             instruction = record["instruction"]
@@ -81,10 +81,10 @@ class Client:
         record = self.sample_record(username)
         self.last_records[chat_id] = record
         text = f"Задание: {record['instruction']}\n\n"
-        if record["input"].strip() and record["input"].strip() != "<noinput>":
+        if "input" in record and record["input"].strip() and record["input"].strip() != "<noinput>":
             text += f"Вход: {record['input']}\n\n"
-        text += f"Ответ A: {record['a']}\n"
-        text += f"Ответ B: {record['b']}"
+        text += f"**Ответ A**:\n{record['a']}\n\n\n"
+        text += f"**Ответ B**:\n{record['b']}"
 
         keyboard = [
             [
