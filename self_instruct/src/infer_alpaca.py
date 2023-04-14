@@ -8,7 +8,7 @@ import torch
 from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM
 from peft import PeftConfig, PeftModel
 
-from src.util.dl import read_jsonl
+from src.util.io import read_jsonl
 
 
 def generate_prompt(record, templates):

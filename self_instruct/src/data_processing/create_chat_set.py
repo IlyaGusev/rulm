@@ -33,7 +33,7 @@ for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
     row = {key: value for key, value in row.items() if key in ("input", "output", "instruction")}
     row["messages"] = [
         {"role": "user", "content": (row["instruction"] + "\nДано: " + row["input"]) if row["input"] else row["instruction"]},
-        {"role": "assistant", "content": row["output"]}
+        {"role": "bot", "content": row["output"]}
     ]
     alpaca_records.append(row)
 
