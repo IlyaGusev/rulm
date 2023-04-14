@@ -15,7 +15,7 @@ import tqdm
 from rouge_score import rouge_scorer
 import re
 
-import utils
+from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
 NON_ALPHANUM_RE = re.compile(r"[^a-zа-яё0-9]+")
@@ -171,10 +171,10 @@ def generate_instructions(
 
         request_start = time.time()
         num_tasks =  settings["num_tasks"]
-        results = utils.openai_batch_completion(
+        results = openai_batch_completion(
             batch=batch,
             model_name=model_name,
-            decoding_args=utils.OpenAIDecodingArguments(
+            decoding_args=OpenAIDecodingArguments(
                 temperature=temperature,
                 top_p=top_p,
                 stop=[f"\n{num_tasks + 1}", "{num_tasks + 1}."]

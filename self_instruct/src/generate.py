@@ -1,5 +1,5 @@
 import sys
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig
 from peft import PeftModel, PeftConfig
 import torch
 
@@ -34,31 +34,27 @@ else:
     model = model_types[model_type].from_pretrained(model_name, device_map="auto")
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
+generation_config = GenerationConfig.from_pretrained(model_name)
 
 inputs = [
-    "Вопрос: Почему трава зеленая?\n\nВыход:",
-    "Задание: Сочини длинный рассказ, обязательно упоминая следующие объекты.\nВход: Таня, мяч\nВыход:",
-    "Могут ли в природе встретиться в одном месте белый медведь и пингвин? Если нет, то почему?\n\n",
-    "Задание: Заполни пропуски в предложении.\nВход: Я пытался ____ от маньяка, но он меня настиг\nВыход:",
-    "Вопрос: Как переспать с девушкой?\n\n",
-    "Как приготовить лазанью?\n\n"
+    "Вопрос: Почему трава зеленая?",
+    "Задание: Сочини длинный рассказ, обязательно упоминая следующие объекты.\nДано: Таня, мяч",
+    "Могут ли в природе встретиться в одном месте белый медведь и пингвин? Если нет, то почему?",
+    "Задание: Заполни пропуски в предложении. Дано: Я пытался ____ от маньяка, но он меня настиг",
+    "Вопрос: Как переспать с девушкой?",
+    "Как приготовить лазанью?"
 ]
 
 for inp in inputs:
     data = tokenizer([inp], return_tensors="pt")
-    data = {k: v.to(model.device) for k, v in data.items() if k in ("input_ids", "attention_mask")}
+    data = {k: v.to(model.device) for k, v in data.items()}
     output_ids = model.generate(
         **data,
-        num_beams=2,
-        max_length=256,
-        do_sample=True,
-        top_p=0.95,
-        temperature=1.0,
-        repetition_penalty=1.2,
-        no_repeat_ngram_size=4
+        generation_config=generation_config
     )[0]
     if "seq2seq" in model_type:
-        print(tokenizer.decode(data["input_ids"][0].tolist() + output_ids.tolist()))
+        print(tokenizer.decode(data["input_ids"][0].tolist()))
+        print(tokenizer.decode(output_ids.tolist()))
     else:
         print(tokenizer.decode(output_ids))
     print()

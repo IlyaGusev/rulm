@@ -6,7 +6,7 @@ import fire
 from jinja2 import Template
 from tqdm import tqdm
 
-import utils
+from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
 def encode_prompt(record, template_path):
@@ -45,10 +45,10 @@ def main(
         prompts = [[
             {"role": "user", "content": encode_prompt(r, template_path)}
         ] for r in batch]
-        results = utils.openai_batch_completion(
+        results = openai_batch_completion(
             batch=prompts,
             model_name=model_name,
-            decoding_args=utils.OpenAIDecodingArguments(
+            decoding_args=OpenAIDecodingArguments(
                 max_tokens=3076
             )
         )

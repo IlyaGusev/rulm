@@ -11,8 +11,9 @@ from transformers import Trainer, TrainingArguments, logging, TrainerCallback, T
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
-from dataset import InstructDataset, ChatDataset
-from utils import set_random_seed, fix_tokenizer, fix_model, read_jsonl
+from src.dataset import InstructDataset, ChatDataset
+from src.util.dl import set_random_seed, fix_tokenizer, fix_model
+from src.util.io import read_jsonl
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

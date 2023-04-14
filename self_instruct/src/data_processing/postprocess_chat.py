@@ -3,7 +3,7 @@ import json
 
 from tqdm import tqdm
 
-from utils import read_jsonl
+from src.util.io import read_jsonl
 
 input_path = sys.argv[1]
 output_path = sys.argv[2]

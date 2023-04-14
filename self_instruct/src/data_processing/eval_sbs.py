@@ -6,7 +6,7 @@ import fire
 from jinja2 import Environment, FileSystemLoader
 from tqdm import tqdm
 
-import utils
+from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
 JINJA_ENV = Environment(loader=FileSystemLoader("."))
@@ -41,10 +41,10 @@ def main(
             if len(batch) != request_batch_size:
                 continue
             prompts = [[{"role": "user", "content": encode_pair(r, template_path)}] for r in batch]
-            results = utils.openai_batch_completion(
+            results = openai_batch_completion(
                 batch=prompts,
                 model_name=model_name,
-                decoding_args=utils.OpenAIDecodingArguments(
+                decoding_args=OpenAIDecodingArguments(
                     max_tokens=3076
                 )
             )

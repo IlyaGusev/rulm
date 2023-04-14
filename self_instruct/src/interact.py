@@ -1,10 +1,11 @@
 import sys
+
 import fire
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from peft import PeftModel, PeftConfig
-import torch
 
-from utils import Conversation
+from src.util.chat import Conversation
 
 
 def generate(model, tokenizer, prompt, generation_config, eos_token_id: int = None):

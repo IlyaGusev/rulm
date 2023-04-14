@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from tqdm import tqdm
 
-from utils import Conversation
+from src.util.chat import Conversation
 
 
 class InstructDataset(Dataset):

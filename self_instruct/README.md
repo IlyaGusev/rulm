@@ -94,7 +94,7 @@ A training config example:
     "only_target_loss": false,
     "model_name": "models/llama-7b-hf",
     "model_type": "causal",
-    "template_category": "causal_newlines",
+    "templates_path": "internal_prompts/ru_alpaca.jsonl",
     "max_source_tokens_count": 256,
     "max_target_tokens_count": 512
 }
@@ -103,5 +103,5 @@ A training config example:
 Run training script:
 
 ```python
-python3 scripts/train.py --config-file configs/llama_7b_lora.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/llama_7b_lora
+python3 -m src.train --config-file configs/llama_7b_lora.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/llama_7b_lora
 ```
