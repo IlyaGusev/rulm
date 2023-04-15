@@ -20,8 +20,9 @@ git clone https://huggingface.co/decapoda-research/llama-7b-hf
 Correct tokenizer_config.json:
 ```
 {
-    "model_max_length": 1000000000000000019884624838656,
-    "tokenizer_class": "LlamaTokenizer"
+    "model_max_length": 2048,
+    "tokenizer_class": "LlamaTokenizer",
+    "padding_side": "left"
 }
 ```
 
@@ -83,7 +84,7 @@ A training config example:
         "optim": "adamw_torch"
     },
     "lora": {
-        "r": 8,
+        "r": 16,
         "lora_alpha": 16,
         "lora_dropout": 0.05,
         "bias": "none",
