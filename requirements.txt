@@ -11,3 +11,4 @@ zstandard
 jsonlines
 wandb
 openai
+sentencepiece
