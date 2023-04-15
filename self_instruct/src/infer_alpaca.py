@@ -15,17 +15,18 @@ def generate_prompt(record, templates):
     if "input" in record:
         template = random.choice(templates["prompts_input"])
         return template.format(instruction=record["instruction"], inp=record["input"])
-    tempate = random.choice(templates["prompts_no_input"])
+    template = random.choice(templates["prompts_no_input"])
     return template.format(instruction=record["instruction"])
 
 
 def generate_answers(
     model_name: str,
-    model_type: str,
     template_path: str,
     input_path: str,
-    output_path: str
+    output_path: str,
+    batch_size: int = 1
 ):
+    assert batch_size == 1, "Batch inference is not yet supported"
     with open(template_path) as r:
         templates =  json.load(r)
 
@@ -33,8 +34,7 @@ def generate_answers(
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     generation_config = GenerationConfig.from_pretrained(model_name)
 
-    assert model_type in ("lora_causal", )
-    if model_type == "lora_causal" and device == "cuda":
+    if device == "cuda":
         config = PeftConfig.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             config.base_model_name_or_path,
@@ -47,7 +47,7 @@ def generate_answers(
             model_name,
             torch_dtype=torch.float16
         )
-    elif model_type == "lora_causal" and device == "cpu":
+    elif device == "cpu":
         config = PeftConfig.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             config.base_model_name_or_path,
