@@ -96,13 +96,19 @@ class Client:
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-
-        context.bot.send_message(
-            text=text,
-            reply_markup=reply_markup,
-            parse_mode="Markdown",
-            chat_id=chat_id
-        )
+        try:
+            context.bot.send_message(
+                text=text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown",
+                chat_id=chat_id
+            )
+        except Exception:
+            context.bot.send_message(
+                text=text,
+                reply_markup=reply_markup,
+                chat_id=chat_id
+            )
 
 
 def main(
