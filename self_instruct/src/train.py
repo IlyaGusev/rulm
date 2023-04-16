@@ -18,6 +18,35 @@ from src.util.io import read_jsonl
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
+class TrainerNoBaseSave(Trainer):
+    def __init__(self, *args, **kwargs):
+        return super().__init__(*args, **kwargs)
+
+    def _save_checkpoint(self, model, trial, metrics=None):
+        print("Running custom _save_checkpoint")
+        checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
+        run_dir = self._get_output_dir(trial=trial)
+        output_dir = os.path.join(run_dir, checkpoint_folder)
+
+        if metrics is not None and self.args.metric_for_best_model is not None:
+            metric_to_check = self.args.metric_for_best_model
+            if not metric_to_check.startswith("eval_"):
+                metric_to_check = f"eval_{metric_to_check}"
+            metric_value = metrics[metric_to_check]
+            operator = np.greater if self.args.greater_is_better else np.less
+            if (
+                self.state.best_metric is None
+                or self.state.best_model_checkpoint is None
+                or operator(metric_value, self.state.best_metric)
+            ):
+                self.state.best_metric = metric_value
+                self.state.best_model_checkpoint = output_dir
+
+        os.makedirs(output_dir, exist_ok=True)
+        if self.args.should_save:
+            self._rotate_checkpoints(use_mtime=True, output_dir=run_dir)
+
+
 class SavePeftModelCallback(TrainerCallback):
     def on_save(
         self,
@@ -45,7 +74,8 @@ def train(
     output_dir,
     report_to,
     seed,
-    local_rank
+    local_rank,
+    omit_base_model_save
 ):
     set_random_seed(seed)
     logging.set_verbosity_info()
@@ -195,7 +225,9 @@ def train(
         deepspeed=deepspeed_config,
         **trainer_config
     )
-    trainer = Trainer(
+    trainer_class = Trainer if not omit_base_model_save else TrainerNoBaseSave
+    print("Trainer class:", trainer_class)
+    trainer = trainer_class(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
@@ -221,5 +253,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--local_rank", type=int, default=0)
+    parser.add_argument("--omit-base-model-save", action="store_true", default=False)
     args = parser.parse_args()
     train(**vars(args))

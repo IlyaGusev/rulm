@@ -15,8 +15,15 @@ BAD_SS = (
     "как языковая модель ИИ",
     "Как языковая модель ИИ",
     "как искусственный интеллект",
+    "Как искусственный интеллект",
+    "Я - искусственный интеллект",
+    "я - искусственный интеллект",
+    "Я являюсь искусственным интеллектом",
+    "я являюсь искусственным интеллектом",
+    "я искусственный интеллект",
     "OpenAI",
     "ChatGPT",
+    "OpenAssistant",
     "Ася",
     "as a language model"
 )
@@ -61,12 +68,15 @@ def main(train_path, val_path):
         message = row["instruction"]
         if row["input"]:
             message += "\nДано: " + row["input"]
-        if has_bad_ss([{"content": row["alternative_output"]}]):
-            continue
+        output = row["alternative_output"]
+        if has_bad_ss([{"content": output}]):
+            output = row["output"]
+            if has_bad_ss([{"content": output}]):
+                continue
         alpaca_records.append({
             "messages": [
                 {"role": "user", "content": message},
-                {"role": "bot", "content": row["alternative_output"]}
+                {"role": "bot", "content": output}
             ],
             "source": "alpaca"
         })
