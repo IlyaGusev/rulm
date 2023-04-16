@@ -5,6 +5,7 @@ import os
 
 import wandb
 import torch
+import numpy as np
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, DataCollatorForTokenClassification, DataCollatorForSeq2Seq
 from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl
