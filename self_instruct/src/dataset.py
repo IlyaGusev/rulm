@@ -159,7 +159,9 @@ class ChatDataset(Dataset):
         max_tokens_count: int,
         templates_path: str,
         sample_rate: float = 1.0,
-        only_target_loss: bool = True
+        only_target_loss: bool = True,
+        add_global_bos: bool = False,
+        add_global_eos: bool = False
     ):
         self.templates_path = templates_path
         self.original_records = original_records
@@ -168,6 +170,8 @@ class ChatDataset(Dataset):
         self.max_tokens_count = max_tokens_count
         self.only_target_loss = only_target_loss
         self.is_printed = False
+        self.add_global_bos = add_global_bos
+        self.add_global_eos = add_global_eos
 
         self.records = []
         for record in tqdm(original_records):
@@ -200,9 +204,11 @@ class ChatDataset(Dataset):
             self.is_printed = True
 
         input_ids = self.get_tokens(full_text)
-        input_ids.insert(0, self.tokenizer.bos_token_id)
+        if self.add_global_bos:
+            input_ids.insert(0, self.tokenizer.bos_token_id)
         input_ids = input_ids[:self.max_tokens_count-1]
-        input_ids.append(self.tokenizer.eos_token_id)
+        if self.add_global_eos:
+            input_ids.append(self.tokenizer.eos_token_id)
         actual_length = len(input_ids)
 
         input_ids = torch.LongTensor(input_ids)
@@ -226,10 +232,12 @@ class ChatDataset(Dataset):
                     cur_end_idx = input_ids.index(end_token_id, cur_start_idx + 1)
                     cur_is_bot = input_ids.index(bot_token_id, cur_start_idx + 1) < cur_end_idx
                     if not cur_is_bot:
-                        spans.append((cur_start_idx - 1, cur_end_idx + 3))
+                        spans.append((cur_start_idx - 1, cur_end_idx + 1))
                 except ValueError:
                     break
             for start_idx, end_idx in spans:
+                start_idx = max(0, start_idx)
+                end_idx = min(len(input_ids), end_idx)
                 labels[start_idx: end_idx] = -100
 
         input_ids = torch.LongTensor(input_ids)
