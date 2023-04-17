@@ -12,3 +12,4 @@ jsonlines
 wandb
 openai
 sentencepiece
+fire
