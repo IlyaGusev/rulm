@@ -22,7 +22,7 @@ Correct tokenizer_config.json:
 {
     "tokenizer_class": "LlamaTokenizer",
     "model_max_length": 2048,
-    "padding_side": "left"
+    "padding_side": "left",
     "bos_token": "<s>",
     "eos_token": "</s>",
     "unk_token": "<unk>",
