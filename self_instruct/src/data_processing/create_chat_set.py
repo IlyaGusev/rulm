@@ -156,6 +156,8 @@ def main(train_path, val_path):
             assert role in ("bot", "user")
         if has_bad_ss(messages):
             continue
+        if not record["messages"]:
+            continue
         cleaned_records.append(record)
     records = cleaned_records
     print("All count after cleaning:", len(records))

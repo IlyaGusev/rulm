@@ -207,7 +207,7 @@ class ChatDataset(Dataset):
         if self.add_global_bos:
             input_ids.insert(0, self.tokenizer.bos_token_id)
         input_ids = input_ids[:self.max_tokens_count-1]
-        if self.add_global_eos:
+        if self.add_global_eos or input_ids[-1] != self.tokenizer.eos_token_id:
             input_ids.append(self.tokenizer.eos_token_id)
         actual_length = len(input_ids)
 
@@ -229,16 +229,19 @@ class ChatDataset(Dataset):
             while True:
                 try:
                     cur_start_idx = input_ids.index(start_token_id, cur_start_idx + 1)
-                    cur_end_idx = input_ids.index(end_token_id, cur_start_idx + 1)
-                    cur_is_bot = input_ids.index(bot_token_id, cur_start_idx + 1) < cur_end_idx
+                    cur_end_idx = input_ids.index(end_token_id, cur_start_idx + 1) + 1
+                    cur_is_bot = input_ids[cur_start_idx:cur_end_idx].count(bot_token_id) >= 1
                     if not cur_is_bot:
-                        spans.append((cur_start_idx - 1, cur_end_idx + 1))
+                        spans.append((cur_start_idx, cur_end_idx))
                 except ValueError:
                     break
             for start_idx, end_idx in spans:
                 start_idx = max(0, start_idx)
                 end_idx = min(len(input_ids), end_idx)
                 labels[start_idx: end_idx] = -100
+            assert (labels == start_token_id).sum() > 0
+            assert (labels == start_token_id).sum() == (labels == end_token_id).sum()
+            assert (labels == bot_token_id).sum() >= (labels == start_token_id).sum()
 
         input_ids = torch.LongTensor(input_ids)
         assert input_ids.size(0) == labels.size(0) == attention_mask.size(0) <= self.max_tokens_count

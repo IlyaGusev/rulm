@@ -27,7 +27,7 @@
     "load_in_8bit": true,
     "only_target_loss": true,
     "mode": "chat",
-    "templates_path": "internal_prompts/saiga.json",
+    "templates_path": "internal_prompts/saiga_v2.json",
     "model_name": "models/llama-7b",
     "model_type": "causal",
     "max_tokens_count": 2000
