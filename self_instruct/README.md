@@ -14,43 +14,35 @@ pip install git+https://github.com/huggingface/transformers peft bitsandbytes
 
 Download a base model:
 ```
-git clone https://huggingface.co/decapoda-research/llama-7b-hf
+git clone https://huggingface.co/huggyllama/llama-7b
 ```
 
 Correct tokenizer_config.json:
 ```
 {
-    "model_max_length": 2048,
     "tokenizer_class": "LlamaTokenizer",
+    "model_max_length": 2048,
     "padding_side": "left"
+    "bos_token": "<s>",
+    "eos_token": "</s>",
+    "unk_token": "<unk>",
+    "clean_up_tokenization_spaces": false,
+    "special_tokens_map_file": "special_tokens_map.json"  
 }
 ```
 
 
-Correct config.json:
+Correct special_tokens_map.json:
 ```
 {
-  "pad_token_id": 0,
-  "bos_token_id": 1,
-  "eos_token_id": 2,
-  "architectures": [
-    "LLaMAForCausalLM"
-  ],
-  "hidden_act": "silu",
-  "hidden_size": 4096,
-  "intermediate_size": 11008,
-  "initializer_range": 0.02,
-  "max_sequence_length": 2048,
-  "model_type": "llama",
-  "num_attention_heads": 32,
-  "num_hidden_layers": 32,
-  "rms_norm_eps": 1e-06,
-  "torch_dtype": "float16",
-  "transformers_version": "4.27.0.dev0",
-  "use_cache": true,
-  "vocab_size": 32000
+    "bos_token": "<s>",
+    "eos_token": "</s>",
+    "pad_token": "<unk>",
+    "sep_token": "<s>",
+    "unk_token": "<unk>"
 }
 ```
+
 
 Correct generation_config.json:
 ```
@@ -58,8 +50,7 @@ Correct generation_config.json:
   "_from_model_config": true,
   "pad_token_id": 0,
   "bos_token_id": 1,
-  "eos_token_id": 2,
-  "transformers_version": "4.27.0.dev0"
+  "eos_token_id": 2
 }
 ```
 
@@ -93,7 +84,7 @@ A training config example:
     },
     "load_in_8bit": true,
     "only_target_loss": false,
-    "model_name": "models/llama-7b-hf",
+    "model_name": "models/llama-7b",
     "model_type": "causal",
     "templates_path": "internal_prompts/ru_alpaca.jsonl",
     "max_source_tokens_count": 256,
