@@ -13,17 +13,15 @@ from src.util.chat import Conversation
 from src.util.dl import gen_batch
 
 
-def generate(model, tokenizer, prompts, generation_config, eos_token_id: int = None):
+def generate(model, tokenizer, prompts, generation_config):
     data = tokenizer(
         prompts,
         return_tensors="pt",
         truncation=True,
-        max_length=256,
+        max_length=512,
         padding=True
     )
     data = {k: v.to(model.device) for k, v in data.items()}
-    if eos_token_id is not None:
-        generation_config.eos_token_id = eos_token_id
     output_ids = model.generate(
         **data,
         generation_config=generation_config
@@ -32,7 +30,7 @@ def generate(model, tokenizer, prompts, generation_config, eos_token_id: int = N
     for sample_output_ids, sample_input_ids in zip(output_ids, data["input_ids"]):
         sample_output_ids = sample_output_ids[len(sample_input_ids):]
         sample_output = tokenizer.decode(sample_output_ids, skip_special_tokens=True)
-        sample_output = sample_output.replace("<end", "").replace("bot", "").replace("assistant", "").strip()
+        sample_output = sample_output.replace("</s>", "").strip()
         outputs.append(sample_output)
     return outputs
 
@@ -88,8 +86,7 @@ def generate_answers(
         if "input" in record and record["input"]:
             user_message += "\nДано: " + record["input"]
         conversation.add_user_message(user_message)
-        prompt = conversation.get_prompt()
-        prompt += "\n<start>"
+        prompt = conversation.get_prompt(tokenizer)
         prompts.append(prompt)
 
     all_outputs = []
