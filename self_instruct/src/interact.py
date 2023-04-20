@@ -18,7 +18,7 @@ def generate(model, tokenizer, prompt, generation_config, eos_token_id: int = No
         generation_config=generation_config
     )[0]
     output_ids = output_ids[len(data["input_ids"][0]):]
-    output = tokenizer.decode(output_ids)
+    output = tokenizer.decode(output_ids).replace("</s>", "").strip()
     return output
 
 
@@ -65,8 +65,7 @@ def interact(model_name, template_path):
             print("History reset completed!")
             continue
         conversation.add_user_message(user_message)
-        prompt = conversation.get_prompt()
-        prompt += "\n<start>"
+        prompt = conversation.get_prompt(tokenizer)
         output = generate(
             model=model,
             tokenizer=tokenizer,
@@ -74,7 +73,6 @@ def interact(model_name, template_path):
             generation_config=generation_config,
             eos_token_id=conversation.get_end_token_id()
         )
-        output = output.replace("<end", "").replace("bot", "").strip()
         conversation.add_bot_message(output)
         print("Saiga:", output)
 

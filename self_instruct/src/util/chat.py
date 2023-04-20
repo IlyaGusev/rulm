@@ -1,10 +1,10 @@
 import json
 
-DEFAULT_MESSAGE_TEMPLATE = "<start>{role}\n{content} <end>\n"
+DEFAULT_MESSAGE_TEMPLATE = "<s>{role}\n{content}</s>\n"
 DEFAULT_SYSTEM_PROMPT = "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
-DEFAULT_START_TOKEN_ID = 2962
-DEFAULT_END_TOKEN_ID = 355
-DEFAULT_BOT_TOKEN_ID = 7451
+DEFAULT_START_TOKEN_ID = 1
+DEFAULT_END_TOKEN_ID = 2
+DEFAULT_BOT_TOKEN_ID = 9225
 
 
 class Conversation:
@@ -48,11 +48,12 @@ class Conversation:
             "content": message
         })
 
-    def get_prompt(self):
+    def get_prompt(self, tokenizer):
         final_text = ""
         for message in self.messages:
             message_text = self.message_template.format(**message)
             final_text += message_text
+        final_text += tokenizer.decode([self.start_token_id, self.bot_token_id])
         return final_text.strip()
 
     @classmethod
