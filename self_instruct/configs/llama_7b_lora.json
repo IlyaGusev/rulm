@@ -26,7 +26,7 @@
     },
     "load_in_8bit": true,
     "only_target_loss": false,
-    "model_name": "models/llama-7b-hf",
+    "model_name": "models/llama-7b",
     "templates_path": "internal_prompts/ru_alpaca.json",
     "model_type": "causal",
     "max_source_tokens_count": 256,
