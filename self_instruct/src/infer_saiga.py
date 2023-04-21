@@ -95,8 +95,7 @@ def generate_answers(
             model=model,
             tokenizer=tokenizer,
             prompts=batch,
-            generation_config=generation_config,
-            eos_token_id=conversation.get_end_token_id()
+            generation_config=generation_config
         )
         for prompt, output in zip(batch, outputs):
             print(prompt)
@@ -105,7 +104,7 @@ def generate_answers(
 
     with open(output_path, "w") as w:
         for output, record in zip(records, all_outputs):
-            record["answer"] = answer
+            record["answer"] = output
             w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
 
 
