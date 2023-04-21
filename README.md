@@ -26,8 +26,14 @@ Language models for Russian language: implementation and comparison.
 
 ## Models
 * HuggingFace links:
-  * [7B](https://huggingface.co/IlyaGusev/llama_7b_ru_turbo_alpaca_lora)
-  * [13B](https://huggingface.co/IlyaGusev/llama_13b_ru_turbo_alpaca_lora)
+  * [llama_7b_ru_turbo_alpaca_lora](https://huggingface.co/IlyaGusev/llama_7b_ru_turbo_alpaca_lora)
+  * [llama_13b_ru_turbo_alpaca_lora](https://huggingface.co/IlyaGusev/llama_13b_ru_turbo_alpaca_lora)
+* Training configs:
+  * [self_instruct/configs/llama_7b_lora.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/llama_7b_lora.json)
+  * [self_instruct/configs/llama_13b_lora.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/llama_13b_lora.json)
+* Base models:
+  * [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b)
+  * [huggyllama/llama-13b](https://huggingface.co/huggyllama/llama-13b)
 * Trained on Russian and English Alpacas
 
 # Saiga
@@ -52,7 +58,16 @@ Bot: Для новичков обычно рекомендуют спицы из
 
 ## Models
 * HuggingFace links:
-  * [7B](https://huggingface.co/IlyaGusev/saiga_7b_lora)
-  * [13B](https://huggingface.co/IlyaGusev/saiga_13b_lora)
-  * [30B](https://huggingface.co/IlyaGusev/saiga_30b_lora)
-* Trained on 4 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch
+  * [saiga_7b_lora](https://huggingface.co/IlyaGusev/saiga_7b_lora)
+  * [saiga_13b_lora](https://huggingface.co/IlyaGusev/saiga_13b_lora)
+  * [saiga_30b_lora](https://huggingface.co/IlyaGusev/saiga_30b_lora)
+* Training configs:
+  * [self_instruct/configs/saiga_7b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_7b.json)
+  * [self_instruct/configs/saiga_13b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_13b.json)
+  * [self_instruct/configs/saiga_30b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_30b.json)
+* Base models:
+  * [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b)
+  * [huggyllama/llama-13b](https://huggingface.co/huggyllama/llama-13b)
+  * [huggyllama/llama-30b](https://huggingface.co/huggyllama/llama-30b)
+* Trained on 4 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch. The script for smart merging: [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py)
+
