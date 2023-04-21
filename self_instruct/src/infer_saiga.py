@@ -103,7 +103,7 @@ def generate_answers(
             all_outputs.append(output)
 
     with open(output_path, "w") as w:
-        for output, record in zip(records, all_outputs):
+        for record, output in zip(records, all_outputs):
             record["answer"] = output
             w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
 
