@@ -1,6 +1,8 @@
 import argparse
 import random
 import json
+import traceback
+from datetime import datetime
 from collections import defaultdict
 
 from tinydb import TinyDB, where
@@ -37,6 +39,7 @@ class Client:
         last_record["label"] = result
         last_record["username"] = username
         last_record["chat_id"] = chat_id
+        last_record["timestamp"] = int(datetime.now().timestamp())
         self.db.insert(last_record)
         return True
 
@@ -59,7 +62,7 @@ class Client:
         else:
             context.bot.send_message(text="Нужно перезапустить бот через '/start'", chat_id=chat_id)
 
-    def sample_record(self, username, retries=50, max_overlap=1):
+    def sample_record(self, username, retries=50, max_overlap=3):
         for _ in range(retries):
             record = random.choice(self.records)
             instruction = record["instruction"]
@@ -80,11 +83,16 @@ class Client:
 
         record = self.sample_record(username)
         self.last_records[chat_id] = record
-        text = f"Задание: {record['instruction']}\n\n"
-        if "input" in record and record["input"].strip() and record["input"].strip() != "<noinput>":
-            text += f"Вход: {record['input']}\n\n"
-        text += f"**Ответ A**:\n{record['a']}\n\n\n"
-        text += f"**Ответ B**:\n{record['b']}"
+        text = f"*Задание*: {record['instruction']}\n"
+        if "input" in record and record["input"] and record["input"].strip() and record["input"].strip() != "<noinput>":
+            text += f"*Вход*: {record['input']}\n"
+        text += "\n\n"
+
+        text += f"*Ответ A*:\n{record['a']}\n\n\n"
+        text += f"*Ответ B*:\n{record['b']}"
+        if len(text) > 4000:
+            text = text[:4000]
+            text += "..."
 
         keyboard = [
             [
@@ -104,6 +112,7 @@ class Client:
                 chat_id=chat_id
             )
         except Exception:
+            print(traceback.format_exc())
             context.bot.send_message(
                 text=text,
                 reply_markup=reply_markup,
