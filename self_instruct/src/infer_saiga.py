@@ -104,8 +104,12 @@ def generate_answers(
 
     with open(output_path, "w") as w:
         for record, output in zip(records, all_outputs):
-            record["answer"] = output
-            w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
+            try:
+                record["answer"] = output
+                w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
+            except Exception as e:
+                record["answer"] = ""
+                w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
 
 
 if __name__ == "__main__":
