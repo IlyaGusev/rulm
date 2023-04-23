@@ -9,6 +9,8 @@ from tinydb import TinyDB, where
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, Filters, CallbackContext, MessageHandler, CallbackQueryHandler
 
+sysrand = random.SystemRandom()
+
 
 class Client:
     def __init__(self, token, db_path, input_path):
@@ -21,7 +23,7 @@ class Client:
 
         with open(input_path, "r") as r:
             self.records = [json.loads(line) for line in r]
-            random.shuffle(self.records)
+            sysrand.shuffle(self.records)
 
         self.last_records = defaultdict(None)
         self.chat2username = dict()
@@ -62,16 +64,38 @@ class Client:
         else:
             context.bot.send_message(text="Нужно перезапустить бот через '/start'", chat_id=chat_id)
 
-    def sample_record(self, username, retries=50, max_overlap=3):
+    def sample_record(self, username, retries=300, max_overlap=3):
+        found_new = False
         for _ in range(retries):
-            record = random.choice(self.records)
+            record = sysrand.choice(self.records)
             instruction = record["instruction"]
             count = self.db.count(where("instruction") == instruction)
             if count >= max_overlap:
                 continue
             if not self.db.contains((where("instruction") == instruction) & (where("username") == username)):
+                found_new = True
                 break
+        if not found_new:
+            print(f"No new tasks for {username}")
         return record
+
+    def build_text(self, record):
+        text = f"*Задание*: {record['instruction']}\n"
+        if "input" in record and record["input"] and record["input"].strip() and record["input"].strip() != "<noinput>":
+            text += f"*Вход*: {record['input']}\n"
+        text += "\n\n"
+
+        answer_a = record['a']
+        if len(answer_a) > 1500:
+            answer_a = answer_a[:1500] + "... (обрезано из-за Телеграма)"
+        answer_b = record['b']
+        if len(answer_b) > 1500:
+            answer_b = answer_b[:1500] + "... (обрезано из-за Телеграма)"
+        text += f"*Ответ A*:\n{answer_a}\n\n\n"
+        text += f"*Ответ B*:\n{answer_b}"
+        if len(text) > 4000:
+            text = text[:4000] + "... (обрезано из-за Телеграма)"
+        return text
 
     def show(self, update: Update, context: CallbackContext):
         chat_id = update.effective_chat.id
@@ -83,17 +107,7 @@ class Client:
 
         record = self.sample_record(username)
         self.last_records[chat_id] = record
-        text = f"*Задание*: {record['instruction']}\n"
-        if "input" in record and record["input"] and record["input"].strip() and record["input"].strip() != "<noinput>":
-            text += f"*Вход*: {record['input']}\n"
-        text += "\n\n"
-
-        text += f"*Ответ A*:\n{record['a']}\n\n\n"
-        text += f"*Ответ B*:\n{record['b']}"
-        if len(text) > 4000:
-            text = text[:4000]
-            text += "..."
-
+        text = self.build_text(record)
         keyboard = [
             [
                 InlineKeyboardButton("A лучше", callback_data="a"),
@@ -126,7 +140,6 @@ def main(
     db_path,
     seed
 ):
-    random.seed(seed)
     client = Client(
         token=token,
         db_path=db_path,
