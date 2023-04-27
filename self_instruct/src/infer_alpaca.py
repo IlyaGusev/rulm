@@ -12,7 +12,7 @@ from src.util.io import read_jsonl
 
 
 def generate_prompt(record, templates):
-    if "input" in record:
+    if "input" in record and record["input"]:
         template = random.choice(templates["prompts_input"])
         return template.format(instruction=record["instruction"], inp=record["input"])
     template = random.choice(templates["prompts_no_input"])
