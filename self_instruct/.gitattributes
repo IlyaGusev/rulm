@@ -15,3 +15,5 @@ data/vicuna_rualpaca13b_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/vicuna_rualpaca7b_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/user_v2_turbo_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/vicuna_turbo_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/vicuna_gpt4_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/user_v2_gpt4_answers.jsonl filter=lfs diff=lfs merge=lfs -text
