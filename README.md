@@ -71,3 +71,28 @@ Bot: Для новичков обычно рекомендуют спицы из
   * [huggyllama/llama-30b](https://huggingface.co/huggyllama/llama-30b)
 * Trained on 4 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch. The script for smart merging: [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py)
 
+
+# Evaluations
+
+## Questions v1
+* User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru.jsonl
+* Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
+
+### Toloka v1
+* saiga30b vs saiga13b: 122-17-91
+* saiga7b vs saiga13b: 97-11-122
+* turbo vs rualpaca13b: 150-14-66
+* turbo vs saiga30b: 121-12-97
+
+### Telegram bot v1 (unfinished)
+* rualpaca7b vs rualpaca13b: 30-46-58
+* saiga30b vs davinci002: 92-30-18
+* saiga30b vs saiga13b: 70-45-43
+* saiga7b vs saiga13b: 42-53-54
+* turbo vs davinci002: 91-24-15
+* turbo vs fred: 120-10-8
+* turbo vs rualpaca13b: 86-44-28
+* turbo vs saiga30b: 60-46-52
+
+
+
