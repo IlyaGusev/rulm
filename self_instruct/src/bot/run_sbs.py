@@ -23,7 +23,8 @@ class Client:
 
         with open(input_path, "r") as r:
             self.records = [json.loads(line) for line in r]
-            sysrand.shuffle(self.records)
+            random.seed(8888)
+            random.shuffle(self.records)
 
         self.last_records = defaultdict(None)
         self.chat2username = dict()
@@ -69,10 +70,12 @@ class Client:
         for _ in range(retries):
             record = sysrand.choice(self.records)
             instruction = record["instruction"]
-            count = self.db.count(where("instruction") == instruction)
+            a_model = record["a_model"]
+            b_model = record["b_model"]
+            count = self.db.count((where("instruction") == instruction) & (where("a_model") == a_model) & (where("b_model") == b_model))
             if count >= max_overlap:
                 continue
-            if not self.db.contains((where("instruction") == instruction) & (where("username") == username)):
+            if not self.db.contains((where("instruction") == instruction) & (where("username") == username) & (where("a_model") == a_model) & (where("b_model") == b_model)):
                 found_new = True
                 break
         if not found_new:
