@@ -13,13 +13,47 @@ from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 def encode_prompt(char, template_path):
     with open(template_path) as f:
         template = Template(f.read())
-    char.pop("most_similar_chars", None)
-    char.pop("avg_similarity_score", None)
+    fields = ("name", "context", "greeting", "example_dialogue")
+    char = {k: v for k, v in char.items() if k in fields}
     return template.render(char_json=json.dumps(char, ensure_ascii=False)).strip() + "\n"
 
 
 def get_char_key(char):
     return (char["name"].strip(), char["context"].strip())
+
+
+def process_batch(batch, model_name, template_path):
+    prompts = [[
+        {"role": "user", "content": encode_prompt(r, template_path)}
+    ] for r in batch]
+    results = openai_batch_completion(
+        batch=prompts,
+        model_name=model_name,
+        decoding_args=OpenAIDecodingArguments(
+            max_tokens=3076
+        )
+    )
+    chars = []
+    for char, prompt, result in zip(batch, prompts, results):
+        result = result.message["content"]
+        topics = result.split("\n")
+        cleaned_topics = []
+        for topic in topics:
+            topic = topic.strip()
+            if not topic:
+                continue
+            if not topic[0].isnumeric():
+                continue
+            topic = " ".join(topic.strip().split(" ")[1:])
+            cleaned_topics.append(topic)
+        print(prompt[-1]["content"])
+        print(cleaned_topics)
+        print()
+        print("=============")
+        print()
+        char["topics"] = cleaned_topics
+        chars.append(char)
+    return chars
 
 
 def main(
@@ -47,38 +81,15 @@ def main(
         batch.append(char)
         if len(batch) != request_batch_size:
             continue
-        prompts = [[
-            {"role": "user", "content": encode_prompt(r, template_path)}
-        ] for r in batch]
-        results = openai_batch_completion(
-            batch=prompts,
-            model_name=model_name,
-            decoding_args=OpenAIDecodingArguments(
-                max_tokens=3076
-            )
-        )
-        for char, prompt, result in zip(batch, prompts, results):
-            result = result.message["content"]
-            topics = result.split("\n")
-            cleaned_topics = []
-            for topic in topics:
-                topic = topic.strip()
-                if not topic:
-                    continue
-                if not topic[0].isnumeric():
-                    continue
-                topic = " ".join(topic.strip().split(" ")[1:])
-                cleaned_topics.append(topic)
-            print(prompt[-1]["content"])
-            print(cleaned_topics)
-            print()
-            print("=============")
-            print()
-            char["topics"] = cleaned_topics
-            output_records.append(char)
-
+        updated_chars = process_batch(batch, model_name, template_path)
+        output_records.extend(updated_chars)
         batch = []
+        write_jsonl(output_records, output_path + "_tmp")
+        shutil.move(output_path + "_tmp", output_path)
 
+    if batch:
+        updated_chars = process_batch(batch, model_name, template_path)
+        output_records.extend(updated_chars)
         write_jsonl(output_records, output_path + "_tmp")
         shutil.move(output_path + "_tmp", output_path)
 
