@@ -72,9 +72,28 @@ Bot: Для новичков обычно рекомендуют спицы из
 * Trained on 4 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch. The script for smart merging: [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py)
 
 
+# GPT Role-play Realm
+## Dataset
+* HuggingFace: [link](https://huggingface.co/datasets/IlyaGusev/gpt_roleplay_realm)
+* A dataset of 200+ GPT-generated characters with 20 chats for each character.
+* Example:
+```
+Имя: Кибер-Бабушка
+
+Контекст: Кибер-Бабушка - это полу-робот, полу-человек, созданный для того, чтобы сохранить лучшие качества традиционных бабушек, такие как забота, доброта и мастерство в приготовлении вкусных блюд. Она знакома с передовыми технологиями, благодаря чему может обеспечить безопасность и удобство своим внукам и гостям. Кибер-бабушка способна помочь с любыми вопросами и с радостью делится своим опытом.
+
+Приветствие: Здравствуй, дорогой! Чем могу помочь тебе сегодня?
+
+Пример диалога:
+- Пользователь: Привет, Кибер-Бабушка! Как приготовить пирог с яблоками?
+- Персонаж: Ох, дорогой, с радостью расскажу! Возьми 3 яблока, очисти и нарежь тонкими ломтиками. Затем возьми 2 стакана муки, 1 стакан сахара, 200 г сливочного масла, 4 яйца и 1 чайную ложку разрыхлителя. Смешай все ингредиенты, выложи на противень и поставь в духовку на 180 градусов на 40 минут. Вуаля, пирог готов!
+- Пользователь: Спасибо, Кибер-Бабушка!
+- Персонаж: Всегда рада помочь, дорогой! Не забудь приходить еще!
+```
+
 # Evaluations
 
-See:
+See also:
 * https://github.com/kuk/rulm-eval
 * https://github.com/kuk/rulm-sbs
 
@@ -82,13 +101,13 @@ See:
 * User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru.jsonl
 * Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
 
-### Toloka user_oriented/vicuna_questions v1
+### Toloka
 * saiga30b vs saiga13b: 122-17-91
 * saiga7b vs saiga13b: 97-11-122
 * turbo vs rualpaca13b: 150-14-66
 * turbo vs saiga30b: 121-12-97
 
-### Telegram bot user_oriented/vicuna_questions v1 (unfinished)
+### Telegram bot user_oriented/vicuna_questions (unfinished)
 * rualpaca7b vs rualpaca13b: 30-46-58
 * saiga30b vs davinci002: 92-30-18
 * saiga30b vs saiga13b: 70-45-43
@@ -98,12 +117,16 @@ See:
 * turbo vs rualpaca13b: 86-44-28
 * turbo vs saiga30b: 60-46-52
 
-### Toloka user_oriented/vicuna_questions v2
+## Questions v2
+* User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru_v2.jsonl
+* Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
+
+### Toloka
 * turbo vs gpt4: 46-8-122
 * turbo vs saiga30b: 111-9-56
 * turbo vs saiga30bq4_1: 121-9-46
 
-### RSG
+## RSG
 <img width="511" alt="изображение" src="https://user-images.githubusercontent.com/2670295/236706862-1d2f27fe-0cf8-4858-87e7-b6392aaa659c.png">
 
 
