@@ -127,6 +127,9 @@ See also:
 * turbo vs saiga30bq4_1: 121-9-46
 
 ## RSG
+* RussianSuperGLUE: [link](https://russiansuperglue.com/leaderboard/2)
+* Zero-shot mode
+
 <img width="511" alt="изображение" src="https://user-images.githubusercontent.com/2670295/236706862-1d2f27fe-0cf8-4858-87e7-b6392aaa659c.png">
 
 
