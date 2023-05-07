@@ -1,0 +1,18 @@
+Below there is a character description:
+
+{{char_context}}
+
+Here are some prompt examples for generating art with Stable Diffusion:
+1) portait of a homer simpson archer shooting arrow at forest monster, front game card, dark, marvel comics, dark, intricate, highly detailed, smooth, artstation, digital illustration
+2) pirate, concept art, deep focus, fantasy, intricate, highly detailed, digital painting, artstation, matte, sharp focus, illustration
+3) ghost inside a hunted room, art by lois van baarle and loish and ross tran and rossdraws and sam yang and samdoesarts and artgerm, digital art, highly detailed, intricate, sharp focus, Trending on Artstation HQ, deviantart, unreal engine 5, 4K UHD image
+4) a fantasy style portrait painting of rachel lane / alison brie hybrid in the style of francois boucher oil painting unreal 5 daz. rpg portrait, extremely detailed artgerm
+5) athena, greek goddess, claudia black, art by artgerm and greg rutkowski and magali villeneuve, bronze greek armor, owl crown, d & d, fantasy, intricate, portrait, highly detailed, headshot, digital painting, trending on artstation, concept art, sharp focus, illustration
+
+Write a short concise Stable Diffusion prompt to generate a portrait for this character.
+Concepts are separated with commas.
+Prompt should be written in English.
+Use the same structure and text style as prompts listed above.
+Focus on the character appearance.
+Explicitly include character's gender where applicable.
+Don't use character names.

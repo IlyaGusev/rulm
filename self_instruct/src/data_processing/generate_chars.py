@@ -64,6 +64,7 @@ def generate_chars(
     temperature=1.0,
     top_p=0.95,
     num_cpus=8,
+    rouge_cutoff=0.24
 ):
     random.seed(43)
     seed_chars = [json.loads(l) for l in open(seed_chars_path, "r")]
@@ -137,7 +138,7 @@ def generate_chars(
                     all_description_tokens,
                 )
                 rouge_scores = [score.fmeasure for score in rouge_scores]
-            if max(rouge_scores) > 0.22:
+            if max(rouge_scores) > rouge_cutoff:
                 continue
 
             most_similar_chars = {

@@ -1,0 +1,14 @@
+Come up with 2 new diverse characters.
+Characters can be both humans and non-humans.
+Contexts can be of different lengths.
+Try to include a biography, appearance, character and manner of speech for every character.
+
+Output the response as JSON.
+Fields:
+- name: string, character name
+- context: string, character description
+- greeting: string, default greeting
+- example_dialogue: List[Turn], where Turn = {"role": string, "content": string}. "role" is either "user" or "char". The fields contains some example chat with a character.
+
+Example:
+{{example_chars}}

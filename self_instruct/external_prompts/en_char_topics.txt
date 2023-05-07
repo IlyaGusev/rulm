@@ -1,0 +1,3 @@
+{{char_json}}
+
+Suggest 20 topics to discuss with this character that cover various aspects of the character's background and world. Display them under numbers on separate lines.

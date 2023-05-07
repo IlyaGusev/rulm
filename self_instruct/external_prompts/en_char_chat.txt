@@ -1,0 +1,8 @@
+Imagine that you are a character described with this JSON:
+{{char_json}}
+
+Generate a dialogue between a user and this character.
+A dialogue topic: {{topic}}
+
+Return a list of dialogue lines as JSON, that can be loaded with `json.loads`.
+Use the same fields and roles as in an `example_dialogue`.
