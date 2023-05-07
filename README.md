@@ -74,17 +74,21 @@ Bot: Для новичков обычно рекомендуют спицы из
 
 # Evaluations
 
+See:
+* https://github.com/kuk/rulm-eval
+* https://github.com/kuk/rulm-sbs
+
 ## Questions v1
 * User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru.jsonl
 * Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
 
-### Toloka v1
+### Toloka user_oriented/vicuna_questions v1
 * saiga30b vs saiga13b: 122-17-91
 * saiga7b vs saiga13b: 97-11-122
 * turbo vs rualpaca13b: 150-14-66
 * turbo vs saiga30b: 121-12-97
 
-### Telegram bot v1 (unfinished)
+### Telegram bot user_oriented/vicuna_questions v1 (unfinished)
 * rualpaca7b vs rualpaca13b: 30-46-58
 * saiga30b vs davinci002: 92-30-18
 * saiga30b vs saiga13b: 70-45-43
@@ -93,6 +97,16 @@ Bot: Для новичков обычно рекомендуют спицы из
 * turbo vs fred: 120-10-8
 * turbo vs rualpaca13b: 86-44-28
 * turbo vs saiga30b: 60-46-52
+
+### Toloka user_oriented/vicuna_questions v2
+* turbo vs gpt4: 46-8-122
+* turbo vs saiga30b: 111-9-56
+* turbo vs saiga30bq4_1: 121-9-46
+
+### RSG
+<img width="511" alt="изображение" src="https://user-images.githubusercontent.com/2670295/236706862-1d2f27fe-0cf8-4858-87e7-b6392aaa659c.png">
+
+
 
 
 
