@@ -141,13 +141,7 @@ def generate_chars(
             if max(rouge_scores) > rouge_cutoff:
                 continue
 
-            most_similar_chars = {
-                all_descriptions[i]: rouge_scores[i] for i in np.argsort(rouge_scores)[-10:][::-1]
-            }
-
             keep += 1
-            new_char["most_similar_chars"] = most_similar_chars
-            new_char["avg_similarity_score"] = float(np.mean(rouge_scores))
             machine_chars.append(new_char)
             all_descriptions.append(new_char["context"])
             all_description_tokens.append(new_description_tokens)

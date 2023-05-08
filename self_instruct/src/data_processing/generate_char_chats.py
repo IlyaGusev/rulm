@@ -106,11 +106,12 @@ def fix_output_records(records):
     for char in records:
         unique_dialogues = dict()
         topics = char["topics"]
-        for dialogue in char["dialogues"]:
-            topic = dialogue["topic"]
-            if topic in topics:
-                unique_dialogues[dialogue["topic"]] = dialogue
-        char["dialogues"] = list(unique_dialogues.values())
+        if "dialogues" in char:
+            for dialogue in char["dialogues"]:
+                topic = dialogue["topic"]
+                if topic in topics:
+                    unique_dialogues[dialogue["topic"]] = dialogue
+            char["dialogues"] = list(unique_dialogues.values())
     return records
 
 
@@ -127,9 +128,10 @@ def main(
             output_records = [json.loads(line) for line in f]
             output_records = fix_output_records(output_records)
             for record in output_records:
-                for dialogue in record["dialogues"]:
-                    topic = dialogue["topic"]
-                    existing_keys.add(get_dialogue_key(record, topic))
+                if "dialogues" in record:
+                    for dialogue in record["dialogues"]:
+                        topic = dialogue["topic"]
+                        existing_keys.add(get_dialogue_key(record, topic))
             output_records = {get_char_key(char): char for char in output_records}
     print(f"Existing keys: {len(existing_keys)}")
 

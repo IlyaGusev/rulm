@@ -63,6 +63,9 @@ def main(
 
     output_chars = []
     for char in tqdm(chars):
+        char.pop("most_similar_chars", None)
+        char.pop("avg_similarity_score", None)
+
         key = get_char_key(char)
         if key in existing_keys:
             print(f"Skipping {key}")
