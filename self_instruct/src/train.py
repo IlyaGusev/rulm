@@ -203,7 +203,7 @@ def train(
 
     # Default model generation params
     model.config.num_beams = 5
-    if mode == "instruction":
+    if mode == "instruct":
         max_tokens_count = max_target_tokens_count + max_source_tokens_count + 1
     model.config.max_length = max_tokens_count if model_type == "causal" else max_target_tokens_count
 
