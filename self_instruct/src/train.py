@@ -94,15 +94,7 @@ def train(
     trainer_config = config["trainer"]
     lora_config = config.get("lora")
     callbacks = [SavePeftModelCallback] if lora_config else []
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        save_total_limit=1,
-        load_best_model_at_end=True,
-        report_to=report_to,
-        deepspeed=deepspeed_config,
-        **trainer_config
-    )
-
+    
     model_name = config["model_name"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
