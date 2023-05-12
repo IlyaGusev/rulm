@@ -99,10 +99,11 @@ def train(
         save_total_limit=1,
         load_best_model_at_end=True,
         report_to=report_to,
+        ddp_find_unused_parameters=False if ddp else None,
         deepspeed=deepspeed_config,
         **trainer_config
     )
-
+    
     model_name = config["model_name"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -214,18 +215,7 @@ def train(
     if lora_config:
         lora_config = LoraConfig(**lora_config)
         model = get_peft_model(model, lora_config)
-
-    deepspeed_config = config.get("deepspeed")
-    trainer_config = config["trainer"]
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        save_total_limit=1,
-        load_best_model_at_end=True,
-        report_to=report_to,
-        ddp_find_unused_parameters=False if ddp else None,
-        deepspeed=deepspeed_config,
-        **trainer_config
-    )
+    
     trainer_class = Trainer if not omit_base_model_save else TrainerNoBaseSave
     print("Trainer class:", trainer_class)
     trainer = trainer_class(
