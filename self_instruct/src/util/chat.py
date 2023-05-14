@@ -65,6 +65,9 @@ class Conversation:
         )
 
     def expand(self, messages):
+        if messages[0]["role"] == "system":
+            self.messages = []
+
         for message in messages:
             self.messages.append({
                 "role": self.role_mapping.get(message["role"], message["role"]),

@@ -50,8 +50,59 @@ def calc_max_length(records):
     return max([sum([len(m["content"]) for m in r["messages"]]) for r in records])
 
 
+def build_char_system_messages(char):
+    name = char["name"]
+    context = char["context"]
+    greeting = char["greeting"]
+    example_dialogue = char["example_dialogue"]
+
+    context = f"Ты {name}. {context}"
+    chat = []
+    if random.random() < 0.2:
+        context += f"\nПриветствие: {greeting}"
+        chat.append({
+            "role": "bot",
+            "content": greeting
+        })
+    if random.random() < 0.2:
+        mapping = {
+            "user": "Пользователь",
+            "char": "Персонаж"
+        }
+        example_messages = [f'{mapping[m["role"]]}: {m["content"]}' for m in example_dialogue]
+        context += "\nПример диалога:\n" + "\n".join(example_messages)
+    chat.insert(0, {
+        "role": "system",
+        "content": context
+    })
+    return chat
+
+
 def main(train_path, val_path):
     records = []
+
+    for row in tqdm(load_dataset("IlyaGusev/gpt_roleplay_realm", split="ru")):
+        name = row["name"]
+        context = row["context"]
+        greeting = row["greeting"]
+        example_dialogue = row["example_dialogue"]
+        for dialogue in row["dialogues"]:
+            chat = dialogue["chat"]
+            for message in chat:
+                if message["role"] == "char":
+                    message["role"] = "bot"
+                if message["role"] == "operator":
+                    message["role"] = "user"
+
+            system_messages = build_char_system_messages(row)
+            chat = system_messages + chat
+            records.append({
+                "messages": chat,
+                "source": "roleplay"
+            })
+
+    print("Roleplay count:", len(records))
+
     for row in tqdm(load_dataset("IlyaGusev/ru_turbo_saiga", split="train")):
         messages = revert_flattening(row["messages"])
         if has_bad_ss(messages):
@@ -145,6 +196,7 @@ def main(train_path, val_path):
             "messages": messages,
             "source": "oasst"
         })
+
     print("All count:", len(records))
     print("All max length:", calc_max_length(records))
 
@@ -153,7 +205,7 @@ def main(train_path, val_path):
         messages = record["messages"]
         roles = {m["role"] for m in messages}
         for role in roles:
-            assert role in ("bot", "user")
+            assert role in ("bot", "user", "system"), role
         if has_bad_ss(messages):
             continue
         if not record["messages"]:
