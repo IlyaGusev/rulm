@@ -1,10 +1,9 @@
---extra-index-url https://download.pytorch.org/whl/cu118
 numpy >= 1.12.1
 scipy >= 1.0.1
 torch >= 2.0.0
 accelerate == 0.19.0
 bitsandbytes == 0.38.1
-peft == 0.3.0
+git+https://github.com/huggingface/peft@8e53e16005
 transformers == 4.29.1
 datasets
 zstandard
