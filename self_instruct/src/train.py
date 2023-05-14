@@ -106,7 +106,7 @@ def train(
     
     model_name = config["model_name"]
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     tokenizer = fix_tokenizer(tokenizer)
     tokenizer.save_pretrained(output_dir)
 

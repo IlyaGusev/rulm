@@ -42,7 +42,7 @@ def generate_answers(
     output_path: str,
     batch_size: int = 1
 ):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     if batch_size > 1:
         assert tokenizer.padding_side == "left", "Batched inference for right padding side is impossible"
     generation_config = GenerationConfig.from_pretrained(model_name)

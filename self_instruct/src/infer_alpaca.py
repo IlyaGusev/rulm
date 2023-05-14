@@ -31,7 +31,7 @@ def generate_answers(
         templates =  json.load(r)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     generation_config = GenerationConfig.from_pretrained(model_name)
 
     if device == "cuda":

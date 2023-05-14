@@ -24,7 +24,7 @@ def generate(model, tokenizer, prompt, generation_config, eos_token_id: int = No
 
 def interact(model_name, template_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     generation_config = GenerationConfig.from_pretrained(model_name)
 
     if device == "cuda":

@@ -33,7 +33,7 @@ elif model_type == "lora_causal":
 else:
     model = model_types[model_type].from_pretrained(model_name, device_map="auto")
 
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
 generation_config = GenerationConfig.from_pretrained(model_name)
 
 inputs = [
