@@ -9,7 +9,7 @@ Steps:
 Install libraries:
 ```
 sudo apt-get install git-lfs
-pip install git+https://github.com/huggingface/transformers peft bitsandbytes
+pip install -r ../requirements.txt
 ```
 
 Download a base model:
