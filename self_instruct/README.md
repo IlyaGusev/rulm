@@ -2,7 +2,7 @@
 Steps:
 * Install a version of transformers, peft and bitsandbytes for requirements.txt
 * Prepare your data as two JSONL files, with three fields: "instruction", "input", "output".
-* Download some base model, for example, decapoda-research/llama-7b-hf. 
+* Download some base model, for example, huggyllama/llama-7b. 
 * Fix pad, bos, eos tokens everywhere. And also a name of the tokenizer.
 * Run training.
 
