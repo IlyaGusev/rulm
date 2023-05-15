@@ -1,10 +1,12 @@
 import json
 import os
+import shutil
 
 import fire
 from jinja2 import Template
 from tqdm import tqdm
 
+from src.util.io import read_jsonl, write_jsonl
 from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
@@ -14,53 +16,64 @@ def encode_prompt(record, template_path):
     return template.render(task=record).strip() + "\n"
 
 
+def process_batch(batch, model_name, template_path):
+    prompts = [[{"role": "user", "content": encode_prompt(r, template_path)}] for r in batch]
+    results = openai_batch_completion(
+        batch=prompts,
+        model_name=model_name,
+        decoding_args=OpenAIDecodingArguments(
+            max_tokens=3076
+        )
+    )
+    output_records = []
+    for r, prompt, result in zip(batch, prompts, results):
+        result = result.message["content"]
+        print(prompt[-1]["content"])
+        print(result)
+        print()
+        print("=============")
+        print()
+        if "NO" in result:
+            continue
+        r["output"] = result
+        output_records.append(r)
+    return output_records
+
+
 def main(
     input_path,
     output_path,
     template_path,
-    existing_path=None,
     model_name="gpt-3.5-turbo",
     request_batch_size=5
 ):
     existing_keys = set()
-    if existing_path and os.path.exists(existing_path):
-        with open(existing_path) as f:
-            existing_records = [json.loads(line) for line in f]
-            existing_records = [r for r in existing_records if "label" in r and r["label"]]
-            existing_keys = {tuple((r["instruction"], r["input"])) for r in existing_records}
-
-    with open(input_path) as f:
-        records = [json.loads(line) for line in f]
+    if output_path and os.path.exists(output_path):
+        output_records = read_jsonl(output_path)
+        existing_keys = {tuple((r["instruction"], r["input"])) for r in output_records}
+    print(f"Existing keys: {len(existing_keys)}")
 
     batch = []
-    with open(output_path, "w") as w:
-        for record in tqdm(records):
-            key = tuple((record["instruction"], record["input"]))
-            if key in existing_keys:
-                continue
-            if "noinput" in record["input"]:
-                record["input"] = ""
-            batch.append(record)
-            if len(batch) != request_batch_size:
-                continue
-            prompts = [[{"role": "user", "content": encode_prompt(r, template_path)}] for r in batch]
-            results = openai_batch_completion(
-                batch=prompts,
-                model_name=model_name,
-                decoding_args=OpenAIDecodingArguments(
-                    max_tokens=3076
-                )
-            )
-            for r, prompt, result in zip(batch, prompts, results):
-                result = result.message["content"]
-                print(prompt[-1]["content"])
-                print(result)
-                print()
-                print("=============")
-                print()
-                r["new_output"] = result
-                w.write(json.dumps(r, ensure_ascii=False).strip() + "\n")
-            batch = []
+    records = read_jsonl(input_path)
+    for record in tqdm(records):
+        key = tuple((record["instruction"], record["input"]))
+        if key in existing_keys:
+            continue
+        if "noinput" in record["input"]:
+            record["input"] = ""
+        batch.append(record)
+        if len(batch) != request_batch_size:
+            continue
+
+        output_records += process_batch(batch, model_name, template_path)
+        write_jsonl(output_records, output_path + "_tmp")
+        shutil.move(output_path + "_tmp", output_path)
+        batch = []
+
+    if batch:
+        output_records += process_batch(batch, model_name, template_path)
+        write_jsonl(output_records, output_path + "_tmp")
+        shutil.move(output_path + "_tmp", output_path)
 
 
 if __name__ == "__main__":
