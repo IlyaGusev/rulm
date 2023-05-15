@@ -59,16 +59,16 @@ A training config example:
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 16,
-        "per_device_eval_batch_size": 16,
-        "gradient_accumulation_steps": 8,
-        "eval_steps": 75,
-        "save_steps": 75,
+        "per_device_train_batch_size": 4,
+        "per_device_eval_batch_size": 4,
+        "gradient_accumulation_steps": 32,
+        "eval_steps": 50,
+        "save_steps": 50,
         "logging_steps": 5,
         "learning_rate": 0.0003,
-        "num_train_epochs": 3,
+        "num_train_epochs": 5,
         "lr_scheduler_type": "cosine",
-        "warmup_steps": 50,
+        "warmup_steps": 30,
         "fp16": true,
         "bf16": false,
         "torch_compile": false,
@@ -79,16 +79,16 @@ A training config example:
         "lora_alpha": 16,
         "lora_dropout": 0.05,
         "bias": "none",
-        "target_modules": ["q_proj", "v_proj"],
+        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"],
         "task_type": "CAUSAL_LM"
     },
     "load_in_8bit": true,
-    "only_target_loss": false,
+    "only_target_loss": true,
+    "mode": "chat",
+    "templates_path": "internal_prompts/saiga_v2.json",
     "model_name": "models/llama-7b",
     "model_type": "causal",
-    "templates_path": "internal_prompts/ru_alpaca.jsonl",
-    "max_source_tokens_count": 256,
-    "max_target_tokens_count": 512
+    "max_tokens_count": 2000
 }
 ```
 
