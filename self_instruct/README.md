@@ -1,10 +1,10 @@
 ## Training
 Steps:
 * Install a version of transformers, peft and bitsandbytes for requirements.txt
-* Prepare your data as two JSONL files, with three fields: "instruction", "input", "output".
-* Download some base model, for example, huggyllama/llama-7b. 
-* Fix pad, bos, eos tokens everywhere. And also a name of the tokenizer.
-* Run training.
+* Prepare your data as two JSONL files, with three fields: "instruction", "input", "output"
+* Download some base model, for example, huggyllama/llama-7b
+* Fix pad, bos, eos tokens everywhere. And also a name of the tokenizer
+* Run training
 
 Install libraries:
 ```
@@ -17,7 +17,7 @@ Download a base model:
 git clone https://huggingface.co/huggyllama/llama-7b
 ```
 
-Fix base model's tokenizer_config.json:
+Fix the base model's tokenizer_config.json:
 ```
 {
     "tokenizer_class": "LlamaTokenizer",
@@ -32,7 +32,7 @@ Fix base model's tokenizer_config.json:
 ```
 
 
-Fix base model's special_tokens_map.json:
+Fix the base model's special_tokens_map.json:
 ```
 {
     "bos_token": "<s>",
@@ -44,7 +44,7 @@ Fix base model's special_tokens_map.json:
 ```
 
 
-Fix base model's generation_config.json:
+Fix the base model's generation_config.json:
 ```
 {
   "_from_model_config": true,
