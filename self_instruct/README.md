@@ -62,7 +62,7 @@ Edit the following files under `models/llama-7b`:
 
 ### Prepare data
 
-Create two JSONL files with training and validation sets. See [create_instruct_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_instruct_set.py) or [create_char_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_char_set.py) for an example.
+Create two JSONL files with training and validation sets. See [create_instruct_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_instruct_set.py) or [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py) for an example.
 
 ### Run training
 ```python
