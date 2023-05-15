@@ -3,44 +3,8 @@ import json
 import os
 
 import torch
-from peft import PeftModel
+from peft import PeftModel, PeftConfig
 from transformers import LlamaForCausalLM
-
-base_model_path = sys.argv[1]
-peft_model_path = sys.argv[2]
-output_path = sys.argv[3]
-
-base_model = LlamaForCausalLM.from_pretrained(
-    base_model_path,
-    load_in_8bit=False,
-    torch_dtype=torch.float16,
-    device_map={'': 'cpu'},
-)
-
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    peft_model_path,
-    device_map={'': 'cpu'},
-    torch_dtype=torch.float16,
-)
-
-lora_model = lora_model.merge_and_unload()
-lora_model.train(False)
-
-if '7b' in base_model_path:
-    n_layers = 32
-    n_heads = 32
-    dim = 4096
-elif '13b' in base_model_path:
-    n_layers = 40
-    n_heads = 40
-    dim = 5120
-elif '30b' in base_model_path:
-    n_layers = 60
-    n_heads = 52
-    dim = 6656
-else:
-    raise NotImplementedError
 
 
 def unpermute(w):
@@ -87,6 +51,45 @@ def translate_state_dict_key(k):  # noqa: C901
         raise NotImplementedError
 
 
+model_name = sys.argv[1]
+output_path = sys.argv[2]
+assert output_path.endswith(".pt")
+
+config = PeftConfig.from_pretrained(model_name)
+base_model_path = config.base_model_name_or_path
+
+base_model = LlamaForCausalLM.from_pretrained(
+    base_model_path,
+    load_in_8bit=False,
+    torch_dtype=torch.float16,
+    device_map={'': 'cpu'},
+)
+
+lora_model = PeftModel.from_pretrained(
+    base_model,
+    model_name,
+    device_map={'': 'cpu'},
+    torch_dtype=torch.float16,
+)
+
+lora_model = lora_model.merge_and_unload()
+lora_model.train(False)
+
+if '7b' in base_model_path:
+    n_layers = 32
+    n_heads = 32
+    dim = 4096
+elif '13b' in base_model_path:
+    n_layers = 40
+    n_heads = 40
+    dim = 5120
+elif '30b' in base_model_path:
+    n_layers = 60
+    n_heads = 52
+    dim = 6656
+else:
+    raise NotImplementedError
+
 lora_model_sd = lora_model.state_dict()
 new_state_dict = {}
 for k, v in lora_model_sd.items():
@@ -97,5 +100,4 @@ for k, v in lora_model_sd.items():
         else:
             new_state_dict[new_k] = v
 
-os.makedirs(output_path, exist_ok=True)
-torch.save(new_state_dict, f'{output_path}/consolidated.00.pth')
+torch.save(new_state_dict, f'{output_path}')
