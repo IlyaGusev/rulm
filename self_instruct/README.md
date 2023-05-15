@@ -17,7 +17,7 @@ Download a base model:
 git clone https://huggingface.co/huggyllama/llama-7b
 ```
 
-Correct tokenizer_config.json:
+Fix base model's tokenizer_config.json:
 ```
 {
     "tokenizer_class": "LlamaTokenizer",
@@ -32,7 +32,7 @@ Correct tokenizer_config.json:
 ```
 
 
-Correct special_tokens_map.json:
+Fix base model's special_tokens_map.json:
 ```
 {
     "bos_token": "<s>",
@@ -44,7 +44,7 @@ Correct special_tokens_map.json:
 ```
 
 
-Correct generation_config.json:
+Fix base model's generation_config.json:
 ```
 {
   "_from_model_config": true,
@@ -95,5 +95,5 @@ A training config example:
 Run training script:
 
 ```python
-python3 -m src.train --config-file configs/llama_7b_lora.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/llama_7b_lora
+python3 -m src.train --config-file configs/saiga_7b.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/saiga_7b
 ```
