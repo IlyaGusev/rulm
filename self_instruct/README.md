@@ -1,23 +1,29 @@
 ## Training
-Steps:
-* Install a version of transformers, peft and bitsandbytes from requirements.txt
-* Prepare your data as two JSONL files, with three fields: "instruction", "input", "output"
-* Download some base model, for example, huggyllama/llama-7b
-* Fix pad, bos, eos tokens everywhere. And also a name of the tokenizer
-* Run training
 
-Install libraries:
+Overview:
+
+* Install dependencies. You will need Git LFS to download the model and a correct combination of the versions of `transformers`, `peft`, and `bitsandbytes`.
+* Download a base model that you will be finetuning, for example, [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b).
+* Fix treatment of `pad`, `bos`, `eos` tokens.
+* Prepare your data as two JSONL files, with three fields for the `"instruct"` mode: `"instruction"`, `"input"`, `"output"`. Or the following fields for the `"chat"` mode: `"messages"`.
+* Run training.
+
+### Install libraries
 ```
 sudo apt-get install git-lfs
 pip install -r ../requirements.txt
 ```
 
-Download a base model:
+### Download base model
 ```
-git clone https://huggingface.co/huggyllama/llama-7b
+git clone https://huggingface.co/huggyllama/llama-7b models/llama-7b
 ```
 
-Fix the base model's tokenizer_config.json:
+### Fix tokenizer
+Edit the following files under `models/llama-7b`:
+
+`tokenizer_config.json`:
+
 ```
 {
     "tokenizer_class": "LlamaTokenizer",
@@ -31,8 +37,8 @@ Fix the base model's tokenizer_config.json:
 }
 ```
 
+`special_tokens_map.json`:
 
-Fix the base model's special_tokens_map.json:
 ```
 {
     "bos_token": "<s>",
@@ -43,8 +49,8 @@ Fix the base model's special_tokens_map.json:
 }
 ```
 
+`generation_config.json`:
 
-Fix the base model's generation_config.json:
 ```
 {
   "_from_model_config": true,
@@ -54,46 +60,11 @@ Fix the base model's generation_config.json:
 }
 ```
 
-A training config example:
-```
-{
-    "trainer": {
-        "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 4,
-        "per_device_eval_batch_size": 4,
-        "gradient_accumulation_steps": 32,
-        "eval_steps": 50,
-        "save_steps": 50,
-        "logging_steps": 5,
-        "learning_rate": 0.0003,
-        "num_train_epochs": 5,
-        "lr_scheduler_type": "cosine",
-        "warmup_steps": 30,
-        "fp16": true,
-        "bf16": false,
-        "torch_compile": false,
-        "optim": "adamw_torch"
-    },
-    "lora": {
-        "r": 16,
-        "lora_alpha": 16,
-        "lora_dropout": 0.05,
-        "bias": "none",
-        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"],
-        "task_type": "CAUSAL_LM"
-    },
-    "load_in_8bit": true,
-    "only_target_loss": true,
-    "mode": "chat",
-    "templates_path": "internal_prompts/saiga_v2.json",
-    "model_name": "models/llama-7b",
-    "model_type": "causal",
-    "max_tokens_count": 2000
-}
-```
+### Prepare data
 
-Run training script:
+Create two JSONL files with training and validation sets. See [create_instruct_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_instruct_set.py) or [create_char_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_char_set.py) for an example.
 
+### Run training
 ```python
 python3 -m src.train --config-file configs/saiga_7b.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/saiga_7b
 ```
