@@ -61,7 +61,7 @@ def interact(
             repeat_penalty=repeat_penalty
         )
         for token in generator:
-            token_str = model.detokenize([token]).decode("utf-8")
+            token_str = model.detokenize([token]).decode("utf-8", errors="ignore")
             tokens.append(token)
             if token == model.token_eos():
                 break
