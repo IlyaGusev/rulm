@@ -34,7 +34,7 @@ Language models for Russian language: implementation and comparison.
 * Base models:
   * [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b)
   * [huggyllama/llama-13b](https://huggingface.co/huggyllama/llama-13b)
-* Trained on Russian and English Alpacas
+* Trained on Russian and English Alpacas. For training details see [a separate README](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/README.md).
 
 # Saiga
 
