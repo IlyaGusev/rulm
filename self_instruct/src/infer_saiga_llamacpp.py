@@ -3,9 +3,6 @@ import json
 import fire
 from llama_cpp import Llama
 
-from src.util.io import read_jsonl
-
-
 SYSTEM_PROMPT = "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
 
 SYSTEM_TOKEN = 1788
@@ -20,6 +17,11 @@ ROLE_TOKENS = {
 }
 
 
+def read_jsonl(file_name):
+    with open(file_name) as r:
+        return [json.loads(line) for line in r]
+
+    
 def get_message_tokens(model, role, content):
     message_tokens = model.tokenize(content.encode("utf-8"))
     message_tokens.insert(1, ROLE_TOKENS[role])
