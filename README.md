@@ -132,6 +132,12 @@ See also:
 
 <img width="511" alt="изображение" src="https://user-images.githubusercontent.com/2670295/236706862-1d2f27fe-0cf8-4858-87e7-b6392aaa659c.png">
 
+# Donate
+
+* Not from Russia: [PayPal](https://www.paypal.com/donate/?hosted_button_id=PGFLNZYQWU5MS)
+* From Russia: [Cloudtips](https://pay.cloudtips.ru/p/ea94d893)
+
+
 
 
 
