@@ -8,29 +8,78 @@ from tqdm import tqdm
 BAD_SS = (
     " ул. ",
     " +7",
-    "Как ИИ",
-    "как ИИ",
-    "Как модель ИИ",
-    "как модель ИИ",
-    "как языковая модель ИИ",
-    "Как языковая модель ИИ",
+    "как ии",
+    "как ai",
+    "как аи",
+    "как модель ии",
+    "языковая модель ии",
     "как искусственный интеллект",
-    "Как искусственный интеллект",
-    "Я - искусственный интеллект",
+    "как нейросеть",
+    "виртуальный ассистент",
+    "виртуальный помощник",
+    "как нейронная сеть",
+    "онлайн-ассистент",
+    "интеллектуальный помощник",
+    "голосовой помощник",
+    "искусственный разум",
+    "компьютерная программа",
+    "программный помощник",
+    "представитель ии",
+    "ассистент ии",
+    "ии-ассистент",
+    "умный искусственный интеллект",
+    "помощник ai",
+    "как ассистент",
+    "как помощник",
+    "как иси-ассистент"
+    "ai помощник",
     "я - искусственный интеллект",
-    "Я являюсь искусственным интеллектом",
     "я являюсь искусственным интеллектом",
     "я искусственный интеллект",
-    "OpenAI",
-    "ChatGPT",
-    "OpenAssistant",
-    "Ася",
-    "as a language model"
+    "я – искусственный интеллект",
+    "я - искуственный интеллект",
+    "в качестве ии",
+    "в качестве искуственного интеллекта",
+    "от лица ии",
+    "от лица искуственного интеллекта",
+    "openai",
+    "chatgpt",
+    "as a language model",
+    "as an ai",
+    "к сожалению",
+    "sorry",
+    "я - компьютерная программа",
+    "я – компьютерная программа",
+    "я компьютерная программа",
+    "я являюсь компьютерной программой",
+    "я - ai",
+    "я – ai",
+    "я ai",
+    "я являюсь ai",
+    "я - ии",
+    "я – ии",
+    "я ии",
+    "я являюсь ии",
+    "я - виртуальный помощник",
+    "я – виртуальный помощник",
+    "я виртуальный помощник",
+    "я являюсь виртуальным помощником",
+    "я - виртуальный ассистент",
+    "я – виртуальный ассистент",
+    "я виртуальный ассистент",
+    "я являюсь виртуальным ассистентом",
+    "я - программа",
+    "я – программа",
+    "я программа",
+    "я являюсь программой",
+    "я - ассистент",
+    "я – ассистент",
+    "я ассистент"
 )
 
 def has_bad_ss(messages):
     for m in messages:
-        text = m["content"]
+        text = m["content"].lower()
         if any(ss in text for ss in BAD_SS):
             return True
     return False
@@ -81,6 +130,22 @@ def build_char_system_messages(char):
 def main(train_path, val_path):
     records = []
 
+    alpaca_records = []
+    for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca_evol_instruct", split="train")):
+        instruction = row["instruction"]
+        output = row["output"]
+        if has_bad_ss([{"content": output}]):
+            continue
+        alpaca_records.append({
+            "messages": [
+                {"role": "user", "content": instruction},
+                {"role": "bot", "content": output}
+            ],
+            "source": "alpaca-evol-instruct"
+        })
+    print("Alpaca EI count:", len(alpaca_records))
+    print("Max Alpaca EI length:", calc_max_length(alpaca_records))
+
     for row in tqdm(load_dataset("IlyaGusev/gpt_roleplay_realm", split="ru")):
         name = row["name"]
         context = row["context"]
@@ -114,7 +179,6 @@ def main(train_path, val_path):
     print("Saiga count:", len(records))
     print("Max Saiga length:", calc_max_length(records))
 
-    alpaca_records = []
     for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
         message = row["instruction"]
         if row["input"]:

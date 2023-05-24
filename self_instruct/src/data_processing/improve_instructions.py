@@ -61,7 +61,7 @@ def extend_post_process(response, original_task, method):
         previous_tasks = original_task["previous_tasks"]
     previous_tasks.append({
         "instruction": original_task["instruction"],
-        "input": original_task["input"],
+        "input": original_task["input"] if "input" in original_task else "",
         "method": method
     })
     return {
@@ -87,12 +87,10 @@ def get_key(task):
     return (task["instruction"], )
 
 
-def process_method(
+def evolve_batch(
     original_tasks,
     model_name,
     decoding_args,
-    method,
-    probability = 1.0,
     depth_template_path = None,
     depth_methods_path = None,
     breadth_template_path = None,
@@ -100,31 +98,28 @@ def process_method(
     json_template_path = None,
     few_shot_template_path = None
 ):
-    assert method in ("depth", "breadth", "few_shot")
-    original_tasks = [task for task in original_tasks if random.random() < probability]
-    if method == "depth":
-        batch = [depth_encode_prompt(task, depth_template_path, depth_methods_path) for task in original_tasks]
-        for batch_part, task in zip(batch, original_tasks):
-            batch_part.append(task_only_encode_prompt(task, xml_template_path))
-            batch_part.append(task_only_encode_prompt(task, json_template_path))
-        batch = [random.choice(batch_part) for batch_part in batch]
-    elif method == "breadth":
-        batch = [task_only_encode_prompt(task, breadth_template_path) for task in original_tasks]
-    elif method == "few_shot":
-        original_tasks = [task for task in original_tasks if task["input"]]
-        batch = [task_only_encode_prompt(task, few_shot_template_path) for task in original_tasks]
+    batch = [depth_encode_prompt(task, depth_template_path, depth_methods_path) for task in original_tasks]
+    batch = [[(prompt, "depth") for prompt in batch_part] for batch_part in batch]
+    for batch_part, task in zip(batch, original_tasks):
+        batch_part.append((task_only_encode_prompt(task, xml_template_path), "xml"))
+        batch_part.append((task_only_encode_prompt(task, json_template_path), "json"))
+        batch_part.append((task_only_encode_prompt(task, breadth_template_path), "breadth"))
+        if "input" in task and task["input"]:
+            batch_part.append((task_only_encode_prompt(task, few_shot_template_path), "few_shot"))
+    batch = [random.choice(batch_part) for batch_part in batch]
 
     if not batch:
         return []
 
+    prompts = [prompt for prompt, _ in batch]
     results = openai_batch_completion(
-        batch=batch,
+        batch=prompts,
         model_name=model_name,
         decoding_args=decoding_args
     )
 
     gen_tasks = []
-    for result, original_task in zip(results, original_tasks):
+    for result, original_task, (_, method) in zip(results, original_tasks, batch):
         gen_tasks.append(extend_post_process(result, original_task, method=method))
 
     total, keep = len(gen_tasks), 0
@@ -139,7 +134,7 @@ def process_method(
     return new_tasks
 
 
-def elimination_process_batch(tasks, model_name, decoding_args, template_path):
+def eliminate_batch(tasks, model_name, decoding_args, template_path):
     batch = [elimination_encode_prompt(task, template_path) for task in tasks]
     results = openai_batch_completion(
         batch=batch,
@@ -172,39 +167,22 @@ def process_batch(
     json_template_path,
     few_shot_template_path
 ):
-    new_depth_tasks = process_method(
+    new_tasks = evolve_batch(
         batch,
         model_name=model_name,
         decoding_args=decoding_args,
-        method="depth",
         depth_template_path=depth_template_path,
         depth_methods_path=depth_methods_path,
         json_template_path=json_template_path,
-        xml_template_path=xml_template_path
-    )
-
-    new_breadth_tasks = process_method(
-        batch,
-        model_name=model_name,
-        decoding_args=decoding_args,
-        method="breadth",
-        probability=0.5,
-        breadth_template_path=breadth_template_path
-    )
-
-    new_few_shot_tasks = process_method(
-        batch,
-        model_name=model_name,
-        decoding_args=decoding_args,
-        method="few_shot",
+        xml_template_path=xml_template_path,
+        breadth_template_path=breadth_template_path,
         few_shot_template_path=few_shot_template_path
     )
 
-    new_tasks = new_depth_tasks + new_breadth_tasks + new_few_shot_tasks
     if not new_tasks:
         return []
 
-    new_tasks = elimination_process_batch(
+    new_tasks = eliminate_batch(
         new_tasks,
         model_name=model_name,
         decoding_args=decoding_args,
@@ -228,6 +206,7 @@ def improve_instructions(
     temperature=1.0,
     top_p=0.95,
     num_cpus=8,
+    skip_count=0
 ):
     original_tasks = read_jsonl(original_tasks_path)
     print(f"Loaded {len(original_tasks)} original tasks")
@@ -246,7 +225,7 @@ def improve_instructions(
 
     is_output_printed = False
     batch = []
-    for original_task in tqdm(original_tasks):
+    for original_task in tqdm(original_tasks[skip_count:]):
         if get_key(original_task) in existing_keys:
             print("Skip:", get_key(original_task))
             continue
@@ -285,7 +264,8 @@ def improve_instructions(
             breadth_template_path=breadth_template_path,
             elimination_template_path=elimination_template_path,
             xml_template_path=xml_template_path,
-            json_template_path=json_template_path
+            json_template_path=json_template_path,
+            few_shot_template_path=few_shot_template_path
         )
         new_tasks.extend(new_batch_tasks)
         write_jsonl(new_tasks, output_path + "_tmp")
