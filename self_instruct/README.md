@@ -2,7 +2,7 @@
 
 Overview:
 
-* Install dependencies. You will need Git LFS to download the model and a correct combination of the versions of `transformers`, `peft`, and `bitsandbytes`.
+* Install dependencies. You will need Git LFS to download the model and a **correct combination** of the versions of `transformers`, `peft`, and `bitsandbytes`.
 * Download a base model that you will be finetuning, for example, [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b).
 * Fix treatment of `pad`, `bos`, `eos` tokens.
 * Prepare your data as two JSONL files, with three fields for the `"instruct"` mode: `"instruction"`, `"input"`, `"output"`. Or the following fields for the `"chat"` mode: `"messages"`.
@@ -16,7 +16,7 @@ pip install -r ../requirements.txt
 
 ### Download base model
 ```
-git clone https://huggingface.co/huggyllama/llama-7b models/llama-7b
+python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="huggyllama/llama-7b", local_dir="models/llama-7b", ignore_patterns=["LICENSE", "README.md", "*.safetensors"])'
 ```
 
 ### Fix tokenizer
@@ -66,5 +66,5 @@ Create two JSONL files with training and validation sets. See [create_instruct_s
 
 ### Run training
 ```python
-python3 -m src.train --config-file configs/saiga_7b.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/saiga_7b
+python3 -m src.train --config-file configs/saiga_7b.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/saiga_7b --omit-base-model-save
 ```
