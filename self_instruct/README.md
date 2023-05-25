@@ -2,6 +2,7 @@
 
 Overview:
 
+* Tested with `nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04` Docker image
 * Install dependencies. You will need Git LFS to download the model and a **correct combination** of the versions of `transformers`, `peft`, and `bitsandbytes`.
 * Download a base model that you will be finetuning, for example, [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b).
 * Fix treatment of `pad`, `bos`, `eos` tokens.
