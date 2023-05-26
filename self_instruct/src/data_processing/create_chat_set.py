@@ -1,8 +1,11 @@
 import json
 import sys
+import re
 import random
 from datasets import load_dataset
 from tqdm import tqdm
+
+from datasketch import MinHash, MinHashLSH, LeanMinHash
 
 
 BAD_SS = (
@@ -130,7 +133,62 @@ def build_char_system_messages(char):
     return chat
 
 
+def re_tokenize(text):
+    return re.findall(r'[а-яё-]+|[a-z-]+|\d+|\S', text, re.I)
+
+
+def ngrams(sequence, n):
+    iterables = tee(iter(sequence), n)
+    for i, sub_iterable in enumerate(iterables):
+        for _ in range(i):
+            next(sub_iterable, None)
+    return zip(*iterables)
+
+
+def calc_fingerprint(text, ngram_size: int = 1, num_perm: int = 128):
+    tokens = re_tokenize(text)
+    if ngram_size > 1:
+        tokens = {" ".join(t) for t in ngrams(tokens, ngram_size)}
+    tokens = [token.encode('utf-8') for token in tokens]
+
+    minhash = MinHash(num_perm=num_perm)
+    minhash.update_batch(tokens)
+
+    lean_minhash = LeanMinHash(minhash)
+    buf = bytearray(lean_minhash.bytesize())
+    lean_minhash.serialize(buf)
+
+    return buf
+
+
+def undup_alpaca(alpaca_records, num_perm: int = 32):
+    for record in tqdm(alpaca_records, desc="Fingerprinting"):
+        record["minhash"] = calc_fingerprint(record["messages"][0]["content"], num_perm=num_perm)
+
+    threshold = 0.6
+    lsh = MinHashLSH(
+        threshold=threshold,
+        num_perm=num_perm
+    )
+
+    filtered_records = []
+    for idx, record in tqdm(enumerate(alpaca_records), desc="Undup"):
+        minhash = LeanMinHash.deserialize(record["minhash"])
+        is_dup = False
+        for other_idx in lsh.query(minhash):
+            other_record = alpaca_records[other_idx]
+            other_minhash = LeanMinHash.deserialize(other_record["minhash"])
+            if minhash.jaccard(other_minhash) > threshold:
+                is_dup = True
+        if is_dup:
+            continue
+        lsh.insert(idx, minhash)
+        filtered_records.append(record)
+    return filtered_records
+
+
 def main(train_path, val_path):
+    random.seed(42)
     records = []
 
     alpaca_records = []
@@ -148,6 +206,28 @@ def main(train_path, val_path):
         })
     print("Alpaca EI count:", len(alpaca_records))
     print("Max Alpaca EI length:", calc_max_length(alpaca_records))
+
+    for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
+        message = row["instruction"]
+        if row["input"]:
+            message += "\nДано: " + row["input"]
+        output = row["alternative_output"]
+        if has_bad_ss([{"content": output}]):
+            output = row["output"]
+            if has_bad_ss([{"content": output}]):
+                continue
+        alpaca_records.append({
+            "messages": [
+                {"role": "user", "content": message},
+                {"role": "bot", "content": output}
+            ],
+            "source": "alpaca"
+        })
+    print("Alpaca count:", len(alpaca_records))
+    print("Max Alpaca length:", calc_max_length(alpaca_records))
+
+    alpaca_records = undup_alpaca(alpaca_records)
+    print("Alpaca after undup count:", len(alpaca_records))
 
     for row in tqdm(load_dataset("IlyaGusev/gpt_roleplay_realm", split="ru")):
         name = row["name"]
@@ -181,25 +261,6 @@ def main(train_path, val_path):
         })
     print("Saiga count:", len(records))
     print("Max Saiga length:", calc_max_length(records))
-
-    for row in tqdm(load_dataset("IlyaGusev/ru_turbo_alpaca", split="train")):
-        message = row["instruction"]
-        if row["input"]:
-            message += "\nДано: " + row["input"]
-        output = row["alternative_output"]
-        if has_bad_ss([{"content": output}]):
-            output = row["output"]
-            if has_bad_ss([{"content": output}]):
-                continue
-        alpaca_records.append({
-            "messages": [
-                {"role": "user", "content": message},
-                {"role": "bot", "content": output}
-            ],
-            "source": "alpaca"
-        })
-    print("Alpaca count:", len(alpaca_records))
-    print("Max Alpaca length:", calc_max_length(alpaca_records))
 
     merged_alpaca_records = []
     prev_record_idx = None

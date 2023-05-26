@@ -14,3 +14,4 @@ wandb
 openai
 sentencepiece
 fire
+datasketch==1.5.9
