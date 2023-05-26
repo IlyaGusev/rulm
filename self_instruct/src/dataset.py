@@ -180,6 +180,8 @@ class ChatDataset(Dataset):
             if random.random() > self.sample_rate:
                 continue
             tensors = self.convert_record(record)
+            if tensors is None:
+                continue
             self.records.append(tensors)
 
     def __len__(self):
