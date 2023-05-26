@@ -49,6 +49,8 @@ class InstructDataset(Dataset):
             if random.random() > self.sample_rate:
                 continue
             tensors = self.convert_record(record)
+            if tensors is None:
+                continue
             self.records.append(tensors)
 
     def __len__(self):
@@ -240,7 +242,10 @@ class ChatDataset(Dataset):
                 start_idx = max(0, start_idx)
                 end_idx = min(len(input_ids), end_idx)
                 labels[start_idx: end_idx] = -100
-            assert (labels == start_token_id).sum() > 0
+
+            if (labels == start_token_id).sum() == 0:
+                return None
+
             assert (labels == start_token_id).sum() == (labels == end_token_id).sum()
             assert (labels == bot_token_id).sum() >= (labels == start_token_id).sum()
 
