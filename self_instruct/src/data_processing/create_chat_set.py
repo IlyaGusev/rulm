@@ -184,6 +184,8 @@ def undup_alpaca(alpaca_records, num_perm: int = 32):
             continue
         lsh.insert(idx, minhash)
         filtered_records.append(record)
+    for record in filtered_records:
+        record.pop("minhash")
     return filtered_records
 
 
