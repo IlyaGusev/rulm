@@ -1,7 +1,10 @@
+from typing import Optional
+
 import json
 
 import fire
 from llama_cpp import Llama
+from tqdm.auto import tqdm
 
 SYSTEM_PROMPT = "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
 
@@ -21,7 +24,7 @@ def read_jsonl(file_name):
     with open(file_name) as r:
         return [json.loads(line) for line in r]
 
-    
+
 def get_message_tokens(model, role, content):
     message_tokens = model.tokenize(content.encode("utf-8"))
     message_tokens.insert(1, ROLE_TOKENS[role])
@@ -33,7 +36,7 @@ def get_message_tokens(model, role, content):
 def get_system_tokens(model):
     system_message = {
         "role": "system",
-        "content": SYSTEM_PROMPT
+        "content": SYSTEM_PROMPT,
     }
     return get_message_tokens(model, **system_message)
 
@@ -46,50 +49,57 @@ def infer(
     top_k: int = 30,
     top_p: float = 0.9,
     temperature: float = 0.2,
-    repeat_penalty: float = 1.15
+    repeat_penalty: float = 1.15,
+    max_new_tokens: Optional[int] = None,
 ):
     model = Llama(
         model_path=model_name,
         n_ctx=n_ctx,
         n_parts=1,
+        use_mmap=False,
     )
 
     records = read_jsonl(input_path)
-    with open(output_path, "w") as w:
-        for record in records:
-            system_tokens = get_system_tokens(model)
-            tokens = system_tokens
-            model.eval(tokens)
+    with open(output_path, "w") as w, tqdm(records) as progress_bar:
+        for record in progress_bar:
+            tokens = get_system_tokens(model)[:]
+            tokens.append(LINEBREAK_TOKEN)
 
-            user_message = record["instruction"]
-            if "input" in record and record["input"]:
-                user_message += "\nДано: " + record["input"]
+            if "instruction" in record and "messages" not in record:
+                user_message = record["instruction"]
+                if "input" in record and record["input"]:
+                    user_message += "\nДано: " + record["input"]
+                record["messages"] = [{
+                    "role": "user",
+                    "content": user_message
+                }]
 
-            print(user_message)
-            print()
-            message_tokens = get_message_tokens(model=model, role="user", content=user_message)
+            for message in record["messages"]:
+                message_tokens = get_message_tokens(model=model, **message)
+                tokens.extend(message_tokens)
+                tokens.append(LINEBREAK_TOKEN)
+
             role_tokens = [model.token_bos(), BOT_TOKEN, LINEBREAK_TOKEN]
-            tokens += message_tokens + role_tokens
+            tokens.extend(role_tokens)
+            progress_bar.write(model.detokenize(tokens).decode("utf-8", "ignore"))
             generator = model.generate(
                 tokens,
                 top_k=top_k,
                 top_p=top_p,
                 temp=temperature,
-                repeat_penalty=repeat_penalty
+                repeat_penalty=repeat_penalty,
+                reset=True,
             )
-            output = ""
-            for token in generator:
-                token_str = model.detokenize([token]).decode("utf-8")
-                tokens.append(token)
-                if token == model.token_eos():
+            completion_tokens = []
+            for i, token in enumerate(generator):
+                completion_tokens.append(token)
+                if token == model.token_eos() or (max_new_tokens is not None and i >= max_new_tokens):
                     break
-                print(token_str, end="", flush=True)
-                output += token_str
-            print()
-            print()
-            record["answer"] = output
+                token_str = model.detokenize([token]).decode("utf-8", "ignore")
+                progress_bar.write(token_str, end="")
+            progress_bar.write('\n\n')
+            record["answer"] = model.detokenize(completion_tokens).decode("utf-8")
             w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
-            model.reset()
 
 
 if __name__ == "__main__":
