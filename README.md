@@ -4,9 +4,8 @@ Language models for Russian language: implementation and comparison.
 
 * Slides from DataFest: [link](https://docs.google.com/presentation/d/1lPXJoLOYMTt6T6h33TrggtRPm9nUTlp9fPDxIuiNGT4)
 * DataFest talk: [link](https://www.youtube.com/live/5R1spZTpC2Y?feature=share&t=34387)
-
-* Main demo: https://huggingface.co/spaces/IlyaGusev/saiga_7b
-* Retrieval QA CPU demo: https://huggingface.co/spaces/IlyaGusev/saiga_13b_llamacpp_retrieval_qa
+* Main demo: [link](https://huggingface.co/spaces/IlyaGusev/saiga_7b)
+* Retrieval QA CPU demo: [link](https://huggingface.co/spaces/IlyaGusev/saiga_13b_llamacpp_retrieval_qa)
 
 # RuTurboAlpaca
 
