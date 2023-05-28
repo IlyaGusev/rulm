@@ -2,6 +2,9 @@
 
 Language models for Russian language: implementation and comparison.
 
+* Main demo: https://huggingface.co/spaces/IlyaGusev/saiga_7b
+* Retrieval QA CPU demo: https://huggingface.co/spaces/IlyaGusev/saiga_13b_llamacpp_retrieval_qa
+
 # RuTurboAlpaca
 
 ## Dataset
