@@ -6,9 +6,10 @@ import os
 import wandb
 import torch
 import numpy as np
+import bitsandbytes as bnb
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, DataCollatorForTokenClassification, DataCollatorForSeq2Seq
-from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl
+from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl, BitsAndBytesConfig
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 
@@ -16,6 +17,7 @@ from src.dataset import InstructDataset, ChatDataset
 from src.util.dl import set_random_seed, fix_tokenizer, fix_model
 from src.util.io import read_jsonl
 
+os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -103,7 +105,6 @@ def train(
         deepspeed=deepspeed_config,
         **trainer_config
     )
-    
     model_name = config["model_name"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
@@ -190,11 +191,33 @@ def train(
         "seq2seq": AutoModelForSeq2SeqLM
     }
     load_in_8bit = bool(config.get("load_in_8bit", False))
+    load_in_4bit = bool(config.get("load_in_4bit", False))
     if load_in_8bit:
+        assert not load_in_4bit
         model = model_types[model_type].from_pretrained(
             model_name,
             load_in_8bit=True,
             device_map=device_map
+        )
+        model = fix_model(model, tokenizer, use_resize=False)
+        model = prepare_model_for_int8_training(model)
+    elif load_in_4bit:
+        assert not load_in_8bit
+        use_bf16 = trainer_config.get("bf16", False)
+        compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
+        model = model_types[model_type].from_pretrained(
+            model_name,
+            load_in_4bit=True,
+            device_map=device_map,
+            quantization_config=BitsAndBytesConfig(
+                load_in_4bit=True,
+                llm_int8_threshold=6.0,
+                llm_int8_has_fp16_weight=False,
+                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4"
+            ),
+            torch_dtype=torch.bfloat16 if use_bf16 else torch.float32
         )
         model = fix_model(model, tokenizer, use_resize=False)
         model = prepare_model_for_int8_training(model)
