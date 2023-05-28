@@ -6,6 +6,7 @@ Language models for Russian language: implementation and comparison.
 * DataFest talk: [link](https://www.youtube.com/live/5R1spZTpC2Y?feature=share&t=34387)
 * Main demo: [link](https://huggingface.co/spaces/IlyaGusev/saiga_7b)
 * Retrieval QA CPU demo: [link](https://huggingface.co/spaces/IlyaGusev/saiga_13b_llamacpp_retrieval_qa)
+* Fine-tuning Colab: [link](https://colab.research.google.com/drive/1Eos7VgGFPR7IdspuUKqYymmAxLiL5cmZ?usp=sharing)
 
 # RuTurboAlpaca
 
