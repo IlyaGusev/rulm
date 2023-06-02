@@ -26,3 +26,5 @@ data/user_v2_saiga7b_v2_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/user_v2_saiga7b_v4_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/user_v2_den4ik_fred_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/vicuna_den4ik_fred_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/user_v2_den4ik_fred_new_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/vicuna_den4ik_fred_new_answers.jsonl filter=lfs diff=lfs merge=lfs -text
