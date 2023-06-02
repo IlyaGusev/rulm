@@ -48,19 +48,20 @@ def main(
     request_batch_size=5
 ):
     existing_keys = set()
+    output_records = list()
     if output_path and os.path.exists(output_path):
         output_records = read_jsonl(output_path)
-        existing_keys = {tuple((r["instruction"], r["input"])) for r in output_records}
+        existing_keys = {tuple((r["instruction"].strip(), r["input"].strip())) for r in output_records}
     print(f"Existing keys: {len(existing_keys)}")
 
     batch = []
     records = read_jsonl(input_path)
     for record in tqdm(records):
-        key = tuple((record["instruction"], record["input"]))
-        if key in existing_keys:
-            continue
         if "noinput" in record["input"]:
             record["input"] = ""
+        key = tuple((record["instruction"].strip(), record["input"].strip()))
+        if key in existing_keys:
+            continue
         batch.append(record)
         if len(batch) != request_batch_size:
             continue
