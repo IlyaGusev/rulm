@@ -1,4 +1,5 @@
 import sys
+import copy
 import json
 import random
 from tqdm import tqdm
@@ -98,11 +99,12 @@ def generate_answers(
 
     records = read_jsonl(input_path)
 
+    default_conversation = Conversation.from_template(template_path)
     with open(output_path, "w") as w:
         for batch in tqdm(gen_batch(records, batch_size)):
             prompts = []
             for record in batch:
-                conversation = Conversation.from_template(template_path)
+                conversation = copy.deepcopy(default_conversation)
                 user_message = record["instruction"]
                 if "input" in record and record["input"]:
                     user_message += "\nДано: " + record["input"]
@@ -119,7 +121,7 @@ def generate_answers(
                 print(prompt)
                 print(output)
                 record["instruction"] = record["instruction"].encode("utf-8").decode("utf-8", "ignore")
-                if record["input"]:
+                if "input" in record and record["input"]:
                     record["input"] = record["input"].encode("utf-8").decode("utf-8", "ignore")
                 record["answer"] = output.encode("utf-8").decode("utf-8", "ignore")
                 w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
