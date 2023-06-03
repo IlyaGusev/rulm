@@ -97,38 +97,32 @@ def generate_answers(
         model = torch.compile(model)
 
     records = read_jsonl(input_path)
-    prompts = []
-    for record in records:
-        conversation = Conversation.from_template(template_path)
-        user_message = record["instruction"]
-        if "input" in record and record["input"]:
-            user_message += "\nДано: " + record["input"]
-        conversation.add_user_message(user_message)
-        prompt = conversation.get_prompt(tokenizer)
-        prompts.append(prompt)
-
-    all_outputs = []
-    for batch in tqdm(gen_batch(prompts, batch_size)):
-        outputs = generate(
-            model=model,
-            tokenizer=tokenizer,
-            prompts=batch,
-            generation_config=generation_config
-        )
-        for prompt, output in zip(batch, outputs):
-            print(prompt)
-            print(output)
-            all_outputs.append(output)
 
     with open(output_path, "w") as w:
-        for record, output in zip(records, all_outputs):
-            try:
-                record["answer"] = output
+        for batch in tqdm(gen_batch(records, batch_size)):
+            prompts = []
+            for record in batch:
+                conversation = Conversation.from_template(template_path)
+                user_message = record["instruction"]
+                if "input" in record and record["input"]:
+                    user_message += "\nДано: " + record["input"]
+                conversation.add_user_message(user_message)
+                prompt = conversation.get_prompt(tokenizer)
+                prompts.append(prompt)
+            outputs = generate(
+                model=model,
+                tokenizer=tokenizer,
+                prompts=prompts,
+                generation_config=generation_config
+            )
+            for record, prompt, output in zip(batch, prompts, outputs):
+                print(prompt)
+                print(output)
+                record["instruction"] = record["instruction"].encode("utf-8").decode("utf-8", "ignore")
+                if record["input"]:
+                    record["input"] = record["input"].encode("utf-8").decode("utf-8", "ignore")
+                record["answer"] = output.encode("utf-8").decode("utf-8", "ignore")
                 w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
-            except Exception as e:
-                record["answer"] = ""
-                w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
-
 
 if __name__ == "__main__":
     fire.Fire(generate_answers)
