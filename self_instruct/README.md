@@ -17,8 +17,15 @@ pip install -r ../requirements.txt
 
 ### Download base model
 ```
-python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="huggyllama/llama-7b", local_dir="models/llama-7b", ignore_patterns=["LICENSE", "README.md", "*.safetensors"])'
+python3 -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="huggyllama/llama-7b", local_dir="models/llama-7b", ignore_patterns=["LICENSE", "README.md", "*.safetensors"])'
 ```
+
+or for new versions of Transformers:
+
+```
+python3 -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="huggyllama/llama-7b", local_dir="models/llama-7b", ignore_patterns=["LICENSE", "README.md", "*.pt"])'
+```
+
 
 ### Fix tokenizer
 Edit the following files under `models/llama-7b`:
