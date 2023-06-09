@@ -48,9 +48,28 @@ class Conversation:
             "content": message
         })
 
-    def get_prompt(self, tokenizer):
+    def count_tokens(self, tokenizer, messages):
         final_text = ""
-        for message in self.messages:
+        for message in messages:
+            message_text = self.message_template.format(**message)
+            final_text += message_text
+        tokens = tokenizer([final_text])["input_ids"][0]
+        return len(tokens)
+
+    def shrink(self, tokenizer, messages, max_tokens):
+        system_message = messages[0]
+        other_messages = messages[1:]
+        while self.count_tokens(tokenizer, [system_message] + other_messages) > max_tokens:
+            other_messages = other_messages[2:]
+        return [system_message] + other_messages
+
+    def get_prompt(self, tokenizer, max_tokens: int = None):
+        final_text = ""
+        messages = self.messages
+        if max_tokens is not None:
+            messages = self.shrink(tokenizer, messages, max_tokens)
+
+        for message in messages:
             message_text = self.message_template.format(**message)
             final_text += message_text
         final_text += tokenizer.decode([self.start_token_id, self.bot_token_id])
