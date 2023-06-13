@@ -37,3 +37,5 @@ data/user_v2_saiga7b_fast_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/vicuna_saiga7b_fast_answer.jsonl filter=lfs diff=lfs merge=lfs -text
 data/user_v2_saiga30b_v2_answers.jsonl filter=lfs diff=lfs merge=lfs -text
 data/vicuna_saiga30b_v2_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/user_v2_saiga30b_v3_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/vicuna_saiga30b_v3_answers.jsonl filter=lfs diff=lfs merge=lfs -text
