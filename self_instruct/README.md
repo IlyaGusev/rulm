@@ -23,7 +23,7 @@ python3 -c 'from huggingface_hub import snapshot_download; snapshot_download(rep
 or for new versions of Transformers:
 
 ```
-python3 -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="huggyllama/llama-7b", local_dir="models/llama-7b", ignore_patterns=["LICENSE", "README.md", "*.pt"])'
+python3 -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="huggyllama/llama-7b", local_dir="models/llama-7b", ignore_patterns=["LICENSE", "README.md", "*.bin"])'
 ```
 
 
