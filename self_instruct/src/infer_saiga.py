@@ -77,7 +77,6 @@ def generate_answers(
         model = PeftModel.from_pretrained(
             model,
             model_name,
-            torch_dtype=torch.float16
         )
 
     elif device == "cpu":
