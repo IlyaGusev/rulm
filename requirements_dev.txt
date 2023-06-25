@@ -2,9 +2,9 @@ numpy >= 1.12.1
 scipy >= 1.0.1
 torch >= 2.0.0
 bitsandbytes == 0.39.0
-git+https://github.com/huggingface/accelerate.git@5f21cde3c74fa511c4bec55cac5fe410effbe182
 git+https://github.com/huggingface/peft.git@7fb5f90a38cb39a31396de7e638ead9ecea692af
-git+https://github.com/huggingface/transformers@60825f2c6e7fd3cb8ce27ab072a86b919ef1082a
+transformers == 4.30.2
+accelerate == 0.20.3
 pillow==9.5.0
 einops==0.6.1
 evaluate==0.4.0
