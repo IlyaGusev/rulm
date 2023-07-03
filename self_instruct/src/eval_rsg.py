@@ -3,26 +3,29 @@ import os
 import re
 import copy
 from tqdm import tqdm
+from collections import defaultdict
 from difflib import SequenceMatcher
 
 import torch
+from torch.nn import CrossEntropyLoss
+from datasets import load_dataset
 from nltk import edit_distance
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import matthews_corrcoef
 
 from src.util.io import read_jsonl
 from src.util.chat import Conversation
 from src.util.dl import gen_batch
 from src.util.load import load_saiga
 
+HF_DATASET = "RussianNLP/russian_super_glue"
 
 def generate(
     model,
     tokenizer,
     prompts,
     generation_config,
-    debug: bool = True,
-    max_new_tokens: int = 256,
-    no_repeat_ngram_size: int = 64
+    debug: bool = True
 ):
     data = tokenizer(
         prompts,
@@ -31,8 +34,6 @@ def generate(
         padding=True,
     )
     data = {k: v.to(model.device) for k, v in data.items()}
-    generation_config.max_new_tokens = max_new_tokens
-    generation_config.no_repeat_ngram_size = no_repeat_ngram_size
     output_ids = model.generate(
         **data,
         generation_config=generation_config
@@ -54,7 +55,7 @@ def calc_loss(
     model,
     tokenizer,
     prompts,
-    debug: bool = True
+    debug: bool = True,
 ):
     data = tokenizer(
         prompts,
@@ -63,11 +64,26 @@ def calc_loss(
         padding=True,
     )
     data = {k: v.to(model.device) for k, v in data.items()}
-    target_ids = data["input_ids"].clone()
+    labels = data["input_ids"].clone()
     with torch.no_grad():
-        outputs = model.forward(**data, return_dict=True, labels=target_ids)
-        print(outputs.loss)
-    return outputs.loss
+        outputs = model.forward(**data, return_dict=True)
+    logits = outputs.logits
+
+    shift_logits = logits[..., :-1, :].contiguous()
+    shift_logits = shift_logits.transpose(1, 2)
+
+    shift_labels = labels[..., 1:].contiguous()
+    shift_labels = shift_labels.to(shift_logits.device)
+
+    loss_fct = CrossEntropyLoss(reduction="none")
+    loss = loss_fct(shift_logits, shift_labels)
+    losses = loss.mean(-1)
+    if debug:
+        for prompt, loss in zip(prompts, losses):
+            print(prompt)
+            print("Loss:", loss.item())
+            print()
+    return losses
 
 
 def predict_saiga_zero_shot(
@@ -76,8 +92,15 @@ def predict_saiga_zero_shot(
     generation_config,
     template_path,
     prompts,
-    max_prompt_tokens: int = None
+    max_prompt_tokens: int = None,
+    max_new_tokens: int = 256,
+    no_repeat_ngram_size: int = 64,
+    temperature: float = 0.01
 ):
+    generation_config.max_new_tokens = max_new_tokens
+    generation_config.no_repeat_ngram_size = no_repeat_ngram_size
+    generation_config.temperature = temperature
+
     default_conversation = Conversation.from_template(template_path)
     clean_prompts = []
     for prompt in prompts:
@@ -97,28 +120,39 @@ def predict_saiga_zero_shot_logits(
     model,
     tokenizer,
     template_path,
-    prompts,
-    answers,
+    all_messages,
     max_prompt_tokens: int = None
 ):
     default_conversation = Conversation.from_template(template_path)
     clean_prompts = []
-    for prompt, prompt_answers in zip(prompts, answers):
+    for messages in all_messages:
         conversation = copy.deepcopy(default_conversation)
-        conversation.add_user_message(prompt)
-        for answer in prompt_answers:
-            conversation.add_bot_message(answer)
-            prompt = conversation.get_prompt(
-                tokenizer,
-                max_tokens=max_prompt_tokens,
-                add_suffix=False
-            )
-            clean_prompts.append(prompt)
+        for message in messages:
+            if message["role"] == "user":
+                conversation.add_user_message(message["content"])
+            elif message["role"] == "bot":
+                conversation.add_bot_message(message["content"])
+        prompt = conversation.get_prompt(
+            tokenizer,
+            max_tokens=max_prompt_tokens,
+            add_suffix=False
+        )
+        clean_prompts.append(prompt)
     return calc_loss(
         model=model,
         tokenizer=tokenizer,
         prompts=clean_prompts
     )
+
+
+def find_lcs(s1, s2):
+    max_lcs = ""
+    for i in range(len(s1)):
+        for j in range(i + 1, len(s1)):
+            ss1 = s1[i:j]
+            if ss1 in s2 and len(ss1) > len(max_lcs):
+                max_lcs = ss1
+    return max_lcs
 
 
 DANETQA_PROMPT = '''Контекст: {passage}
@@ -148,10 +182,7 @@ def clean_danetqa_response(response):
 
 def predict_danetqa(
     test_path,
-    model,
-    tokenizer,
-    generation_config,
-    template_path,
+    predict_func,
     batch_size: int = 4
 ):
     prompts = []
@@ -159,15 +190,10 @@ def predict_danetqa(
     for record in records:
         prompt = DANETQA_PROMPT.format(passage=record["passage"], question=record["question"])
         prompts.append(prompt)
+
     responses = []
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_saiga_zero_shot(
-            model=model,
-            tokenizer=tokenizer,
-            generation_config=generation_config,
-            template_path=template_path,
-            prompts=batch
-        )
+        raw_responses = predict_func(batch)
         responses.extend([clean_danetqa_response(r) for r in raw_responses])
     for record, response in zip(records, responses):
         record["prediction"] = response
@@ -209,10 +235,7 @@ def clean_terra_response(response):
 
 def predict_terra(
     test_path,
-    model,
-    tokenizer,
-    generation_config,
-    template_path,
+    predict_func,
     batch_size: int = 4
 ):
     prompts = []
@@ -225,23 +248,15 @@ def predict_terra(
         prompts.append(prompt)
     responses = []
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_saiga_zero_shot(
-            model=model,
-            tokenizer=tokenizer,
-            generation_config=generation_config,
-            template_path=template_path,
-            prompts=batch
-        )
-        responses.extend([clean_terra_response(r) for r in raw_responses])
+        responses.extend(predict_func(batch))
     for record, response in zip(records, responses):
-        record["prediction"] = response
+        record["prediction"] = clean_terra_response(response)
     if "label" in records[0]:
         labels = [terra_to_bool(r["label"]) for r in records]
         responses = [terra_to_bool(r["prediction"]) for r in records]
         print("terra accuracy:", accuracy_score(labels, responses))
     return records
 
-#RWSD_PROMPT = 'Текст: "{text}"\nНа основе текста одним словом ответь на вопрос: про кого или про что говорится в фразе "{span2}"?'
 RWSD_PROMPT = 'Текст: "{text}"\nНа основе текста одним словом ответь на вопрос: К кому или к чему относится местоимение во фразе "{span2}"?'
 
 RWSD_YES_RE = re.compile(
@@ -272,10 +287,7 @@ def clean_rwsd_response(response, span1):
 
 def predict_rwsd(
     test_path,
-    model,
-    tokenizer,
-    generation_config,
-    template_path,
+    predict_func,
     batch_size: int = 4
 ):
     prompts = []
@@ -289,14 +301,7 @@ def predict_rwsd(
         prompts.append(prompt)
     responses = []
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_saiga_zero_shot(
-            model=model,
-            tokenizer=tokenizer,
-            generation_config=generation_config,
-            template_path=template_path,
-            prompts=batch
-        )
-        responses.extend([r for r in raw_responses])
+        responses.extend(predict_func(batch))
     for record, response in zip(records, responses):
         record["prediction"] = clean_rwsd_response(response, record["target"]["span1_text"])
     if "label" in records[0]:
@@ -340,13 +345,10 @@ def clean_muserc_response(response):
 
 def predict_muserc(
     test_path,
-    model,
-    tokenizer,
-    generation_config,
-    template_path,
-    batch_size: int = 4
+    predict_func,
+    batch_size: int = 2
 ):
-    records = list(read_jsonl(test_path))[:5]
+    records = list(read_jsonl(test_path))
     clean_records = []
     for record in records:
         record = record["passage"]
@@ -361,27 +363,17 @@ def predict_muserc(
                     "answer": answer
                 })
     prompts = dict()
-    for record in clean_records:
-        prompt = MUSERC_PROMPT_STEP1.format(
-            text=record["text"],
-            question=record["question"]
-        )
-        prompts[(record["text"], record["question"])] = prompt
-
     prompt2key = dict()
-    for (text, question), prompt in prompts.items():
+    for record in clean_records:
+        text, question = record["text"], record["question"]
+        prompt = MUSERC_PROMPT_STEP1.format(text=text, question=question)
+        prompts[(text, question)] = prompt
         prompt2key[prompt] = (text, question)
-    prompts = list(prompts.values())
+    prompts = list(set(prompts.values()))
 
     responses = dict()
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_saiga_zero_shot(
-            model=model,
-            tokenizer=tokenizer,
-            generation_config=generation_config,
-            template_path=template_path,
-            prompts=batch
-        )
+        raw_responses = predict_func(batch)
         for response, prompt in zip(raw_responses, batch):
             text, question = prompt2key[prompt]
             responses[(text, question)] = response
@@ -399,13 +391,7 @@ def predict_muserc(
         prompts.append(prompt)
     responses = []
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_saiga_zero_shot(
-            model=model,
-            tokenizer=tokenizer,
-            generation_config=generation_config,
-            template_path=template_path,
-            prompts=batch
-        )
+        raw_responses = predict_func(batch)
         responses.extend([r for r in raw_responses])
 
     index = 0
@@ -417,7 +403,7 @@ def predict_muserc(
             for answer_record in question_record["answers"]:
                 label = answer_record.get("label")
                 response = clean_muserc_response(responses[index])
-                record["prediction"] = response
+                answer_record["prediction"] = response
                 predictions.append(response)
                 if label is not None:
                     labels.append(label)
@@ -428,59 +414,60 @@ def predict_muserc(
     return records
 
 
-RUCOS_PROMPT = """Контекст: {text}
-
-Максимально коротко ответь на вопрос: Какая сущность должна быть вместо "@placeholder" в этой фразе: "{query}", согласно контексту?"""
-
-
 def clean_rucos_response(response, text, entities):
     for e in entities:
-        e["text"] = text[e["start"]:e["end"]]
+        e["text"] = text[e["start"]:e["end"]].strip()
         e["distance"] = edit_distance(response, e["text"])
-        print(response, " # ", e["text"], " # ", e["distance"])
     entities.sort(key=lambda x: x["distance"])
     return entities[0]["text"]
 
 
 def rucos_clean_text(text):
-    return text.split("@highlight")[0].strip()
+    text = " ".join([s.strip() for s in text.split("@header")]).strip()
+    return [s.strip() for s in text.split("@highlight")][0].strip()
 
 
 def predict_rucos(
     test_path,
-    model,
-    tokenizer,
-    generation_config,
-    template_path,
+    predict_func,
     batch_size: int = 4
 ):
-    records = list(read_jsonl(test_path))[:10]
+    records = list(read_jsonl(test_path))
 
-    prompts, prompt2key = dict(), dict()
+    prompts = list()
     for record in records:
-        text = rucos_clean_text(record["passage"]["text"])
+        text = record["passage"]["text"]
+        entities = record["passage"]["entities"]
+        entities = [text[e["start"]:e["end"]].strip() for e in entities]
+        text = rucos_clean_text(text)
         for qas in record["qas"]:
             query = qas["query"]
-            prompt = RUCOS_PROMPT.format(
-                text=text,
-                query=query
-            )
-            prompts[(text, query)] = prompt
-            prompt2key[prompt] = (text, query)
-    prompts = list(prompts.values())
+            for answer in entities:
+                query_answer = query.replace("@placeholder", answer)
+                prompts.append({
+                    "text": text,
+                    "query": query,
+                    "message": text + " " + query_answer,
+                    "answer": answer
+                })
 
-    responses = dict()
+    responses = defaultdict(list)
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_saiga_zero_shot_logits(
-            model=model,
-            tokenizer=tokenizer,
-            template_path=template_path,
-            prompts=batch,
-            answers=[["да", "нет"]]
-        )
-        for response, prompt in zip(raw_responses, batch):
-            text, query = prompt2key[prompt]
-            responses[(text, query)] = response
+        batch_messages = [[
+            {"role": "user", "content": p["message"]},
+        ] for p in batch]
+        losses = predict_func(batch_messages)
+        for loss, data in zip(losses, batch):
+            responses[(data["text"], data["query"])].append((loss, data["answer"]))
+
+    final_responses = dict()
+    for (text, query), answers in responses.items():
+        print("Text:", text)
+        print("Query:", query)
+        for loss, answer in sorted(answers):
+            print(loss.item(), answer)
+        print()
+        final_responses[(text, query)] = min(answers)[1]
 
     all_count = 0
     correct_count = 0
@@ -489,18 +476,150 @@ def predict_rucos(
         entities = record["passage"]["entities"]
         for qas in record["qas"]:
             query = qas["query"]
-            response = responses[(text, query)]
+            response = final_responses[(text, query)]
             qas["prediction"] = clean_rucos_response(response, text, entities)
             answers = qas.get("answers")
             if answers:
                 all_count += 1
-            for answer in answers:
-                if answer["text"] == qas["prediction"]:
-                    correct_count += 1
-                    break
+                for answer in answers:
+                    if answer["text"] == qas["prediction"]:
+                        correct_count += 1
+                        break
     if all_count > 0:
         print("rucos accuracy:", correct_count / all_count)
     return records
+
+LIDIRUS_PROMPT = '''Текст: "{sentence1}"
+
+Используя текст, можно ли сказать, что утверждение "{sentence2}" точно корректно относительно ситуации из текста? Ответь только "да" или "нет".'''
+
+LIDIRUS_ENTAILMENT_RE = re.compile(
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(да|верно|правда|может|вероятна|верная)",
+    re.IGNORECASE | re.MULTILINE | re.DOTALL
+)
+LIDIRUS_NOT_ENTAILMENT_RE = re.compile(
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(не|нет|неверно|неверное|невероятна|неверная)",
+    re.IGNORECASE | re.MULTILINE | re.DOTALL
+)
+
+
+def lidirus_to_bool(response):
+    return response == "entailment"
+
+
+def clean_lidirus_response(response):
+    result = None
+    if bool(LIDIRUS_ENTAILMENT_RE.match(response)):
+        result = "entailment"
+    elif bool(LIDIRUS_NOT_ENTAILMENT_RE.match(response)):
+        result = "not_entailment"
+    else:
+        result = "not_entailment"
+        print("ERROR! Не удалось найти Да/Нет в ответе модели и преобразовать его в bool", response)
+    return result
+
+
+def predict_lidirus(
+    test_path,
+    predict_func,
+    batch_size: int = 4
+):
+    records = list(read_jsonl(test_path))
+    prompts = [LIDIRUS_PROMPT.format(
+        sentence1=r["sentence1"],
+        sentence2=r["sentence2"]
+    ) for r in records]
+
+    responses = []
+    for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
+        responses.extend(predict_func(batch))
+
+    for record, response in zip(records, responses):
+        record["prediction"] = clean_lidirus_response(response)
+
+    if "label" in records[0]:
+        labels = [lidirus_to_bool(r["label"]) for r in records]
+        responses = [lidirus_to_bool(r["prediction"]) for r in records]
+        print("lidirus accuracy:", accuracy_score(labels, responses))
+        print("lidirus corr:", matthews_corrcoef(labels, responses))
+    return records
+
+#PARUS_CAUSE_PROMPT = """{premise} По какой причине это случилось? Варианты: "(A) {choice1}" или "(B) {choice2}"."""
+#PARUS_EFFECT_PROMPT = """{premise} К каким последствиям это привело? Варианты: "(A) {choice1}" или "(B) {choice2}"."""
+
+#PARUS_CAUSE_PROMPT = """Выбери одну наиболее вероятную причину исключительно из двух предложенных вариантов.
+#
+#Варианты: так как {choice1}; так как {choice2}
+#
+#{premise}, так как..."""
+
+#PARUS_EFFECT_PROMPT = """Выбери одно наиболее вероятное следствие исключительно из двух предложенных вариантов.
+#
+#Варианты: поэтому {choice1}; поэтому {choice2}
+#
+#{premise}, поэтому..."""
+
+PARUS_CAUSE_PROMPT = """Выбери одну наиболее вероятную причину исключительно из двух предложенных вариантов.
+Делай выбор на основе здравого смысла и своих знаний о мире. Обязательно учитывай саму ситуацию.
+
+Варианты: так как {choice1}; так как {choice2}
+
+{premise}, так как..."""
+
+PARUS_EFFECT_PROMPT = """Выбери одно наиболее вероятное следствие исключительно из двух предложенных вариантов.
+Делай выбор на основе здравого смысла и своих знаний о мире. Обязательно учитывай саму ситуацию.
+
+Варианты: поэтому {choice1}; поэтому {choice2}
+
+{premise}, поэтому..."""
+
+
+def predict_parus(split, predict_func, batch_size: int = 8):
+    dataset = list(load_dataset(HF_DATASET, "parus", split=split))
+
+    prompts = []
+    for r in dataset:
+        idx = r["idx"]
+        c1 = r["choice1"].rstrip(".").lower()
+        c2 = r["choice2"].rstrip(".").lower()
+        premise = r["premise"].rstrip(".")
+
+        is_cause = r["question"] == "cause"
+        template = PARUS_CAUSE_PROMPT if is_cause else PARUS_EFFECT_PROMPT
+        prompts.append(template.format(
+            premise=premise,
+            choice1=c1,
+            choice2=c2
+        ))
+
+    responses = list()
+    for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
+        responses.extend(predict_func(batch))
+
+    assert len(responses) == len(dataset)
+    for idx, (response, record) in enumerate(zip(responses, dataset)):
+        response = response.lower()
+        c1 = record["choice1"].rstrip(".").lower()
+        c2 = record["choice2"].rstrip(".").lower()
+        c1_lcs = find_lcs(response, c1)
+        c2_lcs = find_lcs(response, c2)
+        record["prediction"] = int(len(c2_lcs) > len(c1_lcs))
+        if record["prediction"] != record["label"]:
+            true_response = c1
+            if record["label"] == 1:
+                true_response = c2
+            print(record["premise"], "##", true_response, "##", response)
+
+    if "label" in dataset[0]:
+        y_true, y_pred = [], []
+        for r in dataset:
+            y_pred.append(r["prediction"])
+            y_true.append(r.get("label"))
+        score = accuracy_score(y_true, y_pred)
+        print("parus accuracy:", score)
+        with open("parus_score.txt", "w") as w:
+            w.write(str(score) + "\n")
+    return dataset
 
 
 def main(
@@ -512,13 +631,27 @@ def main(
 ):
     model, tokenizer, generation_config = load_saiga(model_name)
 
+    def predict_saiga_zero_shot_bound(batch):
+        return predict_saiga_zero_shot(
+            model=model,
+            tokenizer=tokenizer,
+            generation_config=generation_config,
+            template_path=template_path,
+            prompts=batch
+        )
+
+    def predict_saiga_zero_shot_logits_bound(batch_messages):
+        return predict_saiga_zero_shot_logits(
+            model=model,
+            tokenizer=tokenizer,
+            template_path=template_path,
+            all_messages=batch_messages
+        )
+
     #danetqa_test_path = os.path.join(data_dir, "DaNetQA", split + ".jsonl")
     #danetqa_predictions = predict_danetqa(
     #    danetqa_test_path,
-    #    model=model,
-    #    tokenizer=tokenizer,
-    #    generation_config=generation_config,
-    #    template_path=template_path
+    #    predict_func=predict_saiga_zero_shot_bound
     #)
     #danetqa_result_path = os.path.join(predictions_dir, "DaNetQA.jsonl")
     #with open(danetqa_result_path, "w") as w:
@@ -529,10 +662,7 @@ def main(
     #terra_test_path = os.path.join(data_dir, "TERRa", split + ".jsonl")
     #terra_predictions = predict_terra(
     #    terra_test_path,
-    #    model=model,
-    #    tokenizer=tokenizer,
-    #    generation_config=generation_config,
-    #    template_path=template_path
+    #    predict_func=predict_saiga_zero_shot_bound
     #)
     #terra_result_path = os.path.join(predictions_dir, "TERRa.jsonl")
     #with open(terra_result_path, "w") as w:
@@ -542,10 +672,7 @@ def main(
     #rwsd_test_path = os.path.join(data_dir, "RWSD", split + ".jsonl")
     #rwsd_predictions = predict_rwsd(
     #    rwsd_test_path,
-    #    model=model,
-    #    tokenizer=tokenizer,
-    #    generation_config=generation_config,
-    #    template_path=template_path
+    #    predict_func=predict_saiga_zero_shot_bound
     #)
     #rwsd_result_path = os.path.join(predictions_dir, "RWSD.jsonl")
     #with open(rwsd_result_path, "w") as w:
@@ -553,29 +680,41 @@ def main(
     #        label = str(record["prediction"])
     #        w.write(json.dumps({"idx": record["idx"], "label": label}) + "\n")
 
-    rucos_test_path = os.path.join(data_dir, "RuCoS", split + ".jsonl")
-    rucos_predictions = predict_rucos(
-        rucos_test_path,
-        model=model,
-        tokenizer=tokenizer,
-        generation_config=generation_config,
-        template_path=template_path,
-    )
-    rucos_result_path = os.path.join(predictions_dir, "RuCoS.jsonl")
-    with open(rucos_result_path, "w") as w:
-        for record in rucos_predictions:
-            label = record["qas"][0]["prediction"]
-            idx = record["qas"][0]["idx"]
-            w.write(json.dumps({"idx": idx, "label": label}) + "\n")
+    #rucos_test_path = os.path.join(data_dir, "RuCoS", split + ".jsonl")
+    #rucos_predictions = predict_rucos(
+    #    rucos_test_path,
+    #    predict_func=predict_saiga_zero_shot_logits_bound
+    #)
+    #rucos_result_path = os.path.join(predictions_dir, "RuCoS.jsonl")
+    #with open(rucos_result_path, "w") as w:
+    #    for record in rucos_predictions:
+    #        label = record["qas"][0]["prediction"]
+    #        idx = record["qas"][0]["idx"]
+    #        w.write(json.dumps({"idx": idx, "label": label}, ensure_ascii=False) + "\n")
 
-    muserc_test_path = os.path.join(data_dir, "MuSeRC", split + ".jsonl")
+    #lidirus_test_path = os.path.join(data_dir, "LiDiRus", "LiDiRus.jsonl")
+    #lidirus_predictions = predict_lidirus(
+    #    lidirus_test_path,
+    #    predict_func=predict_saiga_zero_shot_bound
+    #)
+    #lidirus_result_path = os.path.join(predictions_dir, "LiDiRus.jsonl")
+    #with open(lidirus_result_path, "w") as w:
+    #    for record in lidirus_predictions:
+    #        w.write(json.dumps({"idx": record["idx"], "label": record["prediction"]}) + "\n")
+
+    parus_predictions = predict_parus(
+        split=split,
+        predict_func=predict_saiga_zero_shot_bound
+    )
+    parus_result_path = os.path.join(predictions_dir, "PARus.jsonl")
+    with open(parus_result_path, "w") as w:
+        for r in parus_predictions:
+            w.write(json.dumps({"idx": r["idx"], "label": int(r["prediction"])}) + "\n")
+
+    muserc_test_path = os.path.join(data_dir, "MuSeRC", "val" + ".jsonl")
     muserc_predictions = predict_muserc(
         muserc_test_path,
-        model=model,
-        tokenizer=tokenizer,
-        generation_config=generation_config,
-        template_path=template_path,
-        batch_size=2
+        predict_func=predict_saiga_zero_shot_bound
     )
     muserc_result_path = os.path.join(predictions_dir, "MuSeRC.jsonl")
     with open(muserc_result_path, "w") as w:
@@ -594,6 +733,6 @@ main(
     "models/saiga_13b_lora",
     "internal_prompts/saiga_v2.json",
     "data/rsg",
-    "val",
+    "validation",
     "submission"
 )

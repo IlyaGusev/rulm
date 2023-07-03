@@ -63,7 +63,7 @@ class Conversation:
             other_messages = other_messages[2:]
         return [system_message] + other_messages
 
-    def get_prompt(self, tokenizer, max_tokens: int = None):
+    def get_prompt(self, tokenizer, max_tokens: int = None, add_suffix: bool = True):
         final_text = ""
         messages = self.messages
         if max_tokens is not None:
@@ -72,7 +72,8 @@ class Conversation:
         for message in messages:
             message_text = self.message_template.format(**message)
             final_text += message_text
-        final_text += tokenizer.decode([self.start_token_id, self.bot_token_id])
+        if add_suffix:
+            final_text += tokenizer.decode([self.start_token_id, self.bot_token_id])
         return final_text.strip()
 
     @classmethod

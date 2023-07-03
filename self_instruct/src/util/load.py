@@ -6,7 +6,7 @@ from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM
 from peft import PeftConfig, PeftModel
 
 
-def load_saiga(model_name, use_4bit=False):
+def load_saiga(model_name, use_4bit: bool = False, torch_compile: bool = False):
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     generation_config = GenerationConfig.from_pretrained(model_name)
 
@@ -54,6 +54,6 @@ def load_saiga(model_name, use_4bit=False):
         )
 
     model.eval()
-    if torch.__version__ >= "2" and sys.platform != "win32":
+    if torch_compile and torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
     return model, tokenizer, generation_config
