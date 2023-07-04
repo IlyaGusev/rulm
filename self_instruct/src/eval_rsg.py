@@ -165,13 +165,13 @@ DANETQA_YES_RE = re.compile(
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
 DANETQA_NO_RE = re.compile(
-    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*нет",
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(нет|неверно|неправда|не|ложь|редко)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
 
 
 def clean_danetqa_response(response):
-    result = False
+    result = True
     if bool(DANETQA_YES_RE.match(response)):
         result = True
     elif bool(DANETQA_NO_RE.match(response)):
@@ -228,11 +228,11 @@ TERRA_PROMPT = '''Текст: {premise}. Утверждение: {hypothesis}
 Используя текст, ответь одним словом на вопрос: Вероятно ли утверждение при условии остального текста?'''
 
 TERRA_ENTAILMENT_RE = re.compile(
-    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(да|верно|правда|может|являются)",
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(да|верно|правда|может|являются|вероятно)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
 TERRA_NOT_ENTAILMENT_RE = re.compile(
-    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(нет|неверно|неверное|невероятно)",
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(нет|неверно|неверное|невероятно|не вероятно|не)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
 
@@ -593,7 +593,7 @@ def predict_lidirus(
         prediction = clean_lidirus_response(response)
         record["prediction"] = prediction
         label = record["label"]
-        labels.append(lidirus_to_bool(label))
+        labels.append(1 - label)
         predictions.append(lidirus_to_bool(prediction))
 
     print("lidirus accuracy:", accuracy_score(labels, predictions))
@@ -608,16 +608,14 @@ def predict_lidirus(
 
 
 PARUS_CAUSE_PROMPT = """Выбери одну наиболее вероятную причину исключительно из двух предложенных вариантов.
-Делай выбор на основе здравого смысла и своих знаний о мире. Обязательно учитывай саму ситуацию.
 
-Варианты: так как {choice1}; так как {choice2}
+Варианты: {choice1}; {choice2}
 
 {premise}, так как..."""
 
 PARUS_EFFECT_PROMPT = """Выбери одно наиболее вероятное следствие исключительно из двух предложенных вариантов.
-Делай выбор на основе здравого смысла и своих знаний о мире. Обязательно учитывай саму ситуацию.
 
-Варианты: поэтому {choice1}; поэтому {choice2}
+Варианты: {choice1}; {choice2}
 
 {premise}, поэтому..."""
 
@@ -626,7 +624,7 @@ def predict_parus(
     split,
     predict_func,
     output_path,
-    batch_size: int = 16,
+    batch_size: int = 12,
     nrows: int = None
 ):
     records = list(load_dataset(HF_DATASET, "parus", split=split))
@@ -864,19 +862,29 @@ def main(
 
     else:
         def predict_chatgpt(batch):
-            batch = [[{"role": "user", "content": prompt}] for prompt in batch]
-            responses = openai_batch_completion(batch, model_name=model_name)
+            messages = [[{"role": "user", "content": prompt}] for prompt in batch]
+            responses = openai_batch_completion(messages, model_name=model_name)
             responses = [r.message.content for r in responses]
+            if debug:
+                for prompt, response in zip(batch, responses):
+                    print(prompt)
+                    print(response)
+                    print()
             return responses
 
         def predict_chatgpt_short(batch):
-            batch = [[{"role": "user", "content": prompt}] for prompt in batch]
+            messages = [[{"role": "user", "content": prompt}] for prompt in batch]
             responses = openai_batch_completion(
-                batch,
+                messages,
                 decoding_args=OpenAIDecodingArguments(max_tokens=16),
                 model_name=model_name
             )
             responses = [r.message.content for r in responses]
+            if debug:
+                for prompt, response in zip(batch, responses):
+                    print(prompt)
+                    print(response)
+                    print()
             return responses
 
         predict_long = predict_chatgpt

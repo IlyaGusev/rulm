@@ -19,6 +19,7 @@ class OpenAIDecodingArguments(object):
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
 
+DEFAULT_ARGS = OpenAIDecodingArguments()
 
 def openai_completion(
     messages,
@@ -49,9 +50,9 @@ def openai_completion(
 
 def openai_batch_completion(
     batch,
-    decoding_args: OpenAIDecodingArguments,
+    decoding_args: OpenAIDecodingArguments = DEFAULT_ARGS,
     model_name="gpt-3.5-turbo",
-    sleep_time=2
+    sleep_time=20
 ):
     completions = []
     with ThreadPool(len(batch)) as pool:
