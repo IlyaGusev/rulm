@@ -345,33 +345,28 @@ def predict_rwsd(
 # MUSERC
 
 
-MUSERC_PROMPT_STEP1 = """Контекст: {text}
+MUSERC_SINGLE_PROMPT = """Текст: {text}
 
-Используя контекст, коротко ответь на вопрос: {question}"""
+Вопрос: {question}
 
-MUSERC_PROMPT_STEP2 = """Вопрос: {question}
-Ответ 1: {answer}
-Ответ 2: {predicted_answer}
-
-Ответь одним словом: Полностью совпадают ли Ответ 1 и Ответ 2?
-"""
+Является ли "{answer}" правильным ответом на этот вопрос? Основываясь на тексте, ответь "да" или "нет"."""
 
 
-MUSERC_YES_RE = re.compile(
-    r"^[^\w]*(да|совпадают)",
+MUSERC_SINGLE_YES_RE = re.compile(
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(да|является)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
-MUSERC_NO_RE = re.compile(
-    r"^[^\w]*(нет|не совпадают)",
+MUSERC_SINGLE_NO_RE = re.compile(
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(нет|не)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
 
 
-def clean_muserc_response(response):
+def clean_muserc_single_response(response):
     result = False
-    if bool(MUSERC_YES_RE.match(response)):
+    if bool(MUSERC_SINGLE_YES_RE.match(response)):
         result = True
-    elif bool(MUSERC_NO_RE.match(response)):
+    elif bool(MUSERC_SINGLE_NO_RE.match(response)):
         result = False
     else:
         print("ERROR! Не удалось найти Да/Нет в ответе модели и преобразовать его в bool:", response)
@@ -389,41 +384,23 @@ def predict_muserc(
     if nrows:
         records = records[:nrows]
 
-    prompts = dict()
-    prompt2key = dict()
+    prompts = list()
     for record in records:
-        text, question = record["paragraph"], record["question"]
-        prompt = MUSERC_PROMPT_STEP1.format(text=text, question=question)
-        prompts[(text, question)] = prompt
-        prompt2key[prompt] = (text, question)
-    prompts = list(set(prompts.values()))
+        text, question, answer = record["paragraph"], record["question"], record["answer"]
+        answer = answer.rstrip(".")
+        prompts.append(MUSERC_SINGLE_PROMPT.format(
+            text=text,
+            question=question,
+            answer=answer
+        ))
 
-    responses = dict()
-    for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_func(batch)
-        for response, prompt in zip(raw_responses, batch):
-            text, question = prompt2key[prompt]
-            responses[(text, question)] = response
-
-    # Step 2
-    prompts = []
-    for record in records:
-        predicted_answer = responses[(record["paragraph"], record["question"])]
-        prompt = MUSERC_PROMPT_STEP2.format(
-            text=record["paragraph"],
-            question=record["question"],
-            answer=record["answer"],
-            predicted_answer=predicted_answer
-        )
-        prompts.append(prompt)
     responses = []
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        raw_responses = predict_func(batch)
-        responses.extend([r for r in raw_responses])
+        responses.extend(predict_func(batch))
 
     labels, predictions = [], []
     for record, response in zip(records, responses):
-        record["prediction"] = clean_muserc_response(response)
+        record["prediction"] = clean_muserc_single_response(response)
         if record["label"] != -1:
             labels.append(record["label"])
             predictions.append(record["prediction"])
@@ -442,10 +419,12 @@ def predict_muserc(
 
         if ppidx != pidx:
             outputs.append({"idx": pidx, "passage": {"questions": []}})
+            assert len(outputs) - 1 == pidx
         paragraph = outputs[-1]
 
         if pqidx != qidx:
             paragraph["passage"]["questions"].append({"idx": qidx, "answers": []})
+
         question = paragraph["passage"]["questions"][-1]
 
         answer = {"idx": aidx, "label": int(record["prediction"])}
@@ -953,7 +932,7 @@ def main(
     if "muserc" in tasks:
         predict_muserc(
             split=split,
-            predict_func=predict_long,
+            predict_func=predict_short,
             output_path=predictions_dir / "MuSeRC.jsonl",
             nrows=nrows
         )
