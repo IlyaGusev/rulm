@@ -53,41 +53,6 @@ def generate(
     return outputs
 
 
-def calc_loss(
-    model,
-    tokenizer,
-    prompts,
-    debug: bool = True,
-):
-    data = tokenizer(
-        prompts,
-        return_tensors="pt",
-        truncation=True,
-        padding=True,
-    )
-    data = {k: v.to(model.device) for k, v in data.items()}
-    labels = data["input_ids"].clone()
-    with torch.no_grad():
-        outputs = model.forward(**data, return_dict=True)
-    logits = outputs.logits
-
-    shift_logits = logits[..., :-1, :].contiguous()
-    shift_logits = shift_logits.transpose(1, 2)
-
-    shift_labels = labels[..., 1:].contiguous()
-    shift_labels = shift_labels.to(shift_logits.device)
-
-    loss_fct = CrossEntropyLoss(reduction="none")
-    loss = loss_fct(shift_logits, shift_labels)
-    losses = loss.mean(-1)
-    if debug:
-        for prompt, loss in zip(prompts, losses):
-            print(prompt)
-            print("Loss:", loss.item())
-            print()
-    return losses
-
-
 def predict_saiga_zero_shot(
     model,
     tokenizer,
@@ -109,37 +74,6 @@ def predict_saiga_zero_shot(
         tokenizer=tokenizer,
         prompts=clean_prompts,
         generation_config=generation_config,
-        debug=debug
-    )
-
-
-def predict_saiga_zero_shot_logits(
-    model,
-    tokenizer,
-    template_path,
-    all_messages,
-    max_prompt_tokens: int = None,
-    debug: bool = False
-):
-    default_conversation = Conversation.from_template(template_path)
-    clean_prompts = []
-    for messages in all_messages:
-        conversation = copy.deepcopy(default_conversation)
-        for message in messages:
-            if message["role"] == "user":
-                conversation.add_user_message(message["content"])
-            elif message["role"] == "bot":
-                conversation.add_bot_message(message["content"])
-        prompt = conversation.get_prompt(
-            tokenizer,
-            max_tokens=max_prompt_tokens,
-            add_suffix=False
-        )
-        clean_prompts.append(prompt)
-    return calc_loss(
-        model=model,
-        tokenizer=tokenizer,
-        prompts=clean_prompts,
         debug=debug
     )
 
@@ -349,7 +283,7 @@ MUSERC_SINGLE_PROMPT = """Текст: {text}
 
 Вопрос: {question}
 
-Является ли "{answer}" правильным ответом на этот вопрос? Основываясь на тексте, ответь "да" или "нет"."""
+Является ли "{answer}" правильным ответом на этот вопрос? Основываясь на тексте, ответь только "да" или "нет"."""
 
 
 MUSERC_SINGLE_YES_RE = re.compile(
@@ -437,14 +371,20 @@ def predict_muserc(
 # RUCOS
 
 
-def clean_rucos_response(response, entities):
-    entities.sort(key=lambda x: edit_distance(response, x))
-    return entities[0]
-
-
 def rucos_clean_text(text):
-    text = " ".join([s.strip() for s in text.split("@header")]).strip()
-    return [s.strip() for s in text.split("@highlight")][0].strip()
+    text = " ".join([s.strip().rstrip(".") + "." for s in text.split("@header")]).strip()
+    text = " ".join([s.strip().rstrip(".") + "." for s in text.split("@context")]).strip()
+    text = " ".join([s.strip().rstrip(".") + "." for s in text.split("@highlight")]).strip()
+    text = " ".join([s.strip() for s in text.split("\n") if s.strip()])
+    return text
+
+
+RUCOS_MASK = "[entity]"
+
+RUCOS_PROMPT = """Контекст: {text}
+Запрос: {query}
+
+Какое имя человека или название организации или название места должно быть вместо {mask} в запросе? Ответь не более чем 3 словами в соответствии с контекстом."""
 
 
 def predict_rucos(
@@ -461,51 +401,36 @@ def predict_rucos(
 
     prompts = list()
     for record in records:
-        text = record["passage"]
         entities = record["entities"]
         query = record["query"]
-        text = rucos_clean_text(text)
-        for answer in entities:
-            query_answer = query.replace("@placeholder", answer.strip())
-            prompts.append({
-                "text": text,
-                "query": query,
-                "message": text + " " + query_answer,
-                "answer": answer
-            })
+        text = rucos_clean_text(record["passage"])
+        entities = [e.strip().strip(",") for e in entities]
+        query = query.replace("@placeholder", RUCOS_MASK)
+        prompts.append(RUCOS_PROMPT.format(
+            text=text,
+            query=query,
+            mask=RUCOS_MASK
+        ))
 
-    responses = defaultdict(list)
+    responses = []
     for batch in tqdm(gen_batch(prompts, batch_size), total=len(prompts) // batch_size + 1):
-        batch_messages = [[
-            {"role": "user", "content": p["message"]},
-        ] for p in batch]
-        losses = predict_func(batch_messages)
-        for loss, data in zip(losses, batch):
-            responses[(data["text"], data["query"])].append((loss, data["answer"]))
+        responses.extend(predict_func(batch))
 
-    final_responses = dict()
-    for (text, query), answers in responses.items():
-        if debug:
-            print("Text:", text)
-            print("Query:", query)
-            for loss, answer in sorted(answers):
-                print(loss.item(), answer)
-            print()
-        final_responses[(text, query)] = min(answers)[1]
-
-    all_count, correct_count = 0, 0
-    for record in records:
-        text = record["passage"]
-        entities = record["entities"]
-        query = record["query"]
-        text = rucos_clean_text(text)
-        response = final_responses[(text, query)]
-        record["prediction"] = clean_rucos_response(response, entities)
+    correct_count, all_count = 0, 0
+    for response, record in zip(responses, records):
+        answers = []
+        for answer in record["entities"]:
+            lcs = find_lcs(response.strip(), answer.strip())
+            answers.append((len(lcs), answer))
+        final_response = max(answers)[1]
+        record["prediction"] = final_response
         answers = record["answers"]
         if answers:
             all_count += 1
+            prediction = record["prediction"].strip().lower()
             for answer in answers:
-                if answer.strip().lower() == record["prediction"].strip().lower():
+                answer = answer.strip().lower()
+                if edit_distance(answer, prediction) <= 2:
                     correct_count += 1
                     break
     if all_count > 0:
@@ -515,6 +440,7 @@ def predict_rucos(
     write_jsonl(outputs, output_path)
 
     return records
+
 
 # LIDIRUS
 
@@ -797,7 +723,6 @@ def main(
 
     predict_short = None
     predict_long = None
-    predict_logits = None
 
     if model_name not in ("gpt-4", "gpt-3.5-turbo"):
         model, tokenizer, generation_config = load_saiga(model_name)
@@ -837,7 +762,6 @@ def main(
 
         predict_long = predict_saiga_zero_shot_bound
         predict_short = predict_saiga_zero_shot_bound_short
-        predict_logits = predict_saiga_zero_shot_logits_bound
 
     else:
         def predict_chatgpt(batch):
@@ -894,10 +818,9 @@ def main(
         )
 
     if "rucos" in tasks:
-        assert predict_logits is not None
         predict_rucos(
             split=split,
-            predict_func=predict_logits,
+            predict_func=predict_long,
             output_path=predictions_dir / "RuCoS.jsonl",
             nrows=nrows
         )
