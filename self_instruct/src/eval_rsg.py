@@ -653,18 +653,30 @@ def predict_rcb(
 
 
 # RUSSE
-RUSSE_PROMPT = 'Слово "{word}" в предложении "{sentence1}" и слово "{word}" в предложении "{sentence2}" означают одно и то же?'
+
+
+RUSSE_PROMPT = '''Ответь только "да" или "нет" на вопрос:
+В текстовом фрагменте "{sentence1}" и текстовом фрагменте "{sentence2}" означают ли слова "{word}" разное?'''
+
 
 RUSSE_YES_RE = re.compile(
-    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(да|верно|вероятно)",
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(да|верно|вероятно|одно)",
+    re.IGNORECASE | re.MULTILINE | re.DOTALL
+)
+
+RUSSE_NO_RE = re.compile(
+    r"^[^\w]*(Выходные данные|Выход|Ответ|Оценка)?[^\w]*(нет|не)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
 
 
 def clean_russe_response(response):
     if bool(RUSSE_YES_RE.match(response)):
+        return 0
+    if bool(RUSSE_NO_RE.match(response)):
         return 1
-    return 0
+    print("ERROR! Не удалось найти Да/Нет в ответе модели и преобразовать его в bool:", response)
+    return 1
 
 
 def predict_russe(
