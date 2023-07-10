@@ -120,7 +120,9 @@ def predict_danetqa(
     predict_func,
     output_path,
     batch_size: int = 4,
-    nrows: int = None
+    nrows: int = None,
+    template: str = DANETQA_PROMPT,
+    clean_func = clean_danetqa_response
 ):
     records = list(load_dataset(HF_DATASET, "danetqa", split=split))
     if nrows:
@@ -128,7 +130,7 @@ def predict_danetqa(
 
     prompts = []
     for record in records:
-        prompt = DANETQA_PROMPT.format(passage=record["passage"], question=record["question"])
+        prompt = template.format(passage=record["passage"], question=record["question"])
         prompts.append(prompt)
 
     responses = []
@@ -137,7 +139,7 @@ def predict_danetqa(
 
     labels, predictions = [], []
     for record, response in zip(records, responses):
-        prediction = clean_danetqa_response(response)
+        prediction = clean_func(response)
         record["prediction"] = prediction
         label = record["label"]
         if label != -1:

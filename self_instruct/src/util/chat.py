@@ -78,7 +78,7 @@ class Conversation:
 
     @classmethod
     def from_template(cls, file_name):
-        with open(file_name) as r:
+        with open(file_name, encoding="utf-8") as r:
             template = json.load(r)
         return Conversation(
             **template
