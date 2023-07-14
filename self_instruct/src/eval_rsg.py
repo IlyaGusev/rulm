@@ -160,7 +160,7 @@ def predict_danetqa(
 # TERRA
 
 
-TERRA_PROMPT = '''Текст: {premise}. Утверждение: {hypothesis}
+TERRA_PROMPT = '''Текст: {premise} Утверждение: {hypothesis}
 Используя текст, ответь одним словом на вопрос: Вероятно ли утверждение при условии остального текста?'''
 
 TERRA_ENTAILMENT_RE = re.compile(
@@ -193,7 +193,9 @@ def predict_terra(
     predict_func,
     output_path,
     batch_size: int = 8,
-    nrows: int = None
+    nrows: int = None,
+    template: str = TERRA_PROMPT,
+    clean_func=clean_terra_response
 ):
     records = list(load_dataset(HF_DATASET, "terra", split=split))
     if nrows:
@@ -201,7 +203,7 @@ def predict_terra(
 
     prompts = []
     for record in records:
-        prompts.append(TERRA_PROMPT.format(
+        prompts.append(template.format(
             premise=record["premise"],
             hypothesis=record["hypothesis"]
         ))
@@ -212,7 +214,7 @@ def predict_terra(
 
     labels, predictions = [], []
     for record, response in zip(records, responses):
-        prediction = clean_terra_response(response)
+        prediction = clean_func(response)
         record["prediction"] = prediction
         label = record["label"]
         if label != -1:
@@ -243,7 +245,9 @@ def predict_rwsd(
     predict_func,
     output_path,
     batch_size: int = 4,
-    nrows: int = None
+    nrows: int = None,
+    template: str = RWSD_PROMPT,
+    clean_func = clean_rwsd_response
 ):
     records = list(load_dataset(HF_DATASET, "rwsd", split=split))
     if nrows:
@@ -251,7 +255,7 @@ def predict_rwsd(
 
     prompts = []
     for record in records:
-        prompts.append(RWSD_PROMPT.format(
+        prompts.append(template.format(
             text=record["text"],
             span2=record["span2_text"],
             span1=record["span1_text"],
@@ -263,7 +267,7 @@ def predict_rwsd(
 
     labels, predictions = [], []
     for record, response in zip(records, responses):
-        prediction = clean_rwsd_response(response, record["span1_text"])
+        prediction = clean_func(response, record["span1_text"])
         record["prediction"] = prediction
         label = record["label"]
         if label != -1:
@@ -314,7 +318,9 @@ def predict_muserc(
     predict_func,
     output_path,
     batch_size: int = 2,
-    nrows: int = None
+    nrows: int = None,
+    template: str = MUSERC_SINGLE_PROMPT,
+    clean_func = clean_muserc_single_response
 ):
     records = list(load_dataset(HF_DATASET, "muserc", split=split))
     if nrows:
@@ -324,7 +330,7 @@ def predict_muserc(
     for record in records:
         text, question, answer = record["paragraph"], record["question"], record["answer"]
         answer = answer.rstrip(".")
-        prompts.append(MUSERC_SINGLE_PROMPT.format(
+        prompts.append(template.format(
             text=text,
             question=question,
             answer=answer
@@ -336,7 +342,7 @@ def predict_muserc(
 
     labels, predictions = [], []
     for record, response in zip(records, responses):
-        record["prediction"] = clean_muserc_single_response(response)
+        record["prediction"] = clean_func(response)
         if record["label"] != -1:
             labels.append(record["label"])
             predictions.append(record["prediction"])
@@ -388,6 +394,13 @@ RUCOS_PROMPT = """Контекст: {text}
 
 Какое имя человека или название организации или название места должно быть вместо {mask} в запросе? Ответь не более чем 3 словами в соответствии с контекстом."""
 
+def clean_rucos_response(response, entities):
+    answers = []
+    for answer in entities:
+        lcs = find_lcs(response.strip(), answer.strip())
+        answers.append((len(lcs), answer))
+    return max(answers)[1]
+
 
 def predict_rucos(
     split,
@@ -395,7 +408,9 @@ def predict_rucos(
     output_path,
     batch_size: int = 4,
     nrows: int = None,
-    debug: bool = False
+    debug: bool = False,
+    template: str = RUCOS_PROMPT,
+    clean_func = clean_rucos_response
 ):
     records = list(load_dataset(HF_DATASET, "rucos", split=split))
     if nrows:
@@ -408,7 +423,7 @@ def predict_rucos(
         text = rucos_clean_text(record["passage"])
         entities = [e.strip().strip(",") for e in entities]
         query = query.replace("@placeholder", RUCOS_MASK)
-        prompts.append(RUCOS_PROMPT.format(
+        prompts.append(template.format(
             text=text,
             query=query,
             mask=RUCOS_MASK
@@ -420,11 +435,7 @@ def predict_rucos(
 
     correct_count, all_count = 0, 0
     for response, record in zip(responses, records):
-        answers = []
-        for answer in record["entities"]:
-            lcs = find_lcs(response.strip(), answer.strip())
-            answers.append((len(lcs), answer))
-        final_response = max(answers)[1]
+        final_response = clean_func(response, record["entities"])
         record["prediction"] = final_response
         answers = record["answers"]
         if answers:
@@ -480,13 +491,15 @@ def predict_lidirus(
     predict_func,
     output_path,
     batch_size: int = 4,
-    nrows: int = None
+    nrows: int = None,
+    template: str = LIDIRUS_PROMPT,
+    clean_func = clean_lidirus_response
 ):
     records = list(load_dataset(HF_DATASET, "lidirus", split="test"))
     if nrows:
         records = records[:nrows]
 
-    prompts = [LIDIRUS_PROMPT.format(
+    prompts = [template.format(
         sentence1=r["sentence1"],
         sentence2=r["sentence2"]
     ) for r in records]
@@ -497,7 +510,7 @@ def predict_lidirus(
 
     labels, predictions = [], []
     for record, response in zip(records, responses):
-        prediction = clean_lidirus_response(response)
+        prediction = clean_func(response)
         record["prediction"] = prediction
         label = record["label"]
         labels.append(1 - label)
@@ -532,7 +545,9 @@ def predict_parus(
     predict_func,
     output_path,
     batch_size: int = 12,
-    nrows: int = None
+    nrows: int = None,
+    template_cause: str = PARUS_CAUSE_PROMPT,
+    template_effect: str = PARUS_EFFECT_PROMPT
 ):
     records = list(load_dataset(HF_DATASET, "parus", split=split))
     if nrows:
@@ -546,7 +561,7 @@ def predict_parus(
         premise = r["premise"].rstrip(".")
 
         is_cause = r["question"] == "cause"
-        template = PARUS_CAUSE_PROMPT if is_cause else PARUS_EFFECT_PROMPT
+        template = template_cause if is_cause else template_effect
         prompts.append(template.format(
             premise=premise,
             choice1=c1,
@@ -582,7 +597,7 @@ def predict_parus(
 # RCB
 
 
-RCB_ANSWER_PROMPT = """Дан текст: "{premise}"
+RCB_PROMPT = """Дан текст: "{premise}"
 
 Ответь на вопрос по тексту "да", "нет" или "может быть": {question}"""
 
@@ -621,7 +636,9 @@ def predict_rcb(
     predict_func,
     output_path,
     batch_size: int = 8,
-    nrows: int = None
+    nrows: int = None,
+    template: str = RCB_PROMPT,
+    clean_func = clean_rcb_response
 ):
     records = list(load_dataset(HF_DATASET, "rcb", split=split))
     if nrows:
@@ -631,7 +648,7 @@ def predict_rcb(
 
     prompts = []
     for record, question in zip(records, questions):
-        prompts.append(RCB_ANSWER_PROMPT.format(
+        prompts.append(template.format(
             premise=record["premise"],
             question=question
         ))
@@ -641,7 +658,7 @@ def predict_rcb(
         responses.extend(predict_func(batch))
 
     for r, response in zip(records, responses):
-        r["prediction"] = clean_rcb_response(response)
+        r["prediction"] = clean_func(response)
 
     if records[0]["label"] != -1:
         labels = [r["label"] for r in records]
@@ -686,7 +703,9 @@ def predict_russe(
     predict_func,
     output_path,
     batch_size: int = 8,
-    nrows: int = None
+    nrows: int = None,
+    template: str = RUSSE_PROMPT,
+    clean_func = clean_russe_response
 ):
     records = list(load_dataset(HF_DATASET, "russe", split=split))
     if nrows:
@@ -694,7 +713,7 @@ def predict_russe(
 
     prompts = []
     for record in records:
-        prompts.append(RUSSE_PROMPT.format(
+        prompts.append(template.format(
             sentence1=record["sentence1"],
             sentence2=record["sentence2"],
             word=record["word"]
@@ -705,7 +724,7 @@ def predict_russe(
         responses.extend(predict_func(batch))
 
     for r, response in zip(records, responses):
-        r["prediction"] = clean_russe_response(response)
+        r["prediction"] = clean_func(response)
 
     if records[0]["label"] != -1:
         labels = [r["label"] for r in records]
