@@ -11,7 +11,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, DataCollatorForTokenClassification, DataCollatorForSeq2Seq
 from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl, BitsAndBytesConfig
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
-from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
+from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
 
 from src.dataset import InstructDataset, ChatDataset
 from src.util.dl import set_random_seed, fix_tokenizer, fix_model
@@ -65,6 +65,38 @@ class SavePeftModelCallback(TrainerCallback):
         peft_model_path = os.path.join(checkpoint_folder, "adapter_model")
         kwargs["model"].save_pretrained(peft_model_path)
         return control
+
+
+def custom_prepare_model_for_int8_training(
+    model,
+    output_embedding_layer_name="lm_head",
+    layer_norm_names=["layer_norm"]
+):
+    for name, param in model.named_parameters():
+        param.requires_grad = False
+
+    for name, param in model.named_parameters():
+        if param.ndim == 1 and any(layer_norm_name in name for layer_norm_name in layer_norm_names):
+            param.data = param.data.to(torch.float32)
+
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+    else:
+        def make_inputs_require_grad(module, input, output):
+            output.requires_grad_(True)
+        model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
+
+    if hasattr(model, output_embedding_layer_name):
+        output_embedding_layer = getattr(model, output_embedding_layer_name)
+        input_dtype = output_embedding_layer.weight.dtype
+        class CastOutputToFloat(torch.nn.Sequential):
+            def forward(self, x):
+                return super().forward(x.to(input_dtype)).to(torch.float32)
+        setattr(model, output_embedding_layer_name, CastOutputToFloat(output_embedding_layer))
+
+    model.gradient_checkpointing_enable()
+
+    return model
 
 
 def train(
@@ -192,18 +224,20 @@ def train(
     }
     load_in_8bit = bool(config.get("load_in_8bit", False))
     load_in_4bit = bool(config.get("load_in_4bit", False))
+    use_bf16 = bool(trainer_config.get("bf16", False))
     if load_in_8bit:
         assert not load_in_4bit
         model = model_types[model_type].from_pretrained(
             model_name,
             load_in_8bit=True,
-            device_map=device_map
+            device_map=device_map,
+            torch_dtype=torch.bfloat16 if use_bf16 else torch.float32
         )
         model = fix_model(model, tokenizer, use_resize=False)
-        model = prepare_model_for_int8_training(model)
+        model = custom_prepare_model_for_int8_training(model)
+
     elif load_in_4bit:
         assert not load_in_8bit
-        use_bf16 = trainer_config.get("bf16", False)
         compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
         model = model_types[model_type].from_pretrained(
             model_name,
@@ -220,7 +254,7 @@ def train(
             torch_dtype=torch.bfloat16 if use_bf16 else torch.float32
         )
         model = fix_model(model, tokenizer, use_resize=False)
-        model = prepare_model_for_int8_training(model)
+        model = prepare_model_for_kbit_training(model)
     else:
         model = model_types[model_type].from_pretrained(model_name)
         model = fix_model(model, tokenizer)

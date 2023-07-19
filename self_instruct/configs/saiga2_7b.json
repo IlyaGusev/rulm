@@ -11,8 +11,8 @@
         "num_train_epochs": 5,
         "lr_scheduler_type": "cosine",
         "warmup_steps": 30,
-        "fp16": true,
-        "bf16": false,
+        "fp16": false,
+        "bf16": true,
         "torch_compile": false,
         "optim": "adamw_torch"
     },
