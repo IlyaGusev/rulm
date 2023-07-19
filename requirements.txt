@@ -1,10 +1,10 @@
 numpy >= 1.12.1
 scipy >= 1.0.1
 torch >= 2.0.0
-accelerate == 0.18.0
-bitsandbytes == 0.37.2
-git+https://github.com/huggingface/peft.git@8e53e16005
-transformers == 4.29.1
+accelerate == 0.21.0
+bitsandbytes == 0.40.2
+git+https://github.com/huggingface/peft.git@e06d94d
+git+https://github.com/huggingface/transformers.git@6112b1c
 pillow==9.5.0
 llama-cpp-python
 datasets
