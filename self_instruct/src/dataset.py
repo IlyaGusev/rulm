@@ -201,7 +201,7 @@ class ChatDataset(Dataset):
     def convert_record(self, record):
         conversation = Conversation.from_template(self.templates_path)
         conversation.expand(record["messages"])
-        full_text = conversation.get_prompt(self.tokenizer)
+        full_text = conversation.get_prompt(self.tokenizer, add_suffix=False)
 
         if not self.is_printed:
             print("Prompt example")
