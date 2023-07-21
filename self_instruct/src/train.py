@@ -225,20 +225,20 @@ def train(
     load_in_8bit = bool(config.get("load_in_8bit", False))
     load_in_4bit = bool(config.get("load_in_4bit", False))
     use_bf16 = bool(trainer_config.get("bf16", False))
+    torch_dtype = torch.bfloat16 if use_bf16 else torch.float16
     if load_in_8bit:
         assert not load_in_4bit
         model = model_types[model_type].from_pretrained(
             model_name,
             load_in_8bit=True,
             device_map=device_map,
-            torch_dtype=torch.bfloat16 if use_bf16 else torch.float32
+            torch_dtype=torch_dtype
         )
         model = fix_model(model, tokenizer, use_resize=False)
         model = custom_prepare_model_for_int8_training(model)
 
     elif load_in_4bit:
         assert not load_in_8bit
-        compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
         model = model_types[model_type].from_pretrained(
             model_name,
             load_in_4bit=True,
@@ -247,11 +247,11 @@ def train(
                 load_in_4bit=True,
                 llm_int8_threshold=6.0,
                 llm_int8_has_fp16_weight=False,
-                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_compute_dtype=torch_dtype,
                 bnb_4bit_use_double_quant=True,
                 bnb_4bit_quant_type="nf4"
             ),
-            torch_dtype=torch.bfloat16 if use_bf16 else torch.float32
+            torch_dtype=torch_dtype
         )
         model = fix_model(model, tokenizer, use_resize=False)
         model = prepare_model_for_kbit_training(model)
