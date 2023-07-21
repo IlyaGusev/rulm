@@ -134,8 +134,12 @@ See also:
 
 ## RSG
 * RussianSuperGLUE: [link](https://russiansuperglue.com/leaderboard/2)
+
 * Saiga 13B zero-shot
 <img width="593" alt="изображение" src="https://github.com/IlyaGusev/rulm/assets/2670295/bb84843b-8e31-48a4-81e0-f1959d2b7644">
+
+* Saiga 13B LoRA
+<img width="598" alt="изображение" src="https://github.com/IlyaGusev/rulm/assets/2670295/c0cd50c7-e95d-4892-bee8-86f7872bf7af">
 
 * ChatGPT zero-shot
 <img width="596" alt="изображение" src="https://github.com/IlyaGusev/rulm/assets/2670295/220d402d-6255-47ac-b14a-56e23e42e115">
