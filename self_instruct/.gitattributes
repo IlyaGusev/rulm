@@ -1,9 +1,8 @@
-gen1000.jsonl filter=lfs diff=lfs merge=lfs -text
-gen3000.jsonl filter=lfs diff=lfs merge=lfs -text
-output.json filter=lfs diff=lfs merge=lfs -text
-train.jsonl filter=lfs diff=lfs merge=lfs -text
-val.jsonl filter=lfs diff=lfs merge=lfs -text
-gen6000.jsonl filter=lfs diff=lfs merge=lfs -text
-gen9000.jsonl filter=lfs diff=lfs merge=lfs -text
-data/*.jsonl filter=lfs diff=lfs merge=lfs -text
-data/*.json filter=lfs diff=lfs merge=lfs -text
+data/user_oriented_ru.jsonl filter=lfs diff=lfs merge=lfs -text
+data/output.json filter=lfs diff=lfs merge=lfs -text
+data/user_oriented_ru_v2.jsonl filter=lfs diff=lfs merge=lfs -text
+data/vicuna_question_ru.jsonl filter=lfs diff=lfs merge=lfs -text
+data/*_answers.jsonl filter=lfs diff=lfs merge=lfs -text
+data/*_answer.jsonl filter=lfs diff=lfs merge=lfs -text
+data/*_answers.json filter=lfs diff=lfs merge=lfs -text
+data/*_answer.json filter=lfs diff=lfs merge=lfs -text

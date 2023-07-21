@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 import fire
 import torch
-from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, BitsAndBytesConfig, AutoConfig
 from peft import PeftConfig, PeftModel
 
 from src.util.io import read_jsonl
@@ -42,7 +42,8 @@ def generate_answers(
     input_path: str,
     output_path: str,
     batch_size: int = 1,
-    use_4bit: bool = False
+    use_4bit: bool = False,
+    torch_dtype: str = None
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     if batch_size > 1:
@@ -50,19 +51,25 @@ def generate_answers(
     generation_config = GenerationConfig.from_pretrained(model_name)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    config = PeftConfig.from_pretrained(model_name)
+    base_model_config =  AutoConfig.from_pretrained(config.base_model_name_or_path)
+    if torch_dtype is not None:
+        torch_dtype = getattr(torch, torch_dtype)
+    else:
+        torch_dtype = base_model_config.torch_dtype
+
     if device == "cuda":
-        config = PeftConfig.from_pretrained(model_name)
         if use_4bit:
             model = AutoModelForCausalLM.from_pretrained(
                 config.base_model_name_or_path,
-                torch_dtype=torch.float16,
+                torch_dtype=torch_dtype,
                 load_in_4bit=True,
                 device_map="auto",
                 quantization_config=BitsAndBytesConfig(
                     load_in_4bit=True,
                     llm_int8_threshold=6.0,
                     llm_int8_has_fp16_weight=False,
-                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_compute_dtype=torch_dtype,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4"
                 )
@@ -70,17 +77,16 @@ def generate_answers(
         else:
             model = AutoModelForCausalLM.from_pretrained(
                 config.base_model_name_or_path,
-                torch_dtype=torch.float16,
+                torch_dtype=torch_dtype,
                 load_in_8bit=True,
                 device_map="auto"
             )
         model = PeftModel.from_pretrained(
             model,
-            model_name,
+            model_name
         )
 
     elif device == "cpu":
-        config = PeftConfig.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             config.base_model_name_or_path,
             device_map={"": device},
