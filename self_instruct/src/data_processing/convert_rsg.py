@@ -242,7 +242,7 @@ def convert_rsg(split, output_path, tasks: List[str] = ALL_TASKS, use_short: boo
         r["source"] = "Задание: {}\n{}".format(r.pop("task"), r.pop("source"))
         r["messages"] = [
             {"role": "user", "content": r.pop("source")},
-            {"role": "bot", "content": r.pop("target")}
+            {"role": "bot", "content": r.pop("target", None)}
         ]
     random.shuffle(records)
     write_jsonl(records, output_path)
