@@ -1,35 +1,34 @@
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 2,
-        "per_device_eval_batch_size": 2,
-        "gradient_accumulation_steps": 64,
-        "eval_steps": 50,
-        "save_steps": 50,
-        "logging_steps": 5,
-        "learning_rate": 0.0003,
-        "num_train_epochs": 1,
+        "per_device_train_batch_size": 4,
+        "per_device_eval_batch_size": 4,
+        "gradient_accumulation_steps": 32,
+        "eval_steps": 2,
+        "save_steps": 2,
+        "logging_steps": 1,
+        "learning_rate": 0.0001,
+        "num_train_epochs": 5,
         "lr_scheduler_type": "cosine",
-        "warmup_steps": 20,
+        "warmup_steps": 2,
         "fp16": true,
         "bf16": false,
         "torch_compile": false,
         "optim": "adamw_torch"
     },
     "lora": {
-        "r": 4,
+        "r": 8,
         "lora_alpha": 16,
-        "lora_dropout": 0.05,
+        "lora_dropout": 0.2,
         "bias": "none",
-        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"],
+        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "down_proj", "up_proj"],
         "task_type": "CAUSAL_LM"
     },
     "load_in_8bit": true,
     "only_target_loss": true,
     "mode": "chat",
     "templates_path": "internal_prompts/saiga_v2.json",
-    "model_name": "models/llama_13b_rsg_merged",
+    "model_name": "models/saiga_13b_rsg_merged",
     "model_type": "causal",
     "max_tokens_count": 2000
 }
-
