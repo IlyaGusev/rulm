@@ -113,10 +113,18 @@ See also:
 * User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru_v2.jsonl
 * Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
 
-### Toloka
+### Toloka (old models)
 * turbo vs gpt4: 46-8-122
 * turbo vs saiga30b: 111-9-56
 * turbo vs saiga30bq4_1: 121-9-46
+
+### Toloka (new models)
+* gigasaiga vs gpt3.5-turbo: 41-4-131
+* saiga2_7b vs gpt3.5-turbo: 53-7-116
+* saiga7b vs gpt3.5-turbo: 58-6-112
+* saiga13b vs gpt3.5-turbo: 63-10-103
+* saiga30b vs gpt3.5-turbo: 67-6-103
+* saiga2_13b vs gpt3.5-turbo: 70-11-95
 
 ## RSG
 * RussianSuperGLUE: [link](https://russiansuperglue.com/leaderboard/2)
