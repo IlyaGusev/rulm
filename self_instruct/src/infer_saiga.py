@@ -6,12 +6,13 @@ from tqdm import tqdm
 
 import fire
 import torch
-from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, BitsAndBytesConfig, AutoConfig
 from peft import PeftConfig, PeftModel
 
 from src.util.io import read_jsonl
 from src.util.chat import Conversation
 from src.util.dl import gen_batch
+from src.util.load import load_saiga
 
 
 def generate(model, tokenizer, prompts, generation_config):
@@ -42,60 +43,17 @@ def generate_answers(
     input_path: str,
     output_path: str,
     batch_size: int = 1,
-    use_4bit: bool = False
+    use_4bit: bool = False,
+    torch_dtype: str = None
 ):
+    model, tokenizer, generation_config = load_saiga(
+        model_name,
+        use_4bit=use_4bit,
+        torch_dtype=torch_dtype
+    )
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     if batch_size > 1:
         assert tokenizer.padding_side == "left", "Batched inference for right padding side is impossible"
-    generation_config = GenerationConfig.from_pretrained(model_name)
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if device == "cuda":
-        config = PeftConfig.from_pretrained(model_name)
-        if use_4bit:
-            model = AutoModelForCausalLM.from_pretrained(
-                config.base_model_name_or_path,
-                torch_dtype=torch.float16,
-                load_in_4bit=True,
-                device_map="auto",
-                quantization_config=BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    llm_int8_threshold=6.0,
-                    llm_int8_has_fp16_weight=False,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4"
-                )
-            )
-        else:
-            model = AutoModelForCausalLM.from_pretrained(
-                config.base_model_name_or_path,
-                torch_dtype=torch.float16,
-                load_in_8bit=True,
-                device_map="auto"
-            )
-        model = PeftModel.from_pretrained(
-            model,
-            model_name,
-        )
-
-    elif device == "cpu":
-        config = PeftConfig.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(
-            config.base_model_name_or_path,
-            device_map={"": device},
-            low_cpu_mem_usage=True
-        )
-        model = PeftModel.from_pretrained(
-            model,
-            model_name,
-            device_map={"": device}
-        )
-
-    model.eval()
-    if torch.__version__ >= "2" and sys.platform != "win32":
-        model = torch.compile(model)
-
     records = read_jsonl(input_path)
 
     default_conversation = Conversation.from_template(template_path)

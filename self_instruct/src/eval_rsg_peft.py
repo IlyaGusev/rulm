@@ -19,7 +19,7 @@ from src.eval_rsg import (
     ALL_TASKS,
     predict_saiga_zero_shot
 )
-from src.convert_rsg import (
+from src.data_processing.convert_rsg import (
     DANETQA_SOURCE_TEMPLATE,
     RCB_SOURCE_TEMPLATE,
     TERRA_SOURCE_TEMPLATE,

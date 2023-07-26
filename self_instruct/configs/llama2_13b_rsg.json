@@ -8,16 +8,16 @@
         "save_steps": 50,
         "logging_steps": 5,
         "learning_rate": 0.0003,
-        "num_train_epochs": 1,
+        "num_train_epochs": 5,
         "lr_scheduler_type": "cosine",
-        "warmup_steps": 20,
-        "fp16": true,
-        "bf16": false,
+        "warmup_steps": 30,
+        "fp16": false,
+        "bf16": true,
         "torch_compile": false,
         "optim": "adamw_torch"
     },
     "lora": {
-        "r": 4,
+        "r": 16,
         "lora_alpha": 16,
         "lora_dropout": 0.05,
         "bias": "none",
@@ -28,7 +28,7 @@
     "only_target_loss": true,
     "mode": "chat",
     "templates_path": "internal_prompts/saiga_v2.json",
-    "model_name": "models/llama_13b_rsg_merged",
+    "model_name": "models/llama2-13b",
     "model_type": "causal",
     "max_tokens_count": 2000
 }
