@@ -71,16 +71,19 @@ Bot: Для новичков обычно рекомендуют спицы из
   * [saiga_13b_lora](https://huggingface.co/IlyaGusev/saiga_13b_lora)
   * [saiga_30b_lora](https://huggingface.co/IlyaGusev/saiga_30b_lora)
   * [saiga2_7b_lora](https://huggingface.co/IlyaGusev/saiga2_7b_lora)
+  * [saiga2_13b_lora](https://huggingface.co/IlyaGusev/saiga2_13b_lora)
 * Training configs:
   * [self_instruct/configs/saiga_7b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_7b.json)
   * [self_instruct/configs/saiga_13b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_13b.json)
   * [self_instruct/configs/saiga_30b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_30b.json)
   * [self_instruct/configs/saiga2_7b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga2_7b.json)
+  * [self_instruct/configs/saiga2_13b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga2_13b.json)
 * Base models:
   * [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b)
   * [huggyllama/llama-13b](https://huggingface.co/huggyllama/llama-13b)
   * [huggyllama/llama-30b](https://huggingface.co/huggyllama/llama-30b)
   * [meta-llama/Llama-2-7b-hf](https://huggingface.co/meta-llama/Llama-2-7b-hf)
+  * [meta-llama/Llama-2-7b-hf](https://huggingface.co/meta-llama/Llama-2-13b-hf)
 * Trained on 6 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch, gpt_roleplay_realm, ru_turbo_alpaca_evol_instruct. The script for smart merging: [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py)
 
 
