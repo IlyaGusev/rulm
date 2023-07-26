@@ -125,6 +125,9 @@ See also:
 * saiga13b vs gpt3.5-turbo: 63-10-103
 * saiga30b vs gpt3.5-turbo: 67-6-103
 * saiga2_13b vs gpt3.5-turbo: 70-11-95
+* saiga7b vs saiga2_7b: 78-8-90
+* saiga13b vs saiga2_13b: 95-2-79
+* saiga13b vs gigasaiga: 112-11-53
 
 ## RSG
 * RussianSuperGLUE: [link](https://russiansuperglue.com/leaderboard/2)
