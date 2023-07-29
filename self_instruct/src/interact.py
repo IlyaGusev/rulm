@@ -6,7 +6,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from peft import PeftModel, PeftConfig
 
 from src.util.chat import Conversation
-
+from src.util.load import load_saiga
 
 def generate(model, tokenizer, prompt, generation_config, eos_token_id: int = None):
     data = tokenizer(prompt, return_tensors="pt")
@@ -23,40 +23,7 @@ def generate(model, tokenizer, prompt, generation_config, eos_token_id: int = No
 
 
 def interact(model_name, template_path):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
-    generation_config = GenerationConfig.from_pretrained(model_name)
-
-    if device == "cuda":
-        config = PeftConfig.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(
-            config.base_model_name_or_path,
-            torch_dtype=torch.float16,
-            load_in_8bit=True,
-            device_map="auto"
-        )
-        model = PeftModel.from_pretrained(
-            model,
-            model_name,
-            torch_dtype=torch.float16
-        )
-    elif device == "cpu":
-        config = PeftConfig.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(
-            config.base_model_name_or_path,
-            device_map={"": device},
-            low_cpu_mem_usage=True
-        )
-        model = PeftModel.from_pretrained(
-            model,
-            model_name,
-            device_map={"": device}
-        )
-
-    model.eval()
-    if torch.__version__ >= "2" and sys.platform != "win32":
-        model = torch.compile(model)
-
+    model, tokenizer, generation_config = load_saiga(model_name)
     conversation = Conversation.from_template(template_path)
     while True:
         user_message = input("User: ")

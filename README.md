@@ -31,6 +31,9 @@ Language models for Russian language: implementation and comparison.
 ```
 
 ## Models
+
+**Warning**: You should probably use Saiga models instead. They are actively supported and are better by side-by-side metrics.
+
 * HuggingFace links:
   * [llama_7b_ru_turbo_alpaca_lora](https://huggingface.co/IlyaGusev/llama_7b_ru_turbo_alpaca_lora)
   * [llama_13b_ru_turbo_alpaca_lora](https://huggingface.co/IlyaGusev/llama_13b_ru_turbo_alpaca_lora)
@@ -67,15 +70,21 @@ Bot: Для новичков обычно рекомендуют спицы из
   * [saiga_7b_lora](https://huggingface.co/IlyaGusev/saiga_7b_lora)
   * [saiga_13b_lora](https://huggingface.co/IlyaGusev/saiga_13b_lora)
   * [saiga_30b_lora](https://huggingface.co/IlyaGusev/saiga_30b_lora)
+  * [saiga2_7b_lora](https://huggingface.co/IlyaGusev/saiga2_7b_lora)
+  * [saiga2_13b_lora](https://huggingface.co/IlyaGusev/saiga2_13b_lora)
 * Training configs:
   * [self_instruct/configs/saiga_7b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_7b.json)
   * [self_instruct/configs/saiga_13b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_13b.json)
   * [self_instruct/configs/saiga_30b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga_30b.json)
+  * [self_instruct/configs/saiga2_7b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga2_7b.json)
+  * [self_instruct/configs/saiga2_13b.json](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/configs/saiga2_13b.json)
 * Base models:
   * [huggyllama/llama-7b](https://huggingface.co/huggyllama/llama-7b)
   * [huggyllama/llama-13b](https://huggingface.co/huggyllama/llama-13b)
   * [huggyllama/llama-30b](https://huggingface.co/huggyllama/llama-30b)
-* Trained on 4 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch. The script for smart merging: [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py)
+  * [meta-llama/Llama-2-7b-hf](https://huggingface.co/meta-llama/Llama-2-7b-hf)
+  * [meta-llama/Llama-2-13b-hf](https://huggingface.co/meta-llama/Llama-2-13b-hf)
+* Trained on 6 datasets: ru_turbo_saiga, ru_turbo_alpaca, ru_sharegpt_cleaned, oasst1_ru_main_branch, gpt_roleplay_realm, ru_turbo_alpaca_evol_instruct. The script for smart merging: [create_chat_set.py](https://github.com/IlyaGusev/rulm/blob/master/self_instruct/src/data_processing/create_chat_set.py)
 
 
 # GPT Role-play Realm
@@ -103,46 +112,37 @@ See also:
 * https://github.com/kuk/rulm-eval
 * https://github.com/kuk/rulm-sbs
 
-## Questions v1
-* User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru.jsonl
-* Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
-
-### Toloka
-* saiga30b vs saiga13b: 122-17-91
-* saiga7b vs saiga13b: 97-11-122
-* turbo vs rualpaca13b: 150-14-66
-* turbo vs saiga30b: 121-12-97
-
-### Telegram bot user_oriented/vicuna_questions (unfinished)
-* rualpaca7b vs rualpaca13b: 30-46-58
-* saiga30b vs davinci002: 92-30-18
-* saiga30b vs saiga13b: 70-45-43
-* saiga7b vs saiga13b: 42-53-54
-* turbo vs davinci002: 91-24-15
-* turbo vs fred: 120-10-8
-* turbo vs rualpaca13b: 86-44-28
-* turbo vs saiga30b: 60-46-52
-
 ## Questions v2
 * User-oriented questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/user_oriented_ru_v2.jsonl
 * Vicuna questions: https://github.com/IlyaGusev/rulm/blob/master/self_instruct/data/vicuna_question_ru.jsonl
 
-### Toloka
+### Toloka (old models)
 * turbo vs gpt4: 46-8-122
 * turbo vs saiga30b: 111-9-56
 * turbo vs saiga30bq4_1: 121-9-46
 
+### Toloka (new models)
+* gigasaiga vs gpt3.5-turbo: 41-4-131
+* saiga2_7b vs gpt3.5-turbo: 53-7-116
+* saiga7b vs gpt3.5-turbo: 58-6-112
+* saiga13b vs gpt3.5-turbo: 63-10-103
+* saiga30b vs gpt3.5-turbo: 67-6-103
+* saiga2_13b vs gpt3.5-turbo: 70-11-95
+* saiga7b vs saiga2_7b: 78-8-90
+* saiga13b vs saiga2_13b: 95-2-79
+* saiga13b vs gigasaiga: 112-11-53
+
 ## RSG
 * RussianSuperGLUE: [link](https://russiansuperglue.com/leaderboard/2)
 
-* Saiga 13B zero-shot
-<img width="593" alt="изображение" src="https://github.com/IlyaGusev/rulm/assets/2670295/bb84843b-8e31-48a4-81e0-f1959d2b7644">
-
-* Saiga 13B LoRA
-<img width="598" alt="изображение" src="https://github.com/IlyaGusev/rulm/assets/2670295/c0cd50c7-e95d-4892-bee8-86f7872bf7af">
-
-* ChatGPT zero-shot
-<img width="596" alt="изображение" src="https://github.com/IlyaGusev/rulm/assets/2670295/220d402d-6255-47ac-b14a-56e23e42e115">
+| Model | Final score 	| LiDiRus |	RCB | PARus | MuSeRC | TERRa |	RUSSE |	RWSD | DaNetQA | RuCoS |
+|-------|--------------|---------|-----|-------|--------|-------|-------|------|---------|-------|
+| LLaMA-2 13B LoRA | <ins>71.8</ins> | 39.8 | 48.9 / 54.3 | 78.4 | <ins>91.9 / 76.1</ins> | 79.3 | <ins>74.0</ins> | 71.4 | <ins>90.7</ins> | 78.0 / 76.0 |
+| Saiga 13B LoRA | 71.2 | <ins>43.6</ins> | 43.9 / 50.0 | 69.4 | 89.8 / 70.4 | <ins>86.5</ins> | 72.8 | 71.4 | 86.2 | <ins>85.0 / 83.0</ins> |
+| LLaMA 13B LoRA | 70.7 | 41.8 | <ins>51.9 / 54.8</ins> | 68.8 | 89.9 / 71.5 | 82.9 | 72.5 | 71.4 | 86.6 | 79.0 / 77.2 |
+| ChatGPT zero-shot | 68.2 | 42.2 | 48.4 / 50.5 | <ins>88.8</ins> | 81.7 / 53.2 | 79.5 | 59.6 | 71.4 | 87.8 | 68.0 / 66.7 | 
+| RuGPT3.5 LoRA | 63.7 | 38.6 | 47.9 / 53.4 | 62.8 | 83.0 / 54.7 | 81.0 | 59.7 | 63.0 | 80.1 | 70.0 / 67.2 |
+| Saiga 13B zero-shot | 55.4 | 29.3 | 42.0 / 46.6 | 63.0 | 68.1 / 22.3 | 70.2 | 56.5 | 67.5 | 76.3 | 47.0 / 45.8 |
 
 
 # Donate
