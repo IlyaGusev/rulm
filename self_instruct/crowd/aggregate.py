@@ -28,7 +28,8 @@ def get_pool(pool_id, toloka_client):
             output_values = solution.output_values
             record = {
                 "worker_id": assignment.user_id,
-                "assignment_id": assignment.id
+                "assignment_id": assignment.id,
+                "pool_id": pool_id
             }
             record.update(input_values)
             record.update(output_values)
@@ -182,7 +183,7 @@ def main(
         print(result)
 
     raw_records = records
-    raw_header = ["result", "worker_id", "assignment_id"] + input_fields
+    raw_header = ["result", "worker_id", "assignment_id", "pool_id"] + input_fields
     raw_records = [{key: r[key] for key in raw_header} for r in raw_records]
     write_jsonl(raw_records, raw_output)
 
