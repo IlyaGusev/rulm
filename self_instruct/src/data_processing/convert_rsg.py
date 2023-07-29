@@ -29,7 +29,6 @@ RUCOS_SOURCE_TEMPLATE = RUCOS_PROMPT
 RWSD_SOURCE_TEMPLATE = RWSD_PROMPT
 TERRA_SOURCE_TEMPLATE = TERRA_PROMPT
 
-#RWSD_SOURCE_TEMPLATE = 'Текст: "{text}"\nНа основе текста одним словом ответь на вопрос: Местоимение во фразе "{span2}" относится к "{span1}?'
 DANETQA_SOURCE_TEMPLATE = 'Контекст: {passage}\nВопрос: {question}\nОтветь "да" или "нет"'
 LIDIRUS_SOURCE_TEMPLATE = '''Текст: {sentence1}. Утверждение: {sentence2}
 Используя текст, ответь одним словом на вопрос: Вероятно ли утверждение при условии остального текста?'''
@@ -116,7 +115,7 @@ def get_rcb(split):
         yield record
 
 
-def get_rucos(split, sample_rate: float = 0.1):
+def get_rucos(split, sample_rate: float = 0.05):
     dataset = load_dataset(HF_DATASET, "rucos", split=split)
     for row in dataset:
         if split != "test" and random.random() > sample_rate:
@@ -138,7 +137,7 @@ def get_rucos(split, sample_rate: float = 0.1):
         yield record
 
 
-def get_russe(split, sample_rate: float = 0.2):
+def get_russe(split, sample_rate: float = 0.1):
     dataset = load_dataset(HF_DATASET, "russe", split=split)
     for row in dataset:
         if split != "test" and random.random() > sample_rate:
