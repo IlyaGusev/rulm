@@ -132,6 +132,9 @@ See also:
 * saiga13b vs saiga2_13b: 95-2-79
 * saiga13b vs gigasaiga: 112-11-53
 
+![telegram-cloud-photo-size-2-5354855295421107419-y](https://github.com/IlyaGusev/rulm/assets/2670295/db9a7ac1-0c1b-43b5-85bb-b8923e71f1e7)
+
+
 ## RSG
 * RussianSuperGLUE: [link](https://russiansuperglue.com/leaderboard/2)
 
