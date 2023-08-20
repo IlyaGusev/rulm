@@ -287,6 +287,8 @@ def train(
     # with wandb.init(project="rulm_self_instruct", name=config_file) as run:
     #     trainer.train(checkpoint)
     #     model.save_pretrained(output_dir)
+    trainer.train(checkpoint)
+    model.save_pretrained(output_dir)
 
 
 if __name__ == "__main__":
