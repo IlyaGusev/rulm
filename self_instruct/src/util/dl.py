@@ -49,6 +49,8 @@ def fix_tokenizer(tokenizer):
             special_tokens["sep_token"] = "<|sep|>"
 
     tokenizer.add_special_tokens(special_tokens)
+
+    # add bot token
     if tokenizer.name_or_path.startswith("sberbank-ai") or tokenizer.name_or_path.startswith("ai-forever"):
         tokenizer.add_tokens("bot")
 
