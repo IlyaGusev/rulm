@@ -1,0 +1,31 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 2,
+        "per_device_eval_batch_size": 2,
+        "gradient_accumulation_steps": 64,
+        "eval_steps": 60,
+        "save_steps": 60,
+        "logging_steps": 10,
+        "learning_rate": 0.00003,
+        "num_train_epochs": 3,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 60,
+        "fp16": true,
+        "bf16": false,
+        "gradient_checkpointing": false,
+        "torch_compile": false,
+        "optim": "adamw_torch",
+        "half_precision_backend": "auto",
+        "fp16_opt_level": "O2"
+    },
+    "model_name": "sberbank-ai/rugpt3medium_based_on_gpt2",
+    "max_source_tokens_count": 256,
+    "max_target_tokens_count": 256,
+    "mode": "chat",
+    "max_tokens_count": 256,
+    "model_type": "causal",
+    "templates_path": "internal_prompts/fashion_v1.json",
+    "only_target_loss": true
+}
+

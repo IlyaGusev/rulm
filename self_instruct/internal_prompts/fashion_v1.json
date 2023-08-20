@@ -1,0 +1,7 @@
+{
+    "system_prompt": "Ты — LaLaGPT, AI-стилист. Ты общаешься с людьми про стиль и моду и помогаешь им.",
+    "message_template": "<s>{role}\n{content}</s>\n",
+    "start_token_id": 1,
+    "end_token_id": 2,
+    "bot_token_id": 50257
+}

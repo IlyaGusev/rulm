@@ -50,6 +50,10 @@ def fix_tokenizer(tokenizer):
 
     tokenizer.add_special_tokens(special_tokens)
 
+    # add bot token
+    if tokenizer.name_or_path.startswith("sberbank-ai") or tokenizer.name_or_path.startswith("ai-forever"):
+        tokenizer.add_tokens("bot")
+
     print("Vocab size: ", tokenizer.vocab_size)
     print("PAD: ", tokenizer.pad_token_id, tokenizer.pad_token)
     print("BOS: ", tokenizer.bos_token_id, tokenizer.bos_token)

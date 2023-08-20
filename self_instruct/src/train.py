@@ -3,7 +3,7 @@ import random
 import json
 import os
 
-import wandb
+#import wandb
 import torch
 import numpy as np
 import bitsandbytes as bnb
@@ -17,7 +17,7 @@ from src.dataset import InstructDataset, ChatDataset
 from src.util.dl import set_random_seed, fix_tokenizer, fix_model
 from src.util.io import read_jsonl
 
-os.environ["WANDB_LOG_MODEL"] = "checkpoint"
+#os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -284,9 +284,9 @@ def train(
         data_collator=data_collator
     )
 
-    with wandb.init(project="rulm_self_instruct", name=config_file) as run:
-        trainer.train(checkpoint)
-        model.save_pretrained(output_dir)
+    # with wandb.init(project="rulm_self_instruct", name=config_file) as run:
+    #     trainer.train(checkpoint)
+    #     model.save_pretrained(output_dir)
 
 
 if __name__ == "__main__":
@@ -299,7 +299,7 @@ if __name__ == "__main__":
     parser.add_argument("--train-sample-rate", type=float, default=1.0)
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--report-to", type=str, default="wandb")
+    #parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument("--omit-base-model-save", action="store_true", default=False)
     args = parser.parse_args()
