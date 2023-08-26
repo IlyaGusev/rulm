@@ -18,6 +18,7 @@ from src.util.dl import set_random_seed, fix_tokenizer, fix_model
 from src.util.io import read_jsonl
 
 #os.environ["WANDB_LOG_MODEL"] = "checkpoint"
+os.environ["WANDB_DISABLED"] = "true"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
