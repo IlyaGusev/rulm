@@ -107,7 +107,7 @@ def train(
     train_sample_rate,
     val_sample_rate,
     output_dir,
-    report_to,
+    #report_to,
     seed,
     local_rank,
     omit_base_model_save
@@ -132,7 +132,7 @@ def train(
         output_dir=output_dir,
         save_total_limit=1,
         load_best_model_at_end=True,
-        report_to=report_to,
+        #report_to=report_to,
         ddp_find_unused_parameters=False if ddp else None,
         deepspeed=deepspeed_config,
         **trainer_config
@@ -301,7 +301,7 @@ if __name__ == "__main__":
     parser.add_argument("--train-sample-rate", type=float, default=1.0)
     parser.add_argument("--val-sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--report-to", type=str, default="wandb")
+    #parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument("--omit-base-model-save", action="store_true", default=False)
     args = parser.parse_args()
