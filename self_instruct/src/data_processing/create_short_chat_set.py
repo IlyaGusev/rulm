@@ -141,7 +141,7 @@ def main(train_path, val_path):
     prev_record_idx = None
     for idx, record in enumerate(instruct_records):
         text_length = sum([len(m["content"]) for m in record["messages"]])
-        if text_length > 1000:
+        if text_length > 2000:
             merged_instruct_records.append(record)
             continue
         if prev_record_idx is None:
