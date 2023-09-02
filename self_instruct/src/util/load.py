@@ -2,7 +2,7 @@ import sys
 
 import torch
 
-from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, AutoConfig
+from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, AutoConfig, BitsAndBytesConfig
 from peft import PeftConfig, PeftModel
 
 
@@ -10,7 +10,7 @@ def load_saiga(model_name, use_4bit: bool = False, torch_compile: bool = False, 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     generation_config = GenerationConfig.from_pretrained(model_name)
     config = PeftConfig.from_pretrained(model_name)
-    base_model_config =  AutoConfig.from_pretrained(config.base_model_name_or_path)
+    base_model_config = AutoConfig.from_pretrained(config.base_model_name_or_path)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if torch_dtype is not None:

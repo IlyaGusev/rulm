@@ -1,13 +1,9 @@
-import sys
 import copy
 import json
-import random
 from tqdm import tqdm
 
 import fire
-import torch
-from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, BitsAndBytesConfig, AutoConfig
-from peft import PeftConfig, PeftModel
+from transformers import AutoTokenizer
 
 from src.util.io import read_jsonl
 from src.util.chat import Conversation
@@ -82,6 +78,7 @@ def generate_answers(
                     record["input"] = record["input"].encode("utf-8").decode("utf-8", "ignore")
                 record["answer"] = output.encode("utf-8").decode("utf-8", "ignore")
                 w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
+
 
 if __name__ == "__main__":
     fire.Fire(generate_answers)
