@@ -137,6 +137,22 @@ def main(train_path, val_path):
     print("Instruct gpt4 count:", len(instruct_records))
     print("Instruct gpt4 length:", calc_max_length(instruct_records))
 
+    saiga_records = []
+    for row in tqdm(load_dataset("IlyaGusev/ru_turbo_saiga", split="train")):
+        messages = revert_flattening(row["messages"])
+        if has_bad_ss(messages):
+            continue
+        if row["model_name"] != "gpt-4":
+            continue
+        saiga_records.append({
+            "messages": messages,
+            "source": "saiga"
+        })
+    print("Saiga count:", len(saiga_records))
+    print("Max Saiga length:", calc_max_length(saiga_records))
+
+    records = saiga_records
+
     merged_instruct_records = []
     prev_record_idx = None
     for idx, record in enumerate(instruct_records):
@@ -155,7 +171,8 @@ def main(train_path, val_path):
         prev_record_idx = None
     print("Merged instruct count:", len(merged_instruct_records))
     print("Max Merged instruct length:", calc_max_length(merged_instruct_records))
-    records = merged_instruct_records
+
+    records += merged_instruct_records
 
     for row in tqdm(load_dataset("IlyaGusev/ru_sharegpt_cleaned", split="train")):
         messages = revert_flattening(row["messages"])
