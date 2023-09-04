@@ -63,6 +63,9 @@ class Conversation:
             other_messages = other_messages[2:]
         return [system_message] + other_messages
 
+    def format_message(self, message):
+        return self.message_template.format(**message)
+
     def get_prompt(self, tokenizer, max_tokens: int = None, add_suffix: bool = True):
         final_text = ""
         messages = self.messages
@@ -70,11 +73,15 @@ class Conversation:
             messages = self.shrink(tokenizer, messages, max_tokens)
 
         for message in messages:
-            message_text = self.message_template.format(**message)
+            message_text = self.format_message(message)
             final_text += message_text
         if add_suffix:
             final_text += tokenizer.decode([self.start_token_id, self.bot_token_id])
         return final_text.strip()
+
+    def iter_messages(self):
+        for message in self.messages:
+            yield self.format_message(message), message["role"]
 
     @classmethod
     def from_template(cls, file_name):
