@@ -12,7 +12,7 @@ config = PeftConfig.from_pretrained(model_name)
 base_model_path = config.base_model_name_or_path
 
 
-base_model =AutoModelForCausalLM.from_pretrained(
+base_model = AutoModelForCausalLM.from_pretrained(
     base_model_path,
     load_in_8bit=False,
     torch_dtype=torch.float16,

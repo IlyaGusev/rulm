@@ -4,34 +4,16 @@ import json
 from tqdm import tqdm
 
 from src.util.io import read_jsonl
+from src.data_processing.bad_substrings import has_bad_ss
 
 input_path = sys.argv[1]
 output_path = sys.argv[2]
-
-BAD_SS = (
-    " ул. ",
-    " +7",
-    "Как ИИ",
-    "как ИИ",
-    "Как модель ИИ",
-    "как модель ИИ",
-    "как языковая модель ИИ",
-    "Как языковая модель ИИ",
-    "как искусственный интеллект",
-    "OpenAI",
-    "ChatGPT",
-    "as a language model"
-)
 
 records = list(read_jsonl(input_path))
 with open(output_path, "w") as w:
     skip_count = 0
     for record in tqdm(records):
         output = record.pop("output")
-        is_bad_record = False
-        if any(ss in output for ss in BAD_SS):
-            skip_count += 1
-            continue
         lines = output.split("\n")
         messages = []
         current_message = ""
@@ -69,15 +51,23 @@ with open(output_path, "w") as w:
                 "role": current_agent,
                 "content": current_message.strip()
             })
-        messages = messages[:-2]
+
+        if messages[-1]["role"] == "user":
+            messages = messages[:-1]
+
+        sum_len = 0
         for message in messages:
             assert message["role"]
             assert message["content"]
-            if message["role"] == "bot" and len(message["content"]) < 150:
-                is_bad_record = True
-                break
-            
-        if is_bad_record:
+            sum_len += len(message["content"])
+
+        if has_bad_ss(messages):
+            is_bad_record = True
+            skip_count += 1
+            continue
+
+        if sum_len < 750:
+            is_bad_record = True
             skip_count += 1
             continue
         record["messages"] = messages

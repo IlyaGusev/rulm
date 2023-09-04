@@ -41,7 +41,6 @@ BAD_SS = (
     "chatgpt",
     "as a language model",
     "as an ai",
-    "к сожалению",
     "sorry",
     "я - алгоритм",
     "я – алгоритм",

@@ -4,8 +4,13 @@ import random
 
 from datasets import load_dataset
 
-random.seed(42)
+random.seed(43)
 output_path = sys.argv[1]
+
+
+seeds_set = set()
+for row in load_dataset("IlyaGusev/ru_turbo_saiga", split="train"):
+    seeds_set.add(row["seed"])
 
 seeds = list()
 for row in load_dataset("IlyaGusev/ru_stackoverflow", split="train"):
@@ -32,16 +37,15 @@ for row in load_dataset("its5Q/yandex-q", split="train"):
 
 
 filtered_seeds = []
-seeds_set = set()
 for record in seeds:
-    if record["seed"] in seeds_set:
+    seed = record["seed"]
+    if seed in seeds_set:
         continue
-    if len(record["seed"]) < 10:
+    if len(seed) < 10:
         continue
-    if len(record["seed"]) > 300:
-        print(record["seed"])
+    if len(seed) > 300:
         continue
-    seeds_set.add(record["seed"])
+    seeds_set.add(seed)
     filtered_seeds.append(record)
 seeds = filtered_seeds
 random.shuffle(seeds)
