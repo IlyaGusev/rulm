@@ -21,7 +21,7 @@ class ChatDataset(Dataset):
         add_global_bos: bool = True,
         add_global_eos: bool = True,
         labels_pad_token_id: int = -100,
-        truncation_side: str = "left"
+        truncation_side: str = "right"
     ):
         self.templates_path = templates_path
         self.original_records = original_records
@@ -74,16 +74,16 @@ class ChatDataset(Dataset):
             input_ids.extend(message_input_ids)
             labels.extend(message_labels)
 
+        if self.truncation_side == "right":
+            input_ids = input_ids[:self.max_tokens_count - 2]
+            labels = labels[:self.max_tokens_count - 2]
+        else:
+            input_ids = input_ids[-self.max_tokens_count + 2:]
+            labels = labels[-self.max_tokens_count + 2:]
+
         if self.add_global_bos and input_ids[0] != self.tokenizer.bos_token_id:
             input_ids.insert(0, self.tokenizer.bos_token_id)
             labels.insert(0, self.labels_pad_token_id)
-
-        if self.truncation_side == "right":
-            input_ids = input_ids[:self.max_tokens_count - 1]
-            labels = labels[:self.max_tokens_count - 1]
-        else:
-            input_ids = input_ids[-self.max_tokens_count + 1:]
-            labels = labels[-self.max_tokens_count + 1:]
 
         if self.add_global_eos and input_ids[-1] != self.tokenizer.eos_token_id:
             input_ids.append(self.tokenizer.eos_token_id)

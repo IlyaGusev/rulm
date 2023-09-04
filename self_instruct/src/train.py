@@ -99,8 +99,7 @@ def train(
     checkpoint,
     train_file,
     val_file,
-    train_sample_rate,
-    val_sample_rate,
+    sample_rate,
     output_dir,
     report_to,
     seed,
@@ -160,7 +159,7 @@ def train(
             records,
             tokenizer,
             max_tokens_count=max_tokens_count,
-            sample_rate=train_sample_rate,
+            sample_rate=sample_rate,
             templates_path=templates_path,
             only_target_loss=only_target_loss
         ))
@@ -176,7 +175,6 @@ def train(
 
     model_types = {
         "causal": AutoModelForCausalLM,
-        "seq2seq": AutoModelForSeq2SeqLM
     }
     load_in_8bit = bool(config.get("load_in_8bit", False))
     load_in_4bit = bool(config.get("load_in_4bit", False))
@@ -253,8 +251,7 @@ if __name__ == "__main__":
     parser.add_argument("--val-file", type=str, required=True)
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--output-dir", type=str, required=True)
-    parser.add_argument("--train-sample-rate", type=float, default=1.0)
-    parser.add_argument("--val-sample-rate", type=float, default=1.0)
+    parser.add_argument("--sample-rate", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--local_rank", type=int, default=0)
