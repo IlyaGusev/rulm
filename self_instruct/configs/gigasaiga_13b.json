@@ -4,8 +4,8 @@
         "per_device_train_batch_size": 1,
         "per_device_eval_batch_size": 1,
         "gradient_accumulation_steps": 128,
-        "eval_steps": 50,
-        "save_steps": 50,
+        "eval_steps": 10,
+        "save_steps": 10,
         "logging_steps": 5,
         "learning_rate": 0.0003,
         "num_train_epochs": 5,
@@ -17,9 +17,9 @@
         "optim": "adamw_torch"
     },
     "lora": {
-        "r": 16,
+        "r": 8,
         "lora_alpha": 16,
-        "lora_dropout": 0.05,
+        "lora_dropout": 0.1,
         "bias": "none",
         "target_modules": ["c_attn"],
         "task_type": "CAUSAL_LM"
