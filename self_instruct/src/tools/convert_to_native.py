@@ -1,5 +1,6 @@
 import argparse
 
+import fire
 import torch
 from peft import PeftModel, PeftConfig
 from transformers import LlamaForCausalLM
@@ -49,30 +50,28 @@ def translate_state_dict_key(k):  # noqa: C901
     else:
         raise NotImplementedError
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('model_name')
-    parser.add_argument('output_path')
-    parser.add_argument('--device', default='cpu')
-    parser.add_argument('--enable_offloading', action='store_true')
-    args = parser.parse_args()
+def convert_to_native(
+    model_name: str,
+    output_path: str,
+    device: str = "cpu",
+    enable_offloading: bool = False
+):
+    assert output_path.endswith(".pt")
 
-    assert args.output_path.endswith(".pt")
-
-    config = PeftConfig.from_pretrained(args.model_name)
+    config = PeftConfig.from_pretrained(model_name)
     base_model_path = config.base_model_name_or_path
 
     base_model = LlamaForCausalLM.from_pretrained(
         base_model_path,
         load_in_8bit=False,
         torch_dtype=torch.float16,
-        device_map={'': args.device},
+        device_map={'': device},
     )
 
     lora_model = PeftModel.from_pretrained(
         base_model,
-        args.model_name,
-        device_map={'': args.device},
+        model_name,
+        device_map={'': device},
         torch_dtype=torch.float16,
     )
 
@@ -108,13 +107,13 @@ def main():
             else:
                 lora_model_sd[new_k] = v
 
-            if args.enable_offloading and i <= total // 2:
+            if enable_offloading and i <= total // 2:
                 # offload half of all tensors to RAM
                 lora_model_sd[new_k] = lora_model_sd[new_k].cpu()
 
     print('Saving state_dict...')
-    torch.save(lora_model_sd, f'{args.output_path}')
+    torch.save(lora_model_sd, f'{output_path}')
 
 
 if __name__ == '__main__':
-    main()
+    fire.Fire(convert_to_native)
