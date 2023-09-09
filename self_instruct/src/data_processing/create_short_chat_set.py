@@ -1,11 +1,8 @@
 import json
 import sys
-import re
 import random
 from datasets import load_dataset
 from tqdm import tqdm
-
-from datasketch import MinHash, MinHashLSH, LeanMinHash
 
 from src.data_processing.bad_substrings import has_bad_ss
 
@@ -54,66 +51,6 @@ def build_char_system_messages(char):
     return chat
 
 
-def re_tokenize(text):
-    return re.findall(r'[а-яё-]+|[a-z-]+|\d+|\S', text, re.I)
-
-
-def ngrams(sequence, n):
-    iterables = tee(iter(sequence), n)
-    for i, sub_iterable in enumerate(iterables):
-        for _ in range(i):
-            next(sub_iterable, None)
-    return zip(*iterables)
-
-
-def calc_fingerprint(text, ngram_size: int = 1, num_perm: int = 128):
-    tokens = re_tokenize(text)
-    if ngram_size > 1:
-        tokens = {" ".join(t) for t in ngrams(tokens, ngram_size)}
-    tokens = [token.encode('utf-8') for token in tokens]
-
-    minhash = MinHash(num_perm=num_perm)
-    minhash.update_batch(tokens)
-
-    lean_minhash = LeanMinHash(minhash)
-    buf = bytearray(lean_minhash.bytesize())
-    lean_minhash.serialize(buf)
-
-    return buf
-
-
-def undup_alpaca(alpaca_records, num_perm: int = 32, threshold: float = 0.3, debug: bool = False):
-    for record in tqdm(alpaca_records, desc="Fingerprinting"):
-        record["minhash"] = calc_fingerprint(record["messages"][0]["content"], num_perm=num_perm)
-
-    lsh = MinHashLSH(
-        threshold=threshold,
-        num_perm=num_perm
-    )
-
-    filtered_records = []
-    for idx, record in tqdm(enumerate(alpaca_records), desc="Undup"):
-        minhash = LeanMinHash.deserialize(record["minhash"])
-        is_dup = False
-        for other_idx in lsh.query(minhash):
-            other_record = alpaca_records[other_idx]
-            other_minhash = LeanMinHash.deserialize(other_record["minhash"])
-            if minhash.jaccard(other_minhash) > threshold:
-                if debug:
-                    print()
-                    print("=========================")
-                    print(record["messages"][0]["content"].replace("\n", " "))
-                    print(other_record["messages"][0]["content"].replace("\n", " "))
-                is_dup = True
-        if is_dup:
-            continue
-        lsh.insert(idx, minhash)
-        filtered_records.append(record)
-    for record in filtered_records:
-        record.pop("minhash")
-    return filtered_records
-
-
 def main(train_path, val_path):
     random.seed(42)
 
@@ -136,6 +73,7 @@ def main(train_path, val_path):
         })
     print("Instruct gpt4 count:", len(instruct_records))
     print("Instruct gpt4 length:", calc_max_length(instruct_records))
+    records = instruct_records
 
     saiga_records = []
     for row in tqdm(load_dataset("IlyaGusev/ru_turbo_saiga", split="train")):
@@ -150,30 +88,9 @@ def main(train_path, val_path):
         })
     print("Saiga count:", len(saiga_records))
     print("Max Saiga length:", calc_max_length(saiga_records))
+    records += saiga_records
 
-    records = saiga_records
-
-    merged_instruct_records = []
-    prev_record_idx = None
-    for idx, record in enumerate(instruct_records):
-        text_length = sum([len(m["content"]) for m in record["messages"]])
-        if text_length > 2000:
-            merged_instruct_records.append(record)
-            continue
-        if prev_record_idx is None:
-            prev_record_idx = idx
-            continue
-        messages = instruct_records[prev_record_idx]["messages"] + record["messages"]
-        merged_instruct_records.append({
-            "messages": messages,
-            "source": "merged_instruct"
-        })
-        prev_record_idx = None
-    print("Merged instruct count:", len(merged_instruct_records))
-    print("Max Merged instruct length:", calc_max_length(merged_instruct_records))
-
-    records += merged_instruct_records
-
+    sharegpt_records = []
     for row in tqdm(load_dataset("IlyaGusev/ru_sharegpt_cleaned", split="train")):
         messages = revert_flattening(row["messages"])
         text_length = sum([len(m["content"]) for m in messages])
@@ -182,13 +99,15 @@ def main(train_path, val_path):
             text_length = sum([len(m["content"]) for m in messages])
         if not messages:
             continue
-        records.append({
+        sharegpt_records.append({
             "messages": messages,
             "source": "sharegpt"
         })
-    print("Gpt4 + ShareGPT count:", len(records))
-    print("Gpt4 + ShareGPT max length:", calc_max_length(records))
+    print("ShareGPT count:", len(sharegpt_records))
+    print("ShareGPT max length:", calc_max_length(sharegpt_records))
+    records += sharegpt_records
 
+    oasst_records = []
     for row in tqdm(load_dataset("IlyaGusev/oasst1_ru_main_branch", split="train")):
         messages = revert_flattening(row["messages"])
         text_length = sum([len(m["content"]) for m in messages])
@@ -197,17 +116,16 @@ def main(train_path, val_path):
             text_length = sum([len(m["content"]) for m in messages])
         if not messages:
             continue
-        records.append({
+        oasst_records.append({
             "messages": messages,
             "source": "oasst"
         })
+    print("OASST count:", len(oasst_records))
+    print("OASST max length:", calc_max_length(oasst_records))
+    records += oasst_records
 
     rp_records = []
     for row in tqdm(load_dataset("IlyaGusev/gpt_roleplay_realm", split="ru")):
-        name = row["name"]
-        context = row["context"]
-        greeting = row["greeting"]
-        example_dialogue = row["example_dialogue"]
         for dialogue in row["dialogues"]:
             if dialogue["model_name"] != "gpt-4":
                 continue
@@ -225,7 +143,32 @@ def main(train_path, val_path):
                 "source": "roleplay"
             })
     print("Roleplay count:", len(rp_records))
+    print("Roleplay max length:", calc_max_length(rp_records))
     records += rp_records
+
+    lima_records = []
+    lima_role_mapping = {
+        "human": "user",
+        "gpt": "bot"
+    }
+    for row in tqdm(load_dataset("64bits/lima_vicuna_format", split="train")):
+        chat = row["conversations"]
+        fixed_messages = [{
+            "role": "system",
+            "content": "You are a virtual assistant that wants to be helpful"
+        }]
+        for message in chat:
+            fixed_messages.append({
+                "role": lima_role_mapping[message["from"]],
+                "content": message["value"]
+            })
+        lima_records.append({
+            "messages": fixed_messages,
+            "source": "lima"
+        })
+    print("LIMA count:", len(lima_records))
+    print("LIMA max length:", calc_max_length(lima_records))
+    records += lima_records
 
     print("All count:", len(records))
     print("All max length:", calc_max_length(records))
