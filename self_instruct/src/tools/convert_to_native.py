@@ -1,5 +1,3 @@
-import argparse
-
 import fire
 import torch
 from peft import PeftModel, PeftConfig
@@ -50,6 +48,7 @@ def translate_state_dict_key(k):  # noqa: C901
     else:
         raise NotImplementedError
 
+
 def convert_to_native(
     model_name: str,
     output_path: str,
@@ -79,15 +78,12 @@ def convert_to_native(
     lora_model.train(False)
 
     if '7b' in base_model_path:
-        n_layers = 32
         n_heads = 32
         dim = 4096
     elif '13b' in base_model_path:
-        n_layers = 40
         n_heads = 40
         dim = 5120
     elif '30b' in base_model_path:
-        n_layers = 60
         n_heads = 52
         dim = 6656
     else:

@@ -10,7 +10,6 @@ from langchain.document_loaders import (
     EverNoteLoader,
     PDFMinerLoader,
     TextLoader,
-    UnstructuredEmailLoader,
     UnstructuredEPubLoader,
     UnstructuredHTMLLoader,
     UnstructuredMarkdownLoader,
@@ -73,7 +72,6 @@ def load_documents(source_dir: str) -> List[Document]:
     return results
 
 
-
 def ingest(
     source_dir,
     output_dir,
@@ -81,7 +79,7 @@ def ingest(
     chunk_size: int = 200,
     chunk_overlap: int = 20
 ):
-    # Load documents and split in chunks
+    # Load documents and split in chunks
     print(f"Loading documents from {source_dir}")
     documents = load_documents(source_dir)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

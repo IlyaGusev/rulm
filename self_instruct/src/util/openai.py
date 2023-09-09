@@ -19,7 +19,9 @@ class OpenAIDecodingArguments(object):
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
 
+
 DEFAULT_ARGS = OpenAIDecodingArguments()
+
 
 def openai_completion(
     messages,

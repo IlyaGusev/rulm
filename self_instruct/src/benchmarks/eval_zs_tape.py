@@ -1,22 +1,11 @@
-import random
 import pandas as pd
 import numpy as np
 
 from datasets import load_dataset
 from TAPE.utils.episodes import get_episode_data
 
-import sys
 import copy
-import json
-import random
-from tqdm import tqdm
 
-import fire
-import torch
-from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, BitsAndBytesConfig
-from peft import PeftConfig, PeftModel
-
-from src.util.io import read_jsonl
 from src.util.chat import Conversation
 from src.util.dl import gen_batch
 from src.util.load import load_saiga
@@ -74,7 +63,7 @@ def predict_saiga_k_shots(
 
 
 def get_data(task_name: str):
-    data = load_dataset("RussianNLP/tape",f"{task_name}.episodes")
+    data = load_dataset("RussianNLP/tape", f"{task_name}.episodes")
     train_data = data['train'].data.to_pandas()
     test_data = data['test'].data.to_pandas()
     return train_data, test_data
@@ -103,11 +92,11 @@ def predict(k_shots: pd.DataFrame, test_data: pd.DataFrame, task_name: str, pred
             predictions.extend(batch_predictions)
         predictions = np.array(predictions)
     elif task_name == 'winograd':
-        predictions = np.random.choice([0,1], size=test_data.shape[0])
+        predictions = np.random.choice([0, 1], size=test_data.shape[0])
     elif task_name in ['chegeka', 'multiq']:
         predictions = np.random.choice(['some', 'answer'], size=test_data.shape[0])
     else:
-        predictions = np.array([np.random.choice([0,1], size=(5,)) for _ in range(test_data.shape[0])])
+        predictions = np.array([np.random.choice([0, 1], size=(5, )) for _ in range(test_data.shape[0])])
     return predictions
 
 
@@ -135,6 +124,7 @@ def main(
     template_path
 ):
     model, tokenizer, generation_config = load_saiga(model_name)
+
     def predict_func(k_shots, questions, max_prompt_tokens):
         return predict_saiga_k_shots(
             model=model,
@@ -149,7 +139,7 @@ def main(
     predictions = get_predictions("ru_openbook", predict_func, batch_size=4)
     print(predictions)
     predictions.to_json(
-        f'RuOpenBookQA.json',
+        'RuOpenBookQA.json',
         orient='records',
         force_ascii=False
     )

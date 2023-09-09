@@ -13,6 +13,7 @@ def get_key(r):
         inp = ""
     return tuple((r["instruction"].strip(), inp))
 
+
 with open(orig_path) as r:
     orig_records = {get_key(r): r for r in json.load(r)}
 print(len(orig_records))
@@ -54,7 +55,7 @@ with open(output_path, "w") as w:
             record["all_labels"] = []
         else:
             record["label"] = mapping[record["label"]]
-            record["all_labels"] = [mapping[l] for l in record["all_labels"]]
+            record["all_labels"] = [mapping[label] for label in record["all_labels"]]
         if "agreement" not in record:
             record["agreement"] = None
         if "overlap" not in record:

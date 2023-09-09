@@ -2,7 +2,7 @@ import sys
 import json
 from statistics import mean
 from collections import Counter, defaultdict
-from tinydb import TinyDB, Query
+from tinydb import TinyDB
 
 db_path = sys.argv[1]
 output_path = sys.argv[2]

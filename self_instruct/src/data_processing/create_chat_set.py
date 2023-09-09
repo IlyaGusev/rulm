@@ -2,6 +2,7 @@ import json
 import sys
 import re
 import random
+from itertools import tee
 from datasets import load_dataset
 from tqdm import tqdm
 
@@ -252,10 +253,6 @@ def main(train_path, val_path):
 
     rp_records = []
     for row in tqdm(load_dataset("IlyaGusev/gpt_roleplay_realm", split="ru")):
-        name = row["name"]
-        context = row["context"]
-        greeting = row["greeting"]
-        example_dialogue = row["example_dialogue"]
         for dialogue in row["dialogues"]:
             chat = dialogue["chat"]
             for message in chat:

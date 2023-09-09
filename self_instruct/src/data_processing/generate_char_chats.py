@@ -51,10 +51,10 @@ def parse_chat(result):
 
     prev_role = None
     for message in chat:
-        if not "role" in message:
+        if "role" not in message:
             print("No role in message:", message)
             return None
-        if not "content" in message:
+        if "content" not in message:
             print("No content in message:", message)
             return None
         if message["role"] not in ("user", "char"):
@@ -166,7 +166,7 @@ def main(
         for topic in topics[1:]:
             key = get_dialogue_key(char, topic)
             if key in existing_keys:
-                #print(f"Skipping {key}")
+                print(f"Skipping {key}")
                 continue
             batch.append((char, topic))
             if len(batch) != request_batch_size:

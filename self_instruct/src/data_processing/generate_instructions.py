@@ -13,12 +13,12 @@ import fire
 import numpy as np
 import tqdm
 from rouge_score import rouge_scorer
-import re
 
 from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
 NON_ALPHANUM_RE = re.compile(r"[^a-zа-яё0-9]+")
+
 
 def tokenize(text):
     text = text.lower()
@@ -103,22 +103,22 @@ def post_process(response, settings):
 
 
 def generate_instructions(
-    output_path,
-    seed_tasks_path,
-    settings_path,
-    template_path,
-    num_instructions_to_generate=10000,
-    model_name="gpt-3.5-turbo",
-    request_batch_size=5,
-    temperature=1.0,
-    top_p=0.95,
-    num_cpus=8,
+    output_path: str,
+    seed_tasks_path: str,
+    settings_path: str,
+    template_path: str,
+    num_instructions_to_generate: int = 10000,
+    model_name: str = "gpt-3.5-turbo",
+    request_batch_size: int = 5,
+    temperature: float = 1.0,
+    top_p: float = 0.95,
+    num_cpus: int = 8,
 ):
     random.seed(43)
     with open(settings_path) as r:
         settings = json.load(r)
 
-    seed_tasks = [json.loads(l) for l in open(seed_tasks_path, "r")]
+    seed_tasks = [json.loads(line) for line in open(seed_tasks_path, "r")]
     seed_instruction_data = [{
         "instruction": t["instruction"],
         "input": t["instances"][0]["input"],
@@ -131,8 +131,6 @@ def generate_instructions(
         with open(output_path) as r:
             machine_instruction_data = json.load(r)
         print(f"Loaded {len(machine_instruction_data)} machine-generated instructions")
-
-    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
 
     all_instructions = [d["instruction"] for d in seed_instruction_data + machine_instruction_data]
     all_instruction_tokens = [tokenize(inst) for inst in all_instructions]
@@ -170,7 +168,7 @@ def generate_instructions(
                 print("Role: {}, content: {}".format(message["role"], message["content"]))
 
         request_start = time.time()
-        num_tasks =  settings["num_tasks"]
+        num_tasks = settings["num_tasks"]
         results = openai_batch_completion(
             batch=batch,
             model_name=model_name,
@@ -224,7 +222,6 @@ def generate_instructions(
         with open(output_path + "_tmp", "w") as w:
             json.dump(machine_instruction_data, w, indent=4, ensure_ascii=False)
         shutil.move(output_path + "_tmp", output_path)
-
 
 
 def main(task, **kwargs):

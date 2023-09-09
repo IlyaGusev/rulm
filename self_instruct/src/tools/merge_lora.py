@@ -7,7 +7,7 @@ from peft import PeftConfig, PeftModel
 def merge_lora(
     model_name,
     output_path
-)
+):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     config = PeftConfig.from_pretrained(model_name)
     base_model_path = config.base_model_name_or_path

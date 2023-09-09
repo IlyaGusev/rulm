@@ -3,23 +3,21 @@ import json
 import os
 import random
 import re
-import string
 import shutil
 from functools import partial
 from multiprocessing import Pool
 from jinja2 import Template
 
 import fire
-import numpy as np
 import tqdm
 from rouge_score import rouge_scorer
-import re
 
 from src.util.io import read_jsonl, write_jsonl
 from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
 NON_ALPHANUM_RE = re.compile(r"[^a-zа-яё0-9]+")
+
 
 def tokenize(text):
     text = text.lower()
@@ -55,19 +53,19 @@ def post_process(response):
 
 
 def generate_chars(
-    output_path,
-    seed_chars_path,
-    template_path,
-    num_chars_to_generate=200,
-    model_name="gpt-4",
-    request_batch_size=5,
-    temperature=1.0,
-    top_p=0.95,
-    num_cpus=8,
-    rouge_cutoff=0.24
+    output_path: str,
+    seed_chars_path: str,
+    template_path: str,
+    num_chars_to_generate: int = 200,
+    model_name: str = "gpt-4",
+    request_batch_size: int = 5,
+    temperature: float = 1.0,
+    top_p: float = 0.95,
+    num_cpus: int = 8,
+    rouge_cutoff: float = 0.24
 ):
     random.seed(43)
-    seed_chars = [json.loads(l) for l in open(seed_chars_path, "r")]
+    seed_chars = [json.loads(line) for line in open(seed_chars_path, "r")]
     print(f"Loaded {len(seed_chars)} character examples")
 
     machine_chars = []
@@ -75,7 +73,6 @@ def generate_chars(
         machine_chars = read_jsonl(output_path)
         print(f"Loaded {len(machine_chars)} machine-generated characters")
 
-    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
     all_descriptions = [d["context"] for d in seed_chars + machine_chars]
     all_description_tokens = [tokenize(d) for d in all_descriptions]
 

@@ -21,11 +21,12 @@ with open(output_path, "w") as w:
         role = record["prompt"]["role"]
         content = record["prompt"]["text"]
         messages = [{"role": role, "content": content}]
+
         def collect_replies(current_replies):
             if not current_replies:
                 return []
             best_reply = current_replies[0]
-            if best_reply["synthetic"] == True:
+            if best_reply["synthetic"]:
                 return []
             role = best_reply["role"]
             text = best_reply["text"]

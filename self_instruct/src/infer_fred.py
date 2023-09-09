@@ -1,6 +1,5 @@
 import sys
 import json
-import random
 from tqdm import tqdm
 
 import fire
@@ -78,7 +77,7 @@ def generate_answers(
             try:
                 record["answer"] = output
                 w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
-            except Exception as e:
+            except Exception:
                 record["answer"] = ""
                 w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")
 

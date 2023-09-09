@@ -1,4 +1,3 @@
-import time
 import os
 import random
 import shutil
@@ -91,12 +90,12 @@ def evolve_batch(
     original_tasks,
     model_name,
     decoding_args,
-    depth_template_path = None,
-    depth_methods_path = None,
-    breadth_template_path = None,
-    xml_template_path = None,
-    json_template_path = None,
-    few_shot_template_path = None
+    depth_template_path: str = None,
+    depth_methods_path: str = None,
+    breadth_template_path: str = None,
+    xml_template_path: str = None,
+    json_template_path: str = None,
+    few_shot_template_path: str = None
 ):
     batch = [depth_encode_prompt(task, depth_template_path, depth_methods_path) for task in original_tasks]
     batch = [[(prompt, "depth") for prompt in batch_part] for batch_part in batch]
@@ -122,7 +121,7 @@ def evolve_batch(
     for result, original_task, (_, method) in zip(results, original_tasks, batch):
         gen_tasks.append(extend_post_process(result, original_task, method=method))
 
-    total, keep = len(gen_tasks), 0
+    _, keep = len(gen_tasks), 0
     new_tasks = []
     for task in gen_tasks:
         if not task:

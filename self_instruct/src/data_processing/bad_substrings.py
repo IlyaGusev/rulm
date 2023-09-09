@@ -79,6 +79,7 @@ BAD_SS = (
     "всего лишь искуственный интеллект"
 )
 
+
 def has_bad_ss(messages):
     for m in messages:
         text = m["content"].lower()

@@ -6,7 +6,7 @@ import os
 import wandb
 import torch
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, DataCollatorForTokenClassification
+from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForTokenClassification
 from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl, BitsAndBytesConfig
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training

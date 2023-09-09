@@ -4,7 +4,7 @@ import random
 from collections import Counter
 
 from sklearn.metrics import accuracy_score
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import pearsonr
 
 input_path = sys.argv[1]
 y_pred = []
@@ -34,8 +34,8 @@ print(cnt)
 print(Counter(y_pred))
 print(Counter(y_true))
 
-print(Counter(y_pred)[1]/(Counter(y_pred)[-1] + Counter(y_pred)[1]))
-print(Counter(y_true)[1]/(Counter(y_true)[-1] + Counter(y_pred)[1]))
+print(Counter(y_pred)[1] / (Counter(y_pred)[-1] + Counter(y_pred)[1]))
+print(Counter(y_true)[1] / (Counter(y_true)[-1] + Counter(y_pred)[1]))
 
 print("File")
 print(accuracy_score(y_pred, y_true))

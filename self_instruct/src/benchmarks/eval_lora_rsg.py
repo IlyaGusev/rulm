@@ -1,9 +1,6 @@
 from pathlib import Path
 from typing import Tuple
-import random
 import fire
-
-from datasets import load_dataset
 
 from src.eval_rsg import (
     predict_danetqa,
@@ -31,7 +28,6 @@ from src.data_processing.convert_rsg import (
     RWSD_SOURCE_TEMPLATE,
     RUSSE_SOURCE_TEMPLATE
 )
-from src.util.io import write_jsonl
 from src.util.load import load_saiga
 
 HF_DATASET = "RussianNLP/russian_super_glue"
@@ -179,6 +175,7 @@ def main(
             template="Задание: russe\n" + RUSSE_SOURCE_TEMPLATE,
             clean_func=clean_russe
         )
+
 
 if __name__ == "__main__":
     fire.Fire(main)

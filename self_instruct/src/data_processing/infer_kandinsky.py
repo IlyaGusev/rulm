@@ -9,6 +9,7 @@ from transliterate import translit
 
 from src.util.io import read_jsonl, write_jsonl
 
+
 def generate_images(
     input_path,
     output_path,

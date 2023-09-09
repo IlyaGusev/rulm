@@ -30,7 +30,7 @@ with open(output_path, "w") as w:
                         "content": current_message.strip()
                     })
                 current_agent = "user"
-                line = line.replace("[Пользователь]",  "")
+                line = line.replace("[Пользователь]", "")
                 current_message = line
             elif line.startswith("[Ассистент]"):
                 if current_agent and current_message:
@@ -42,7 +42,7 @@ with open(output_path, "w") as w:
                         "content": current_message.strip()
                     })
                 current_agent = "bot"
-                line = line.replace("[Ассистент]",  "")
+                line = line.replace("[Ассистент]", "")
                 current_message = line
             else:
                 current_message += "\n" + line

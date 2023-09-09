@@ -21,7 +21,7 @@ class ChatDataset(Dataset):
         add_global_bos: bool = True,
         add_global_eos: bool = True,
         labels_pad_token_id: int = -100,
-        truncation_side: str = "right"
+        truncation_side: str = "left"
     ):
         self.templates_path = templates_path
         self.original_records = original_records

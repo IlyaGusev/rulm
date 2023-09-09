@@ -170,12 +170,9 @@ def get_rwsd(split):
         label = row["label"]
         if label == 1:
             record["target"] = row["span1_text"]
-            #record["target"] = "да"
             yield record
         elif label == 0:
             pass
-            #record["target"] = "нет"
-            #yield record
         elif label == -1:
             yield record
 
@@ -213,6 +210,7 @@ def get_lidirus():
 
 
 ALL_TASKS = ("danetqa", "lidirus", "muserc", "parus", "rcb", "rucos", "russe", "rwsd", "terra")
+
 
 def convert_rsg(split, output_path, tasks: List[str] = ALL_TASKS, use_short: bool = True):
     functions = []

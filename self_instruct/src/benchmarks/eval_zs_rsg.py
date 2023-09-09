@@ -1,13 +1,10 @@
-from typing import Tuple
+from typing import Tuple, Callable
 import re
 import copy
 from pathlib import Path
 from tqdm import tqdm
-from collections import defaultdict
 
 import fire
-import torch
-from torch.nn import CrossEntropyLoss
 from datasets import load_dataset
 from nltk import edit_distance
 from sklearn.metrics import accuracy_score
@@ -122,7 +119,7 @@ def predict_danetqa(
     batch_size: int = 4,
     nrows: int = None,
     template: str = DANETQA_PROMPT,
-    clean_func = clean_danetqa_response
+    clean_func: Callable = clean_danetqa_response
 ):
     records = list(load_dataset(HF_DATASET, "danetqa", split=split))
     if nrows:
@@ -222,7 +219,7 @@ def predict_terra(
             predictions.append(terra_to_bool(prediction))
 
     if labels:
-        print("terra accuracy:", accuracy_score(labels,  predictions))
+        print("terra accuracy:", accuracy_score(labels, predictions))
 
     outputs = [{"idx": r["idx"], "label": r["prediction"]} for r in records]
     write_jsonl(outputs, output_path)
@@ -247,7 +244,7 @@ def predict_rwsd(
     batch_size: int = 4,
     nrows: int = None,
     template: str = RWSD_PROMPT,
-    clean_func = clean_rwsd_response
+    clean_func: Callable = clean_rwsd_response
 ):
     records = list(load_dataset(HF_DATASET, "rwsd", split=split))
     if nrows:
@@ -320,7 +317,7 @@ def predict_muserc(
     batch_size: int = 2,
     nrows: int = None,
     template: str = MUSERC_SINGLE_PROMPT,
-    clean_func = clean_muserc_single_response
+    clean_func: Callable = clean_muserc_single_response
 ):
     records = list(load_dataset(HF_DATASET, "muserc", split=split))
     if nrows:
@@ -394,6 +391,7 @@ RUCOS_PROMPT = """Контекст: {text}
 
 Какое имя человека или название организации или название места должно быть вместо {mask} в запросе? Ответь не более чем 3 словами в соответствии с контекстом."""
 
+
 def clean_rucos_response(response, entities):
     answers = []
     for answer in entities:
@@ -410,7 +408,7 @@ def predict_rucos(
     nrows: int = None,
     debug: bool = False,
     template: str = RUCOS_PROMPT,
-    clean_func = clean_rucos_response
+    clean_func: Callable = clean_rucos_response
 ):
     records = list(load_dataset(HF_DATASET, "rucos", split=split))
     if nrows:
@@ -493,7 +491,7 @@ def predict_lidirus(
     batch_size: int = 4,
     nrows: int = None,
     template: str = LIDIRUS_PROMPT,
-    clean_func = clean_lidirus_response
+    clean_func: Callable = clean_lidirus_response
 ):
     records = list(load_dataset(HF_DATASET, "lidirus", split="test"))
     if nrows:
@@ -638,7 +636,7 @@ def predict_rcb(
     batch_size: int = 8,
     nrows: int = None,
     template: str = RCB_PROMPT,
-    clean_func = clean_rcb_response
+    clean_func: Callable = clean_rcb_response
 ):
     records = list(load_dataset(HF_DATASET, "rcb", split=split))
     if nrows:
@@ -705,7 +703,7 @@ def predict_russe(
     batch_size: int = 8,
     nrows: int = None,
     template: str = RUSSE_PROMPT,
-    clean_func = clean_russe_response
+    clean_func: Callable = clean_russe_response
 ):
     records = list(load_dataset(HF_DATASET, "russe", split=split))
     if nrows:
@@ -781,15 +779,6 @@ def main(
                 generation_config=generation_config,
                 template_path=template_path,
                 prompts=batch,
-                debug=debug
-            )
-
-        def predict_saiga_zero_shot_logits_bound(batch_messages):
-            return predict_saiga_zero_shot_logits(
-                model=model,
-                tokenizer=tokenizer,
-                template_path=template_path,
-                all_messages=batch_messages,
                 debug=debug
             )
 

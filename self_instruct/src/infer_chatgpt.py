@@ -1,5 +1,4 @@
 import json
-import os
 
 import fire
 from jinja2 import Template
@@ -47,7 +46,7 @@ def main(
             batch.append(record)
             if len(batch) != request_batch_size:
                 continue
-            results = infer_batch(
+            infer_batch(
                 batch=batch,
                 model_name=model_name,
                 template_path=template_path,
@@ -56,7 +55,7 @@ def main(
             batch = []
 
         if batch:
-            results = infer_batch(
+            infer_batch(
                 batch=batch,
                 model_name=model_name,
                 template_path=template_path,

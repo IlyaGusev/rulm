@@ -1,5 +1,4 @@
 import json
-import os
 import random
 
 import fire
@@ -10,6 +9,7 @@ from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
 JINJA_ENV = Environment(loader=FileSystemLoader("."))
+
 
 def encode_pair(record, template_path):
     template = JINJA_ENV.get_template(template_path)

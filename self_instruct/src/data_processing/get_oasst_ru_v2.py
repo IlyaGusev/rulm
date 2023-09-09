@@ -1,11 +1,8 @@
 import sys
 import json
 
-from tqdm import tqdm
 from datasets import load_dataset
 from fasttext import load_model as ft_load_model
-
-from src.util.io import read_jsonl
 
 output_path = sys.argv[1]
 
@@ -29,6 +26,7 @@ class FasttextClassifier:
         (label,), (prob,) = self.model.predict(text_sample, k=1)
         label = label[self.label_offset:]
         return label, prob
+
 
 lang_detect = FasttextClassifier("models/lid.176.bin")
 

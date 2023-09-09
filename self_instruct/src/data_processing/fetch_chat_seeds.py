@@ -35,7 +35,6 @@ for row in load_dataset("its5Q/yandex-q", split="train"):
         })
 
 
-
 filtered_seeds = []
 for record in seeds:
     seed = record["seed"]

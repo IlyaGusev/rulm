@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from tinydb import TinyDB, where
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, Filters, CallbackContext, MessageHandler, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, Filters, CallbackContext, CallbackQueryHandler
 
 
 class Client:

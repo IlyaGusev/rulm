@@ -1,4 +1,3 @@
-import csv
 import sys
 import json
 import random
@@ -53,10 +52,12 @@ pairs_to_compare = [
 
 model_count = len({r["model_name"] for r in files})
 
+
 def get_key(record):
     if "input" not in record:
         return (record["instruction"], )
     return (record["instruction"], record["input"])
+
 
 answers = defaultdict(list)
 for r in files:
