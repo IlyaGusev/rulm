@@ -1,0 +1,23 @@
+{
+    "files": [
+        {
+            "file_name": "data/vicuna_saiga2_7b_answers.jsonl",
+            "model_name": "saiga2_7b"
+        },
+        {
+            "file_name": "data/user_v2_saiga2_7b_answers.jsonl",
+            "model_name": "saiga2_7b"
+        },
+        {
+            "file_name": "data/vicuna_turbo_answers.jsonl",
+            "model_name": "turbo"
+        },
+        {
+            "file_name": "data/user_v2_turbo_answers.jsonl",
+            "model_name": "turbo"
+        }
+    ],
+    "pairs_to_compare": [
+        ["turbo", "saiga2_7b"]
+    ]
+}
