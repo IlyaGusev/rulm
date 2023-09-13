@@ -2,20 +2,7 @@ import fire
 
 from src.util.chat import Conversation
 from src.util.load import load_saiga
-
-
-def generate(model, tokenizer, prompt, generation_config, eos_token_id: int = None):
-    data = tokenizer(prompt, return_tensors="pt")
-    data = {k: v.to(model.device) for k, v in data.items()}
-    if eos_token_id is not None:
-        generation_config.eos_token_id = eos_token_id
-    output_ids = model.generate(
-        **data,
-        generation_config=generation_config
-    )[0]
-    output_ids = output_ids[len(data["input_ids"][0]):]
-    output = tokenizer.decode(output_ids).replace("</s>", "").strip()
-    return output
+from src.util.generate import generate
 
 
 def interact(model_name, template_path):
@@ -32,10 +19,10 @@ def interact(model_name, template_path):
         output = generate(
             model=model,
             tokenizer=tokenizer,
-            prompt=prompt,
+            prompts=[prompt],
             generation_config=generation_config,
             eos_token_id=conversation.get_end_token_id()
-        )
+        )[0]
         conversation.add_bot_message(output)
         print("Saiga:", output)
 

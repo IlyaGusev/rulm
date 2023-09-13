@@ -9,28 +9,7 @@ from src.util.io import read_jsonl
 from src.util.chat import Conversation
 from src.util.dl import gen_batch
 from src.util.load import load_saiga
-
-
-def generate(model, tokenizer, prompts, generation_config):
-    data = tokenizer(
-        prompts,
-        return_tensors="pt",
-        truncation=True,
-        max_length=512,
-        padding=True
-    )
-    data = {k: v.to(model.device) for k, v in data.items()}
-    output_ids = model.generate(
-        **data,
-        generation_config=generation_config
-    )
-    outputs = []
-    for sample_output_ids, sample_input_ids in zip(output_ids, data["input_ids"]):
-        sample_output_ids = sample_output_ids[len(sample_input_ids):]
-        sample_output = tokenizer.decode(sample_output_ids, skip_special_tokens=True)
-        sample_output = sample_output.replace("</s>", "").strip()
-        outputs.append(sample_output)
-    return outputs
+from src.util.generate import generate
 
 
 def generate_answers(

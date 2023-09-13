@@ -7,8 +7,12 @@ def generate(
     tokenizer: AutoTokenizer,
     prompts: List[str],
     generation_config: GenerationConfig,
-    source_max_length: int = 512
+    source_max_length: int = 512,
+    eos_token_id: int = None
 ):
+    if eos_token_id is not None:
+        generation_config.eos_token_id = eos_token_id
+
     data = tokenizer(
         prompts,
         return_tensors="pt",
