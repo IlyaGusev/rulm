@@ -1,3 +1,4 @@
+import os
 import sys
 
 import torch
@@ -6,13 +7,29 @@ from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM, 
 from peft import PeftConfig, PeftModel
 
 
-def load_saiga(model_name, use_4bit: bool = False, torch_compile: bool = False, torch_dtype: str = None):
+def load_saiga(
+    model_name: str,
+    use_4bit: bool = False,
+    torch_compile: bool = False,
+    torch_dtype: str = None
+):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     generation_config = GenerationConfig.from_pretrained(model_name)
+
+    adapter_path = os.path.join(model_name, "adapter_config.json")
+    if not os.path.exists(adapter_path):
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            load_in_8bit=True,
+            device_map="auto"
+        )
+        model.eval()
+        return model, tokenizer, generation_config
+
     config = PeftConfig.from_pretrained(model_name)
     base_model_config = AutoConfig.from_pretrained(config.base_model_name_or_path)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     if torch_dtype is not None:
         torch_dtype = getattr(torch, torch_dtype)
     else:

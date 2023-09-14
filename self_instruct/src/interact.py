@@ -20,8 +20,7 @@ def interact(model_name, template_path):
             model=model,
             tokenizer=tokenizer,
             prompts=[prompt],
-            generation_config=generation_config,
-            eos_token_id=conversation.get_end_token_id()
+            generation_config=generation_config
         )[0]
         conversation.add_bot_message(output)
         print("Saiga:", output)

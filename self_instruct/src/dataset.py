@@ -68,7 +68,7 @@ class ChatDataset(Dataset):
             message_labels = message_input_ids
 
             labels_mask = [self.labels_pad_token_id for _ in range(len(message_input_ids))]
-            if role != "bot" and self.only_target_loss:
+            if role != conversation.bot_role and self.only_target_loss:
                 message_labels = labels_mask
 
             input_ids.extend(message_input_ids)

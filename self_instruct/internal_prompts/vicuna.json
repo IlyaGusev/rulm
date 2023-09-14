@@ -1,0 +1,10 @@
+{
+    "system_prompt": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.",
+    "user_message_template": "{role}: {content} ",
+    "bot_message_template": "{role}: {content}</s>",
+    "system_message_template": "{content} ",
+    "system_role": "SYSTEM",
+    "user_role": "USER",
+    "bot_role": "ASSISTANT",
+    "suffix": "ASSISTANT:"
+}

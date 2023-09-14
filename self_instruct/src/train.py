@@ -3,6 +3,7 @@ import random
 import json
 import os
 
+import fire
 import wandb
 import torch
 import numpy as np
@@ -95,16 +96,15 @@ def custom_prepare_model_for_int8_training(
 
 
 def train(
-    config_file,
-    checkpoint,
-    train_file,
-    val_file,
-    sample_rate,
-    output_dir,
-    report_to,
-    seed,
-    local_rank,
-    omit_base_model_save
+    config_file: str,
+    train_file: str,
+    val_file: str,
+    output_dir: str,
+    checkpoint: str = None,
+    sample_rate: float = 1.0,
+    report_to: str = "wandb",
+    seed: int = 42,
+    omit_base_model_save: bool = True
 ):
     set_random_seed(seed)
     logging.set_verbosity_info()
@@ -245,16 +245,4 @@ def train(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config-file", type=str, required=True)
-    parser.add_argument("--train-file", type=str, required=True)
-    parser.add_argument("--val-file", type=str, required=True)
-    parser.add_argument("--checkpoint", type=str, default=None)
-    parser.add_argument("--output-dir", type=str, required=True)
-    parser.add_argument("--sample-rate", type=float, default=1.0)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--report-to", type=str, default="wandb")
-    parser.add_argument("--local_rank", type=int, default=0)
-    parser.add_argument("--omit-base-model-save", action="store_true", default=False)
-    args = parser.parse_args()
-    train(**vars(args))
+    fire.Fire(train)

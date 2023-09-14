@@ -1,7 +1,10 @@
 {
     "system_prompt": "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им.",
-    "message_template": "<s>{role}\n{content}</s>\n",
-    "start_token_id": 1,
-    "end_token_id": 2,
-    "bot_token_id": 9225
+    "system_message_template": "<s>{role}\n{content}</s>\n",
+    "user_message_template": "<s>{role}\n{content}</s>\n",
+    "bot_message_template": "<s>{role}\n{content}</s>\n",
+    "user_role": "user",
+    "bot_role": "bot",
+    "system_role": "system",
+    "suffix": "<s>bot"
 }

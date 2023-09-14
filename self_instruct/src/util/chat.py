@@ -1,58 +1,50 @@
 import json
+from typing import List
 
 DEFAULT_MESSAGE_TEMPLATE = "<s>{role}\n{content}</s>\n"
 DEFAULT_SYSTEM_PROMPT = "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
-DEFAULT_START_TOKEN_ID = 1
-DEFAULT_END_TOKEN_ID = 2
-DEFAULT_BOT_TOKEN_ID = 9225
 
 
 class Conversation:
     def __init__(
         self,
-        message_template=DEFAULT_MESSAGE_TEMPLATE,
-        system_prompt=DEFAULT_SYSTEM_PROMPT,
-        role_mapping=None,
-        start_token_id=DEFAULT_START_TOKEN_ID,
-        end_token_id=DEFAULT_END_TOKEN_ID,
-        bot_token_id=DEFAULT_BOT_TOKEN_ID
+        system_message_template: str = DEFAULT_MESSAGE_TEMPLATE,
+        user_message_template: str = DEFAULT_MESSAGE_TEMPLATE,
+        bot_message_template: str = DEFAULT_MESSAGE_TEMPLATE,
+        system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+        system_role: str = "system",
+        user_role: str = "user",
+        bot_role: str = "bot",
+        suffix: str = "<s>bot"
     ):
-        self.message_template = message_template
-        self.role_mapping = role_mapping or {}
-        self.start_token_id = start_token_id
-        self.end_token_id = end_token_id
-        self.bot_token_id = bot_token_id
+        self.system_message_template = system_message_template
+        self.user_message_template = user_message_template
+        self.bot_message_template = bot_message_template
+        self.system_role = system_role
+        self.user_role = user_role
+        self.bot_role = bot_role
+        self.suffix = suffix
         self.messages = [{
-            "role": "system",
+            "role": self.system_role,
             "content": system_prompt
         }]
 
-    def get_end_token_id(self):
-        return self.end_token_id
-
-    def get_start_token_id(self):
-        return self.start_token_id
-
-    def get_bot_token_id(self):
-        return self.bot_token_id
-
     def add_user_message(self, message):
         self.messages.append({
-            "role": "user",
+            "role": self.user_role,
             "content": message
         })
 
     def add_bot_message(self, message):
         self.messages.append({
-            "role": "bot",
+            "role": self.bot_role,
             "content": message
         })
 
-    def count_tokens(self, tokenizer, messages):
+    def count_tokens(self, tokenizer, current_messages):
         final_text = ""
-        for message in messages:
-            message_text = self.message_template.format(**message)
-            final_text += message_text
+        for message in current_messages:
+            final_text += self.format_message(message)
         tokens = tokenizer([final_text])["input_ids"][0]
         return len(tokens)
 
@@ -64,19 +56,24 @@ class Conversation:
         return [system_message] + other_messages
 
     def format_message(self, message):
-        return self.message_template.format(**message)
+        if message["role"] == self.system_role:
+            return self.system_message_template.format(**message)
+        if message["role"] == self.user_role:
+            return self.user_message_template.format(**message)
+        return self.bot_message_template.format(**message)
 
     def get_prompt(self, tokenizer, max_tokens: int = None, add_suffix: bool = True):
-        final_text = ""
         messages = self.messages
         if max_tokens is not None:
             messages = self.shrink(tokenizer, messages, max_tokens)
 
+        final_text = ""
         for message in messages:
-            message_text = self.format_message(message)
-            final_text += message_text
+            final_text += self.format_message(message)
+
         if add_suffix:
-            final_text += tokenizer.decode([self.start_token_id, self.bot_token_id])
+            final_text += self.suffix
+
         return final_text.strip()
 
     def iter_messages(self):
@@ -91,12 +88,15 @@ class Conversation:
             **template
         )
 
-    def expand(self, messages):
+    def expand(self, messages, role_mapping = None):
+        if not role_mapping:
+            role_mapping = dict()
+
         if messages[0]["role"] == "system":
             self.messages = []
 
         for message in messages:
             self.messages.append({
-                "role": self.role_mapping.get(message["role"], message["role"]),
+                "role": role_mapping.get(message["role"], message["role"]),
                 "content": message["content"]
             })

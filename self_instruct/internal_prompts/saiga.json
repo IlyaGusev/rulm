@@ -1,7 +1,0 @@
-{
-    "system_prompt": "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им.",
-    "message_template": "<start>{role}\n{content} <end>\n",
-    "start_token_id": 2962,
-    "end_token_id": 355,
-    "bot_token_id": 7451
-}
