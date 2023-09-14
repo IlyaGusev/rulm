@@ -39,8 +39,8 @@ Edit the following files under `models/llama-7b`:
     "padding_side": "left",
     "bos_token": "<s>",
     "eos_token": "</s>",
-    "unk_token": "<unk>",
     "pad_token": "<unk>",
+    "unk_token": "<unk>",
     "clean_up_tokenization_spaces": false,
     "special_tokens_map_file": "special_tokens_map.json"
 }
@@ -53,19 +53,7 @@ Edit the following files under `models/llama-7b`:
     "bos_token": "<s>",
     "eos_token": "</s>",
     "pad_token": "<unk>",
-    "sep_token": "<s>",
     "unk_token": "<unk>"
-}
-```
-
-`generation_config.json`:
-
-```
-{
-  "_from_model_config": true,
-  "pad_token_id": 0,
-  "bos_token_id": 1,
-  "eos_token_id": 2
 }
 ```
 
