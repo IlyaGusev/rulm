@@ -42,7 +42,7 @@ Edit the following files under `models/llama-7b`:
     "unk_token": "<unk>",
     "pad_token": "<unk>",
     "clean_up_tokenization_spaces": false,
-    "special_tokens_map_file": "special_tokens_map.json"  
+    "special_tokens_map_file": "special_tokens_map.json"
 }
 ```
 
