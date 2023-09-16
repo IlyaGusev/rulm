@@ -1,16 +1,16 @@
 {
     "trainer": {
         "evaluation_strategy": "steps",
-        "per_device_train_batch_size": 4,
-        "per_device_eval_batch_size": 4,
-        "gradient_accumulation_steps": 32,
+        "per_device_train_batch_size": 1,
+        "per_device_eval_batch_size": 1,
+        "gradient_accumulation_steps": 128,
         "eval_steps": 50,
         "save_steps": 50,
-        "logging_steps": 5,
+        "logging_steps": 2,
         "learning_rate": 0.0003,
         "num_train_epochs": 5,
         "lr_scheduler_type": "cosine",
-        "warmup_steps": 30,
+        "warmup_steps": 50,
         "fp16": false,
         "bf16": true,
         "torch_compile": false,
@@ -30,6 +30,6 @@
     "templates_path": "internal_prompts/saiga_v2.json",
     "model_name": "models/llama2-7b",
     "model_type": "causal",
-    "max_tokens_count": 2000
+    "max_tokens_count": 4096
 }
 

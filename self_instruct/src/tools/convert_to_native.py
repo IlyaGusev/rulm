@@ -77,13 +77,13 @@ def convert_to_native(
     lora_model = lora_model.merge_and_unload()
     lora_model.train(False)
 
-    if '7b' in base_model_path:
+    if '7b' in base_model_path.lower():
         n_heads = 32
         dim = 4096
-    elif '13b' in base_model_path:
+    elif '13b' in base_model_path.lower():
         n_heads = 40
         dim = 5120
-    elif '30b' in base_model_path:
+    elif '30b' in base_model_path.lower():
         n_heads = 52
         dim = 6656
     else:
