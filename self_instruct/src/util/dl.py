@@ -17,38 +17,87 @@ def set_random_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 
-def fix_tokenizer(tokenizer):
-    # Fixing broken tokenizers
+def _check_candidates(candidates, bad_ids, tokenizer, backup_token):
+    for token_id in candidates:
+        if token_id not in bad_ids:
+            token = tokenizer.convert_ids_to_tokens(token_id)
+            return token_id, token
+    return None, backup_token
+
+
+def fix_tokenizer(tokenizer, model_config):
+    bad_ids = (None, tokenizer.vocab_size)
+
     special_tokens = dict()
+    guessed_pad_token_id = None
+    guessed_bos_token_id = None
+    guessed_eos_token_id = None
+    guessed_unk_token_id = None
     for token_id in range(1000):
         token = tokenizer.convert_ids_to_tokens(token_id)
-        if tokenizer.pad_token_id in (None, tokenizer.vocab_size) and "pad" in token:
-            special_tokens["pad_token"] = token
-        if tokenizer.bos_token_id in (None, tokenizer.vocab_size) and "<s>" in token:
-            special_tokens["bos_token"] = token
-        if tokenizer.eos_token_id in (None, tokenizer.vocab_size) and "</s>" in token:
-            special_tokens["eos_token"] = token
-        if tokenizer.unk_token_id in (None, tokenizer.vocab_size) and "unk" in token:
-            special_tokens["unk_token"] = token
-        if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "sep" in token:
-            special_tokens["sep_token"] = token
+        if tokenizer.pad_token_id in bad_ids and guessed_pad_token_id is None and "pad" in token:
+            guessed_pad_token_id = token_id
+        if tokenizer.bos_token_id in bad_ids and guessed_bos_token_id is None and "<s>" in token:
+            guessed_bos_token_id = token_id
+        if tokenizer.eos_token_id in bad_ids and guessed_eos_token_id is None and "</s>" in token:
+            guessed_eos_token_id = token_id
+        if tokenizer.unk_token_id in bad_ids and guessed_unk_token_id is None and "unk" in token:
+            guessed_unk_token_id = token_id
 
-    if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "bos_token" in special_tokens:
-        special_tokens["sep_token"] = special_tokens["bos_token"]
+    if tokenizer.pad_token_id in bad_ids:
+        candidates = (
+            model_config.pad_token_id,
+            guessed_pad_token_id,
+            tokenizer.unk_token_id
+        )
+        token_id, token = _check_candidates(candidates, bad_ids, tokenizer, "<pad>")
+        tokenizer.pad_token_id = token_id
+        special_tokens["pad_token"] = token
 
-    if tokenizer.pad_token_id in (None, tokenizer.vocab_size) and "pad_token" not in special_tokens:
-        if tokenizer.unk_token_id is not None:
-            special_tokens["pad_token"] = tokenizer.unk_token
-        else:
-            special_tokens["pad_token"] = "<|pad|>"
+    if tokenizer.bos_token_id in bad_ids:
+        candidates = (
+            model_config.bos_token_id,
+            guessed_bos_token_id,
+            tokenizer.cls_token_id,
+            tokenizer.sep_token_id,
+            tokenizer.eos_token_id,
+        )
+        token_id, token = _check_candidates(candidates, bad_ids, tokenizer, "<s>")
+        tokenizer.bos_token_id = token_id
+        special_tokens["bos_token"] = token
 
-    if tokenizer.sep_token_id in (None, tokenizer.vocab_size) and "sep_token" not in special_tokens:
-        if tokenizer.bos_token_id is not None:
-            special_tokens["sep_token"] = tokenizer.bos_token
-        else:
-            special_tokens["sep_token"] = "<|sep|>"
+    if tokenizer.eos_token_id in bad_ids:
+        candidates = (
+            model_config.eos_token_id,
+            guessed_eos_token_id,
+            tokenizer.bos_token_id
+        )
+        token_id, token = _check_candidates(candidates, bad_ids, tokenizer, "</s>")
+        tokenizer.eos_token_id = token_id
+        special_tokens["eos_token"] = token
+
+    if tokenizer.unk_token_id in bad_ids:
+        candidates = (
+            model_config.unk_token_id,
+            guessed_unk_token_id
+        )
+        token_id, token = check_candidates(candidates, bad_ids, tokenizer, "<unk>")
+        tokenizer.unk_token_id = token_id
+        special_tokens["unk_token"] = token
 
     tokenizer.add_special_tokens(special_tokens)
+    tokenizer.padding_side = "left"
+    tokenizer.clean_up_tokenization_spaces = False
+    tokenizer.add_bos_token = False
+    tokenizer.add_eos_token = False
+    if hasattr(model_config, "n_positions"):
+        n_positions = getattr(model_config, "n_positions")
+        if n_positions:
+            tokenizer.model_max_length = n_positions
+    if hasattr(model_config, "max_position_embeddings"):
+        max_position_embeddings = getattr(model_config, "max_position_embeddings")
+        if max_position_embeddings:
+            tokenizer.model_max_length = max_position_embeddings
 
     print("Vocab size: ", tokenizer.vocab_size)
     print("PAD: ", tokenizer.pad_token_id, tokenizer.pad_token)
@@ -63,25 +112,15 @@ def fix_model(model, tokenizer, use_resize=True):
     model.config.pad_token_id = tokenizer.pad_token_id
     assert model.config.pad_token_id is not None
 
-    bos_candidates = (
-        tokenizer.bos_token_id,
-        tokenizer.cls_token_id,
-        tokenizer.sep_token_id,
-        tokenizer.unk_token_id
-    )
-    for bos_candidate in bos_candidates:
-        model.config.bos_token_id = bos_candidate
-        if bos_candidate is not None:
-            break
-    assert model.config.bos_token_id is not None
+    model.config.bos_token_id = tokenizer.bos_token_id
     model.config.decoder_start_token_id = model.config.bos_token_id
+    assert model.config.bos_token_id is not None
 
-    eos_candidates = (tokenizer.eos_token_id, tokenizer.sep_token_id)
-    for eos_candidate in eos_candidates:
-        model.config.eos_token_id = eos_candidate
-        if eos_candidate is not None:
-            break
+    model.config.eos_token_id = tokenizer.eos_token_id
     assert model.config.eos_token_id is not None
+
+    model.config.unk_token_id = tokenizer.unk_token_id
+    assert model.config.unk_token_id is not None
 
     if use_resize:
         model.resize_token_embeddings(len(tokenizer))

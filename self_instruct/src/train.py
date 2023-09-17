@@ -7,7 +7,7 @@ import fire
 import wandb
 import torch
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForTokenClassification
+from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForTokenClassification, AutoConfig
 from transformers import Trainer, TrainingArguments, logging, TrainerCallback, TrainerState, TrainerControl, BitsAndBytesConfig
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
@@ -137,7 +137,8 @@ def train(
         trainer_config["gradient_accumulation_steps"] = gradient_accumulation_steps
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
-    tokenizer = fix_tokenizer(tokenizer)
+    model_config = AutoConfig.from_pretrained(model_name)
+    tokenizer = fix_tokenizer(tokenizer, model_config)
     tokenizer.save_pretrained(output_dir)
 
     train_records = read_jsonl(train_file)
