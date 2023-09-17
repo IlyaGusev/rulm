@@ -11,14 +11,14 @@ def load_saiga(
     model_name: str,
     use_4bit: bool = False,
     torch_compile: bool = False,
-    torch_dtype: str = None
+    torch_dtype: str = None,
+    is_lora: bool = True
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     generation_config = GenerationConfig.from_pretrained(model_name)
 
-    adapter_path = os.path.join(model_name, "adapter_config.json")
-    if not os.path.exists(adapter_path):
+    if not is_lora:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             load_in_8bit=True,

@@ -19,12 +19,14 @@ def generate_answers(
     output_path: str,
     batch_size: int = 1,
     use_4bit: bool = False,
-    torch_dtype: str = None
+    torch_dtype: str = None,
+    is_lora: bool = True
 ):
     model, tokenizer, generation_config = load_saiga(
         model_name,
         use_4bit=use_4bit,
-        torch_dtype=torch_dtype
+        torch_dtype=torch_dtype,
+        is_lora=is_lora
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     if batch_size > 1:
