@@ -56,6 +56,8 @@ def main(train_path, val_path):
 
     instruct_records = []
     for row in tqdm(load_dataset("lksy/ru_instruct_gpt4", split="train")):
+        if random.random() > 0.3:
+            continue
         message = row["instruction"]
         if row["input"]:
             message += "\nДано: " + row["input"]
@@ -81,6 +83,8 @@ def main(train_path, val_path):
         if has_bad_ss(messages):
             continue
         if row["model_name"] != "gpt-4":
+            continue
+        if random.random() > 0.5:
             continue
         saiga_records.append({
             "messages": messages,
