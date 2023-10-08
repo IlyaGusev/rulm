@@ -1,15 +1,15 @@
 {
     "files": [
         {
-            "file_name": "data/tasks_vicuna_13b_v1_5_answers.jsonl",
-            "model_name": "vicuna_13b_v1_5"
+            "file_name": "data/tasks_saiga_mistral_7b_answers.jsonl",
+            "model_name": "saiga_mistral_7b"
         },
         {
-            "file_name": "data/tasks_saicuna_13b_answers.jsonl",
-            "model_name": "saicuna_13b"
+            "file_name": "data/tasks_saiga2_13b_answers.jsonl",
+            "model_name": "saiga2_13b"
         }
     ],
     "pairs_to_compare": [
-        ["vicuna_13b_v1_5", "saicuna_13b"]
+        ["saiga_mistral_7b", "saiga2_13b"]
     ]
 }

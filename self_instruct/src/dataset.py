@@ -66,6 +66,8 @@ class ChatDataset(Dataset):
         for message, role in conversation.iter_messages():
             message_input_ids = self.get_tokens(message)
             message_labels = message_input_ids
+            if len(input_ids) + len(message_input_ids) > self.max_tokens_count:
+                break
 
             labels_mask = [self.labels_pad_token_id for _ in range(len(message_input_ids))]
             if role != conversation.bot_role and self.only_target_loss:
@@ -73,13 +75,6 @@ class ChatDataset(Dataset):
 
             input_ids.extend(message_input_ids)
             labels.extend(message_labels)
-
-        if self.truncation_side == "right":
-            input_ids = input_ids[:self.max_tokens_count - 2]
-            labels = labels[:self.max_tokens_count - 2]
-        else:
-            input_ids = input_ids[-self.max_tokens_count + 2:]
-            labels = labels[-self.max_tokens_count + 2:]
 
         if self.add_global_bos and input_ids[0] != self.tokenizer.bos_token_id:
             input_ids.insert(0, self.tokenizer.bos_token_id)

@@ -1,4 +1,3 @@
-import argparse
 import random
 import json
 import os
@@ -104,7 +103,7 @@ def train(
     sample_rate: float = 1.0,
     report_to: str = "wandb",
     seed: int = 42,
-    omit_base_model_save: bool = True
+    use_flash_attention_2: bool = False
 ):
     set_random_seed(seed)
     logging.set_verbosity_info()
@@ -187,7 +186,8 @@ def train(
             model_name,
             load_in_8bit=True,
             device_map=device_map,
-            torch_dtype=torch_dtype
+            torch_dtype=torch_dtype,
+            use_flash_attention_2=use_flash_attention_2
         )
         model = fix_model(model, tokenizer, use_resize=False)
         model = custom_prepare_model_for_int8_training(model)
@@ -227,9 +227,7 @@ def train(
         lora_config = LoraConfig(**lora_config)
         model = get_peft_model(model, lora_config)
 
-    trainer_class = Trainer if not omit_base_model_save else TrainerNoBaseSave
-    print("Trainer class:", trainer_class)
-    trainer = trainer_class(
+    trainer = TrainerNoBaseSave(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
