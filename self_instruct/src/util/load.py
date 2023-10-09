@@ -12,7 +12,8 @@ def load_saiga(
     use_4bit: bool = False,
     torch_compile: bool = False,
     torch_dtype: str = None,
-    is_lora: bool = True
+    is_lora: bool = True,
+    use_flash_attention_2: bool = False
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
@@ -49,14 +50,16 @@ def load_saiga(
                     bnb_4bit_compute_dtype=torch_dtype,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4"
-                )
+                ),
+                use_flash_attention_2=use_flash_attention_2
             )
         else:
             model = AutoModelForCausalLM.from_pretrained(
                 config.base_model_name_or_path,
                 torch_dtype=torch_dtype,
                 load_in_8bit=True,
-                device_map="auto"
+                device_map="auto",
+                use_flash_attention_2=use_flash_attention_2
             )
         model = PeftModel.from_pretrained(
             model,
