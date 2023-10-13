@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Tuple
 import fire
 
-from src.eval_rsg import (
+from src.benchmarks.eval_zs_rsg import (
     predict_danetqa,
     predict_rcb,
     predict_terra,
