@@ -212,8 +212,14 @@ def train(
         model = prepare_model_for_kbit_training(model)
 
     else:
-        model = model_types[model_type].from_pretrained(model_name)
-        model = fix_model(model, tokenizer)
+        model = model_types[model_type].from_pretrained(
+            model_name, 
+            device_map=device_map, 
+            torch_dtype=torch_dtype,
+            use_flash_attention_2=use_flash_attention_2
+        )
+        model = fix_model(model, tokenizer, use_resize=False)
+        model = custom_prepare_model_for_int8_training(model)
 
     # Default model generation params
     model.config.num_beams = 5

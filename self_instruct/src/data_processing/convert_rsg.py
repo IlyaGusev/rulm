@@ -5,7 +5,7 @@ from itertools import chain
 
 from datasets import load_dataset
 
-from src.eval_rsg import (
+from src.benchmarks.eval_zs_rsg import (
     RWSD_PROMPT,
     TERRA_PROMPT,
     MUSERC_SINGLE_PROMPT,
