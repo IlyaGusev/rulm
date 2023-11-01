@@ -63,5 +63,5 @@ Create two JSONL files with training and validation sets. See [create_short_chat
 
 ### Run training
 ```python
-python3 -m src.train --config-file configs/saiga2_7b.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/saiga2_7b --omit-base-model-save
+python3 -m src.train --config-file configs/saiga2_7b.json --train-file train.jsonl --val-file val.jsonl  --output-dir models/saiga2_7b
 ```
