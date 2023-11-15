@@ -128,6 +128,8 @@ def train(
         **trainer_config
     )
     model_name = config["model_name"]
+    tokenizer_name = config.get("tokenizer_name", model_name)
+    use_fast = config.get("use_fast", False)
 
     if ddp:
         device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
@@ -135,7 +137,7 @@ def train(
         gradient_accumulation_steps = gradient_accumulation_steps // world_size
         trainer_config["gradient_accumulation_steps"] = gradient_accumulation_steps
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=use_fast)
     model_config = AutoConfig.from_pretrained(model_name)
     tokenizer = fix_tokenizer(tokenizer, model_config)
     tokenizer.save_pretrained(output_dir)
@@ -206,15 +208,16 @@ def train(
                 bnb_4bit_use_double_quant=True,
                 bnb_4bit_quant_type="nf4"
             ),
-            torch_dtype=torch_dtype
+            torch_dtype=torch_dtype,
+            use_flash_attention_2=use_flash_attention_2
         )
         model = fix_model(model, tokenizer, use_resize=False)
         model = prepare_model_for_kbit_training(model)
 
     else:
         model = model_types[model_type].from_pretrained(
-            model_name, 
-            device_map=device_map, 
+            model_name,
+            device_map=device_map,
             torch_dtype=torch_dtype,
             use_flash_attention_2=use_flash_attention_2
         )
