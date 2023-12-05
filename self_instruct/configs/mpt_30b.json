@@ -1,0 +1,36 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 4,
+        "per_device_eval_batch_size": 4,
+        "gradient_accumulation_steps": 8,
+        "eval_steps": 3,
+        "save_steps": 3,
+        "logging_steps": 1,
+        "learning_rate": 0.0001,
+        "num_train_epochs": 2,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 3,
+        "fp16": false,
+        "bf16": true,
+        "torch_compile": false,
+        "optim": "adamw_torch"
+    },
+    "lora": {
+        "r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "bias": "none",
+        "target_modules": ["up_proj", "down_proj"],
+        "task_type": "CAUSAL_LM"
+    },
+    "load_in_8bit": true,
+    "load_in_4bit": false,
+    "only_target_loss": true,
+    "mode": "chat",
+    "templates_path": "internal_prompts/saiga_v2.json",
+    "model_name": "models/mpt-3b",
+    "tokenizer_name": "EleutherAI/gpt-neox-30b",
+    "model_type": "causal",
+    "max_tokens_count": 8192
+}
