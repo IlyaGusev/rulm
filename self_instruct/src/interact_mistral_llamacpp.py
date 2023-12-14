@@ -2,23 +2,12 @@ import fire
 from llama_cpp import Llama
 
 SYSTEM_PROMPT = "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
-SYSTEM_TOKEN = 1587
-USER_TOKEN = 2188
-BOT_TOKEN = 12435
-LINEBREAK_TOKEN = 13
-
-ROLE_TOKENS = {
-    "user": USER_TOKEN,
-    "bot": BOT_TOKEN,
-    "system": SYSTEM_TOKEN
-}
 
 
 def get_message_tokens(model, role, content):
-    message_tokens = model.tokenize(content.encode("utf-8"))
-    message_tokens.insert(1, ROLE_TOKENS[role])
-    message_tokens.insert(2, LINEBREAK_TOKEN)
-    message_tokens.append(model.token_eos())
+    content = f"{role}\n{content}\n</s>"
+    content = content.encode("utf-8")
+    message_tokens = model.tokenize(content, special=True)
     return message_tokens
 
 
@@ -51,11 +40,9 @@ def interact(
     while True:
         user_message = input("User: ")
         message_tokens = get_message_tokens(model=model, role="user", content=user_message)
-        role_tokens = [model.token_bos(), BOT_TOKEN, LINEBREAK_TOKEN]
+        role_tokens = model.tokenize("bot\n".encode("utf-8"), special=True)
         tokens += message_tokens + role_tokens
-        print(tokens)
         full_prompt = model.detokenize(tokens)
-        print(model.tokenize(full_prompt))
         generator = model.generate(
             tokens,
             top_k=top_k,
