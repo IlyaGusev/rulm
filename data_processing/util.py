@@ -57,6 +57,51 @@ LINKS_SUBSTRINGS = (
 STOP_BEFORE_LETTER = re.compile(r'\.(\w)')
 RE_SQUARE_BRACKETS = re.compile(r"\[[^\]]*\]", flags=re.MULTILINE)
 
+UNICODE_PUNCTUATION = {
+    "，": ",",
+    "。": ".",
+    "、": ",",
+    "„": '"',
+    "”": '"',
+    "“": '"',
+    "«": '"',
+    "»": '"',
+    "１": '"',
+    "」": '"',
+    "「": '"',
+    "《": '"',
+    "》": '"',
+    "´": "'",
+    "∶": ":",
+    "：": ":",
+    "？": "?",
+    "！": "!",
+    "（": "(",
+    "）": ")",
+    "；": ";",
+    "–": "-",
+    "—": " - ",
+    "．": ". ",
+    "～": "~",
+    "’": "'",
+    "…": "...",
+    "━": "-",
+    "〈": "<",
+    "〉": ">",
+    "【": "[",
+    "】": "]",
+    "％": "%",
+    "►": "-",
+}
+
+WHITESPACES = {" ", " ", " ", " ", " ", "　", " ", " ", " ", " "}
+
+
+def normalize_whitespaces(text):
+    chars = [char if char not in WHITESPACES else " " for char in text]
+    text = "".join(chars)
+    return text
+
 
 lang_detector = FasttextLanguageDetector()
 
@@ -147,9 +192,13 @@ class TextProcessor:
         text = text.replace("&rbrace;", "}")
         text = text.replace("&lbrack;", "[")
         text = text.replace("&rbrack;", "]")
+        for old, new in UNICODE_PUNCTUATION.items():
+            text = text.replace(old, new)
+        text = normalize_whitespaces(text)
 
         lines = text.split("\n")
         lines = [self.remove_non_printable(line) for line in lines]
+        lines = [line for line in lines if line.strip()]
 
         if self.fix_punct:
             lines = [self.fix_line_punct(line) for line in lines]
