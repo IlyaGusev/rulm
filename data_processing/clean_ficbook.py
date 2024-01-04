@@ -1,6 +1,8 @@
+import os
 import fire
 import random
 
+import dask.dataframe as da
 import pandas as pd
 from tqdm import tqdm
 from data_processing.util import TextProcessor, read_jsonl
@@ -22,15 +24,27 @@ def main(input_path, output_path):
     )
 
     records = []
+    chunk_num = 0
     for record in tqdm(read_jsonl(input_path)):
+        is_broken = False
+        if not record.get("pairing", ""):
+            record["pairing"] = ""
         for part in record["parts"]:
             text = part["text"]
             clean_text = processor(text)
-            assert clean_text
+            if not clean_text:
+                is_broken = True
             part["clean_text"] = clean_text
-        records.append(record)
-    random.shuffle(records)
-    pd.DataFrame(records).to_parquet(output_path)
+        if not is_broken:
+            records.append(record)
+        if len(records) == 20000:
+            random.shuffle(records)
+            pd.DataFrame(records).to_parquet(os.path.join(output_path, f"{chunk_num:04d}.parquet"))
+            records = []
+            chunk_num += 1
+
+    if records:
+        pd.DataFrame(records).to_parquet(os.path.join(output_path, f"{chunk_num:04d}.parquet"))
 
 if __name__ == "__main__":
     fire.Fire(main)

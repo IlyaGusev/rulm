@@ -1,6 +1,13 @@
 # Based on:
 # https://github.com/gribuser/fb2/blob/master/FictionBook.xsd
 # https://github.com/mgrankin/ru_transformers/blob/master/corpus/FB2_2_txt.xsl
+# Problems:
+# - no tables
+# - no sequences
+# - no notes
+# - no doucment-info
+# - no src-title-info
+# - some other fields are omitted
 
 import json
 import sys
@@ -24,20 +31,24 @@ class FB2Parser:
         self.section_skip_tags = (
              "cite",
              "table",
-             "empty-line",
              "title",
              "epigraph",
              "image",
              "annotation"
         )
 
-    def __call__(self, filename):
-        root = etree.parse(filename).getroot()
+    def __call__(self, content):
+        try:
+            root = etree.fromstring(content)
+        except etree.ParseError as e:
+            return None
         assert root is not None
         assert "FictionBook" in root.tag
 
         description = root.find("./fb:description", NS)
-        assert description is not None
+        if description is None:
+            return None
+
         title_info = description.find("./fb:title-info", NS)
         assert title_info is not None
         title_info_data = self.parse_title_info(title_info)
@@ -45,14 +56,15 @@ class FB2Parser:
         publish_info_data = self.parse_publish_info(publish_info)
 
         body = root.find("./fb:body", NS)
-        assert body is not None
+        if body is None:
+            return None
+
         body_data = self.parse_body(body)
 
         return {
-            "file_name": filename,
             **title_info_data,
             **publish_info_data,
-            **body_data
+            **body_data,
         }
 
     def parse_body(self, body):
@@ -61,12 +73,13 @@ class FB2Parser:
 
         epigraphs = []
         for epigraph in body.findall("./fb:epigraph", NS):
-            epigraphs.append(parse_epigraph(epigraph))
+            epigraphs.append(self.parse_content(epigraph))
 
         sections = []
         for section in body.findall("./fb:section", NS):
             section_str = self.parse_section(section)
-            sections.append(section_str)
+            if section_str:
+                sections.append(section_str)
 
         return {
             "fancy_title": fancy_title_str,
@@ -77,10 +90,10 @@ class FB2Parser:
     def parse_content(self, title):
         # titleType/epigraphType/annotationType
         # https://github.com/gribuser/fb2/blob/master/FictionBook.xsd#L273
-        full_title = []
+        lines = []
         for p in title.findall("./fb:p", NS):
-            full_title.append(self.parse_p(p))
-        return "\n".join(full_title).strip()
+            lines.append(self.parse_p(p))
+        return "\n".join(lines).strip()
 
     def parse_section(self, section):
         # sectionType
@@ -95,6 +108,10 @@ class FB2Parser:
         section_paragraphs = []
         for elem in section:
             if any(tag in elem.tag for tag in self.section_skip_tags):
+                continue
+
+            if "empty-line" in elem.tag:
+                section_paragraphs.append("\n")
                 continue
 
             if "poem" in elem.tag:
@@ -122,9 +139,15 @@ class FB2Parser:
         text = "\n".join(line.strip() for line in text.split("\n") if line.strip())
         return text
 
+    def unpack_text(self, elem):
+        text = elem.text if elem is not None else ""
+        text = text if text is not None else ""
+        return text.strip()
+
     def parse_title_info(self, title_info):
         # title-infoType
         # https://github.com/gribuser/fb2/blob/master/FictionBook.xsd#L570
+        # Example:
         # <title-info>
         #   <genre>detective</genre>
         #   <author>
@@ -135,54 +158,78 @@ class FB2Parser:
         #   <lang>ru</lang>
         # </title-info>
 
-        title = title_info.find("./fb:book-title", NS)
-        title = title.text if title is not None else None
+        title = self.unpack_text(title_info.find("./fb:book-title", NS))
+        genre = self.unpack_text(title_info.find("./fb:genre", NS))
+        keywords = self.unpack_text(title_info.find("./fb:keywords", NS))
+        lang = self.unpack_text(title_info.find("./fb:lang", NS))
+        src_lang = self.unpack_text(title_info.find("./fb:src-lang", NS))
+        date = self.unpack_text(title_info.find("./fb:date", NS))
 
-        genre = title_info.find("./fb:genre", NS)
-        genre = genre.text if genre is not None else None
+        translator = title_info.find("./fb:translator", NS)
+        translator = self.parse_author(translator) if translator is not None else None
+        translator = "" if translator is None else self.author_to_str(translator)
 
         annotation = title_info.find("./fb:annotation", NS)
-        annotation = annotation.text if annotation is not None else None
-
-        lang = title_info.find("./fb:lang", NS)
-        lang = lang.text if lang is not None else None
+        annotation = self.parse_content(annotation) if annotation is not None else None
+        annotation = "" if annotation is None else annotation
 
         authors = []
         for author in title_info.findall("./fb:author", NS):
-            last_name = author.find("./fb:last-name", NS)
-            first_name = author.find("./fb:first-name", NS)
-            middle_name = author.find("./fb:middle-name", NS)
-            last_name = last_name.text if last_name is not None else ""
-            first_name = first_name.text if first_name is not None else ""
-            middle_name = middle_name.text if middle_name is not None else ""
-            authors.append({
-                "last_name": last_name.strip(),
-                "first_name": first_name.strip(),
-                "middle_name": middle_name.strip()
-            })
+            authors.append(self.author_to_str(self.parse_author(author)))
         return {
             "title": title,
             "annotation": annotation,
+            "keywords": keywords,
+            "date": date,
             "genre": genre,
             "authors": authors,
-            "lang": lang
+            "lang": lang,
+            "src_lang": src_lang,
+            "translator": translator
         }
+
+    def parse_author(self, author):
+        # authorType
+        # https://github.com/gribuser/fb2/blob/master/FictionBook.xsd#L233
+        last_name = self.unpack_text(author.find("./fb:last-name", NS))
+        first_name = self.unpack_text(author.find("./fb:first-name", NS))
+        middle_name = self.unpack_text(author.find("./fb:middle-name", NS))
+        nickname = self.unpack_text(author.find("./fb:nickname", NS))
+        return {
+            "last_name": last_name,
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "nickname": nickname
+        }
+
+    def author_to_str(self, author):
+        parts = []
+        if author["last_name"]:
+            parts.append(author["last_name"])
+        if author["first_name"]:
+            parts.append(author["first_name"])
+        if author["middle_name"]:
+            parts.append(author["middle_name"])
+        if author["nickname"]:
+            parts.append('(' + author["nickname"] + ')')
+        return " ".join(parts)
 
     def parse_publish_info(self, publish_info):
         # https://github.com/gribuser/fb2/blob/master/FictionBook.xsd#L156
+        # Example:
         # <publish-info>
         #   <publisher>Twelve</publisher>
         #   <year>2008</year>
         #   <isbn>9780446511070</isbn>
         # </publish-info>
 
-        result = {key.replace("-", "_"): None for key in self.publish_keys}
+        result = {key.replace("-", "_"): "" for key in self.publish_keys}
         if publish_info is None:
             return result
 
         for key in self.publish_keys:
             value = publish_info.find(f"./fb:{key}", NS)
-            value = value.text if value is not None else None
+            value = value.text if value is not None else ""
             result[key.replace("-", "_")] = value
 
         return result
@@ -194,7 +241,7 @@ class FB2Parser:
         title_str = self.parse_content(title) if title is not None else None
 
         subtitle = poem.find("./fb:subtitle", NS)
-        subtitle_str = elf.parse_p(subtitle) if subtitle is not None else None
+        subtitle_str = self.parse_p(subtitle) if subtitle is not None else None
 
         poem_lines = []
         for stanza in poem.findall("./fb:stanza", NS):
@@ -210,11 +257,11 @@ class FB2Parser:
         return poem_str.strip()
 
 
-def main(input_file, output_file):
+def main(input_file):
     parser = FB2Parser()
-    output = parser(input_file)
-    with open(output_file, "w") as w:
-        json.dump(output, w, ensure_ascii=False)
+    with open(input_file, encoding="windows-1251") as r:
+        output = parser(r.read())
+    print(json.dumps(output, ensure_ascii=False))
 
 
 if __name__ == "__main__":

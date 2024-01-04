@@ -94,14 +94,22 @@ UNICODE_PUNCTUATION = {
     "►": "-",
 }
 
-WHITESPACES = {" ", " ", " ", " ", " ", "　", " ", " ", " ", " "}
-
-
-def normalize_whitespaces(text):
-    chars = [char if char not in WHITESPACES else " " for char in text]
-    text = "".join(chars)
-    return text
-
+HTML_ARTEFACTS = {
+    "\xa0": " ",
+    "&quot;": '"',
+    "&gt;": ">",
+    "&lt;": "<",
+    "&ge;": ">=",
+    "&le;": "<=",
+    "&amp;": "&",
+    "&apos;": "'",
+    "&nbsp;": " ",
+    "&approx;": "≈",
+    "&lbrace;": "{",
+    "&rbrace;": "}",
+    "&lbrack;": "[",
+    "&rbrack;": "]"
+}
 
 lang_detector = FasttextLanguageDetector()
 
@@ -178,23 +186,11 @@ class TextProcessor:
 
     def normalize(self, text):
         text = unicodedata.normalize(self.normalization, text)
-        text = text.replace("\xa0", " ")
-        text = text.replace("&quot;", '"')
-        text = text.replace("&gt;", ">")
-        text = text.replace("&lt;", "<")
-        text = text.replace("&ge;", ">=")
-        text = text.replace("&le;", "<=")
-        text = text.replace("&amp;", "&")
-        text = text.replace("&apos;", "'")
-        text = text.replace("&nbsp;", " ")
-        text = text.replace("&approx;", "≈")
-        text = text.replace("&lbrace;", "{")
-        text = text.replace("&rbrace;", "}")
-        text = text.replace("&lbrack;", "[")
-        text = text.replace("&rbrack;", "]")
+
+        for old, new in HTML_ARTEFACTS.items():
+            text = text.replace(old, new)
         for old, new in UNICODE_PUNCTUATION.items():
             text = text.replace(old, new)
-        text = normalize_whitespaces(text)
 
         lines = text.split("\n")
         lines = [self.remove_non_printable(line) for line in lines]
