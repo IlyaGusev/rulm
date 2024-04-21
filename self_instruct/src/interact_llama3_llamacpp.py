@@ -9,8 +9,8 @@ def interact(
     n_ctx=8192,
     top_k=30,
     top_p=0.9,
-    temperature=0.0,
-    repeat_penalty=1.0
+    temperature=0.6,
+    repeat_penalty=1.1
 ):
     model = Llama(
         model_path=model_path,
