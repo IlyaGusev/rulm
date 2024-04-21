@@ -16,8 +16,9 @@ def train(model_dir, max_seq_length: int = 8192, output_dir: str = "unsloth_mode
         load_in_8bit=False,
         load_in_4bit=True
     )
-    tokenizer.add_special_tokens({'additional_special_tokens': ["<|im_start|>", "<|im_end|>", "<|reserved_special_token_0|>"]})
+    #tokenizer.add_special_tokens({'additional_special_tokens': ["<|im_start|>", "<|im_end|>", "<|reserved_special_token_0|>"]})
     tokenizer.eos_token = "<|im_end|>"
+    tokenizer.bos_token = "<|im_start|>"
     tokenizer.pad_token = "<|reserved_special_token_0|>"
     tokenizer.padding_side = "left"
     tokenizer.save_pretrained(output_dir)
@@ -53,7 +54,7 @@ def train(model_dir, max_seq_length: int = 8192, output_dir: str = "unsloth_mode
         train_records,
         tokenizer,
         max_tokens_count=max_seq_length,
-        templates_path="internal_prompts/chaml.json",
+        templates_path="internal_prompts/chatml.json",
         only_target_loss=True
     )
 
@@ -61,7 +62,7 @@ def train(model_dir, max_seq_length: int = 8192, output_dir: str = "unsloth_mode
         val_records,
         tokenizer,
         max_tokens_count=max_seq_length,
-        templates_path="internal_prompts/chaml.json",
+        templates_path="internal_prompts/chatml.json",
         only_target_loss=True
     )
     data_collator = DataCollatorForTokenClassification(tokenizer, pad_to_multiple_of=8)
@@ -76,7 +77,7 @@ def train(model_dir, max_seq_length: int = 8192, output_dir: str = "unsloth_mode
             per_device_eval_batch_size=3,
             gradient_accumulation_steps=42,
             warmup_steps=4,
-            learning_rate=0.0002,
+            learning_rate=0.0001,
             fp16=not torch.cuda.is_bf16_supported(),
             bf16=torch.cuda.is_bf16_supported(),
             logging_steps=1,
