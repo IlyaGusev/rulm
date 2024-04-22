@@ -1,0 +1,30 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 1,
+        "per_device_eval_batch_size": 1,
+        "gradient_accumulation_steps": 128,
+        "eval_steps": 8,
+        "save_steps": 8,
+        "logging_steps": 1,
+        "learning_rate": 0.0001,
+        "num_train_epochs": 2,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 8,
+        "fp16": false,
+        "bf16": true,
+        "optim": "galore_adamw",
+        "optim_target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "up_proj", "down_proj", "gate_proj"],
+        "load_best_model_at_end": true,
+        "seed": 42,
+        "weight_decay": 0.01,
+        "save_total_limit": 1,
+        "gradient_checkpointing": true
+    },
+    "load_in_8bit": false,
+    "load_in_4bit": false,
+    "only_target_loss": true,
+    "templates_path": "internal_prompts/chatml.json",
+    "model_name": "models/llama-3-8b",
+    "max_tokens_count": 8192
+}

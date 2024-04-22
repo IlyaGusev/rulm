@@ -24,6 +24,8 @@ def infer_batch(batch, model_name, template_path, output_file):
         )
     )
     for r, prompt, result in zip(batch, prompts, results):
+        print(prompt)
+        print(result.message["content"])
         r["answer"] = result.message["content"]
         output_file.write(json.dumps(r, ensure_ascii=False).strip() + "\n")
     return results
