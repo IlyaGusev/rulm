@@ -1,0 +1,10 @@
+{
+    "system_prompt": "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им.",
+    "system_message_template": "<|im_start|>{role}\n{content}<|im_end|>\n",
+    "user_message_template": "<|im_start|>{role}\n{content}<|im_end|>\n",
+    "bot_message_template": "<|im_start|>{role}\n{content}<|im_end|>\n",
+    "user_role": "user",
+    "bot_role": "assistant",
+    "system_role": "system",
+    "suffix": "<|im_start|>assistant\n"
+}
