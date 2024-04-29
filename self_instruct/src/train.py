@@ -150,9 +150,6 @@ def train(
     model_type = config.get("model_type", "causal")
     templates_path = config["templates_path"]
     only_target_loss = config.get("only_target_loss", True)
-    mode = config.get("mode", "chat")
-    assert mode == "chat", "Only chat mode is supported in new versions!"
-    assert model_type == "causal", "Only causal models are supported in new versions!"
     max_tokens_count = config["max_tokens_count"]
 
     datasets = []

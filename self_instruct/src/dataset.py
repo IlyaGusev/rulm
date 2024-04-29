@@ -1,3 +1,4 @@
+import json
 import random
 from typing import List, Dict
 
@@ -24,6 +25,8 @@ class ChatDataset(Dataset):
         truncation_side: str = "left"
     ):
         self.templates_path = templates_path
+        with open(templates_path) as r:
+            self.template = json.load(r)
         self.original_records = original_records
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
@@ -39,6 +42,16 @@ class ChatDataset(Dataset):
         for record in tqdm(original_records):
             if random.random() > self.sample_rate:
                 continue
+
+            mapping = {
+                "bot": self.template["bot_role"],
+                "assistant": self.template["bot_role"],
+                "user": self.template["user_role"],
+                "human": self.template["user_role"],
+            }
+            for m in record["messages"]:
+                m["role"] = mapping.get(m["role"], m["role"])
+
             tensors = self.convert_record(record)
             if tensors is None:
                 continue

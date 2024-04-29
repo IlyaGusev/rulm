@@ -14,14 +14,12 @@ from src.util.generate import generate
 
 def generate_answers(
     model_name: str,
-    template_path: str,
     input_path: str,
     output_path: str,
     batch_size: int = 1,
     use_4bit: bool = False,
     torch_dtype: str = None,
-    is_lora: bool = False,
-    use_fast_tokenizer: bool = True
+    is_lora: bool = False
 ):
     model, tokenizer, generation_config = load_saiga(
         model_name,
@@ -30,28 +28,22 @@ def generate_answers(
         is_lora=is_lora,
         use_flash_attention_2=True
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=use_fast_tokenizer)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     if batch_size > 1:
         assert tokenizer.padding_side == "left", "Batched inference for right padding side is impossible"
     records = read_jsonl(input_path)
 
-    default_conversation = Conversation.from_template(template_path)
     with open(output_path, "w") as w:
         for batch in tqdm(gen_batch(records, batch_size)):
-            prompts = []
-            for record in batch:
-                conversation = copy.deepcopy(default_conversation)
-                user_message = record["instruction"]
-                if "input" in record and record["input"]:
-                    user_message += "\nДано: " + record["input"]
-                conversation.add_user_message(user_message)
-                prompt = conversation.get_prompt(tokenizer)
-                prompts.append(prompt)
+            prompts = [[{"role": "user", "content": r["instruction"]}] for r in batch]
+            prompts = [tokenizer.apply_chat_template(prompt, tokenize=False, add_generation_prompt=True) for prompt in prompts]
+
+            print(prompts[0])
             outputs = generate(
                 model=model,
                 tokenizer=tokenizer,
                 prompts=prompts,
-                generation_config=generation_config
+                generation_config=generation_config,
             )
             for record, prompt, output in zip(batch, prompts, outputs):
                 print(prompt)

@@ -9,21 +9,25 @@ from peft import PeftConfig, PeftModel
 
 def load_saiga(
     model_name: str,
+    use_8bit: bool = False,
     use_4bit: bool = False,
     torch_compile: bool = False,
     torch_dtype: str = None,
     is_lora: bool = True,
-    use_flash_attention_2: bool = False
+    use_flash_attention_2: bool = False,
+    use_fast_tokenizer: bool = True
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=use_fast_tokenizer)
     generation_config = GenerationConfig.from_pretrained(model_name)
 
     if not is_lora:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            load_in_8bit=True,
-            device_map="auto"
+            load_in_8bit=use_8bit,
+            device_map="auto",
+            torch_dtype=torch.bfloat16,
+            use_flash_attention_2=use_flash_attention_2
         )
         model.eval()
         return model, tokenizer, generation_config

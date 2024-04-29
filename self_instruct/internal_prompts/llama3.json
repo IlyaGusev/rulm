@@ -1,0 +1,10 @@
+{
+    "system_prompt": "Ты — Сайга, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им.",
+    "system_message_template": "<|begin_of_text|><|start_header_id|>{role}<|end_header_id|>\n\n{content}<|eot_id|>",
+    "user_message_template": "<|start_header_id|>{role}<|end_header_id|>\n\n{content}<|eot_id|>",
+    "bot_message_template": "<|start_header_id|>{role}<|end_header_id|>\n\n{content}<|eot_id|>",
+    "user_role": "user",
+    "bot_role": "assistant",
+    "system_role": "system",
+    "suffix": "<|start_header_id|>assistant<|end_header_id|>\n\n"
+}
