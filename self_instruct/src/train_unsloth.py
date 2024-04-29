@@ -13,18 +13,18 @@ def train(config_path: str, train_path: str, val_path: str, output_dir: str):
     with open(config_path) as r:
         config = json.load(r)
 
-    max_seq_length = config["max_tokens_count"]
+    max_tokens_count = config["max_tokens_count"]
+    max_seq_length = config.get("max_seq_length", max_tokens_count)
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=config["model_name"],
         max_seq_length=max_seq_length,
         dtype=torch.bfloat16,
         load_in_8bit=config["load_in_8bit"],
-        load_in_4bit=config["load_in_4bit"]
+        load_in_4bit=config["load_in_4bit"],
+        attn_implementation="flash_attention_2",
     )
-    tokenizer.add_special_tokens({'additional_special_tokens': ["<|im_start|>", "<|im_end|>", "<|reserved_special_token_0|>"]})
-    tokenizer.eos_token = "<|im_end|>"
-    tokenizer.bos_token = "<|im_start|>"
-    tokenizer.pad_token = "<|reserved_special_token_0|>"
+    tokenizer.pad_token = "<|begin_of_text|>"
+    tokenizer.eos_token = "<|eot_id|>"
     tokenizer.padding_side = "left"
     tokenizer.save_pretrained(output_dir)
 
@@ -50,7 +50,7 @@ def train(config_path: str, train_path: str, val_path: str, output_dir: str):
     train_dataset = ChatDataset(
         train_records,
         tokenizer,
-        max_tokens_count=max_seq_length,
+        max_tokens_count=max_tokens_count,
         templates_path=config["templates_path"],
         only_target_loss=config["only_target_loss"]
     )
@@ -58,7 +58,7 @@ def train(config_path: str, train_path: str, val_path: str, output_dir: str):
     val_dataset = ChatDataset(
         val_records,
         tokenizer,
-        max_tokens_count=max_seq_length,
+        max_tokens_count=max_tokens_count,
         templates_path=config["templates_path"],
         only_target_loss=config["only_target_loss"]
     )

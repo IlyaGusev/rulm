@@ -7,7 +7,7 @@ def generate(
     tokenizer: AutoTokenizer,
     prompts: List[str],
     generation_config: GenerationConfig,
-    source_max_length: int = 512,
+    source_max_length: int = 2048,
     eos_token_id: int = None
 ):
     if eos_token_id is not None:

@@ -1,6 +1,7 @@
 import json
 import random
 
+import mmh3
 from datasets import load_dataset
 import fire
 
@@ -10,10 +11,18 @@ def fetch(train_path, val_path, min_score: int = 8):
     for row in load_dataset("IlyaGusev/saiga_scored", split="train"):
         if row["opus_score"] >= min_score:
             records.append(row)
+
     random.shuffle(records)
-    border = int(0.95 * len(records))
-    train_records = records[:border]
-    val_records = records[border:]
+
+    train_records = []
+    val_records = []
+    for r in records:
+        s = str(r["messages"])
+        h = mmh3.hash(s, signed=False)
+        if h % 100 < 97:
+            train_records.append(r)
+        else:
+            val_records.append(r)
     with open(train_path, "w") as w:
         for record in train_records:
             w.write(json.dumps(record, ensure_ascii=False).strip() + "\n")

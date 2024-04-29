@@ -8,7 +8,6 @@ def merge_lora(
     model_name,
     output_path
 ):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
     config = PeftConfig.from_pretrained(model_name)
     base_model_path = config.base_model_name_or_path
 
@@ -28,7 +27,6 @@ def merge_lora(
     lora_model.train(False)
 
     lora_model.save_pretrained(output_path)
-    tokenizer.save_pretrained(output_path)
 
 
 if __name__ == "__main__":
