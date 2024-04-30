@@ -71,6 +71,11 @@ for r in records:
     assert isinstance(r["opus_score"], int)
     assert 1 <= r["opus_score"] <= 10
     assert r["turns"] >= 1
+    topics = r.pop("topics_answer")
+    r["sonnet_topic"] = topics["topic"]
+    r["sonnet_topic_explanation"] = topics["topic_explanation"]
+    r["sonnet_complexity"] = topics["complexity"]
+    r["sonnet_complexity_explanation"] = topics["complexity_explanation"]
     clean_records.append(r)
 records = clean_records
 records = undup_by_prefix(records)
