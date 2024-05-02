@@ -1,0 +1,36 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 1,
+        "per_device_eval_batch_size": 1,
+        "gradient_accumulation_steps": 64,
+        "eval_steps": 8,
+        "save_steps": 8,
+        "logging_steps": 1,
+        "learning_rate": 0.0003,
+        "num_train_epochs": 2,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 8,
+        "bf16": true,
+        "fp16": false,
+        "optim": "adamw_8bit",
+        "load_best_model_at_end": true,
+        "save_total_limit": 1,
+        "seed": 1337,
+        "weight_decay": 0.01,
+        "gradient_checkpointing": true
+    },
+    "lora": {
+        "r": 32,
+        "lora_alpha": 16,
+        "lora_dropout": 0.0,
+        "bias": "none",
+        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        "task_type": "SEQ_CLS"
+    },
+    "load_in_8bit": false,
+    "load_in_4bit": true,
+    "model_name": "models/saiga_llama3_8b",
+    "max_seq_length": 8192,
+    "max_tokens_count": 8192
+}
