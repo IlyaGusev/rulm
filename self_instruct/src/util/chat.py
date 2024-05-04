@@ -32,13 +32,13 @@ class Conversation:
     def add_user_message(self, message):
         self.messages.append({
             "role": self.user_role,
-            "content": message
+            "content": message.strip()
         })
 
     def add_bot_message(self, message):
         self.messages.append({
             "role": self.bot_role,
-            "content": message
+            "content": message.strip()
         })
 
     def count_tokens(self, tokenizer, current_messages):
@@ -56,6 +56,7 @@ class Conversation:
         return [system_message] + other_messages
 
     def format_message(self, message):
+        message["content"] = message["content"].strip()
         if message["role"] == self.system_role:
             return self.system_message_template.format(**message)
         if message["role"] == self.user_role:
@@ -98,5 +99,5 @@ class Conversation:
         for message in messages:
             self.messages.append({
                 "role": role_mapping.get(message["role"], message["role"]),
-                "content": message["content"]
+                "content": message["content"].strip()
             })

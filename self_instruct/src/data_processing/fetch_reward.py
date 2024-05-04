@@ -6,11 +6,10 @@ from datasets import load_dataset
 import fire
 
 
-def fetch(train_path, val_path, min_score: int = 9):
+def fetch(train_path, val_path):
     records = []
-    for row in load_dataset("IlyaGusev/saiga_scored", split="train"):
-        score = row["opus_score"]
-        if score < min_score:
+    for row in load_dataset("IlyaGusev/saiga_reward", split="train"):
+        if row["source"] != "gpt4_vs_saiga":
             continue
         records.append(row)
 
@@ -19,9 +18,9 @@ def fetch(train_path, val_path, min_score: int = 9):
     train_records = []
     val_records = []
     for r in records:
-        s = str(r["messages"])
-        h = mmh3.hash(s, signed=False)
-        if h % 100 < 95:
+        s = str(r["prompt"] + r["chosen"])
+        h = mmh3.hash(s, 42, signed=False)
+        if h % 100 < 97:
             train_records.append(r)
         else:
             val_records.append(r)

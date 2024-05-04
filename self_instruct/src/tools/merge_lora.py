@@ -14,13 +14,15 @@ def merge_lora(
     base_model = AutoModelForCausalLM.from_pretrained(
         base_model_path,
         load_in_8bit=False,
-        torch_dtype=torch.bfloat16
+        torch_dtype=torch.bfloat16,
+        device_map="auto"
     )
 
     lora_model = PeftModel.from_pretrained(
         base_model,
         model_name,
-        torch_dtype=torch.bfloat16
+        torch_dtype=torch.bfloat16,
+        device_map="auto"
     )
 
     lora_model = lora_model.merge_and_unload()

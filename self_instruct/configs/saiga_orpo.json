@@ -13,11 +13,12 @@
         "warmup_steps": 16,
         "bf16": true,
         "fp16": false,
-        "optim": "adamw_8bit",
+        "optim": "paged_adamw_8bit",
         "load_best_model_at_end": true,
-        "save_total_limit": 1,
+        "save_total_limit": 2,
         "seed": 1337,
-        "weight_decay": 0.01
+        "remove_unused_columns": false,
+        "max_grad_norm": 5.0
     },
     "lora": {
         "r": 32,
@@ -25,13 +26,17 @@
         "lora_dropout": 0.0,
         "bias": "none",
         "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        "use_gradient_checkpointing": true
+        "use_gradient_checkpointing": "unsloth"
+    },
+    "orpo": {
+        "beta": 0.2,
+        "max_prompt_length": 8192,
+        "max_completion_length": 8192,
+        "max_length": 8192
     },
     "load_in_8bit": false,
     "load_in_4bit": true,
-    "only_target_loss": true,
-    "templates_path": "internal_prompts/llama3.json",
     "model_name": "models/llama-3-8b",
     "max_seq_length": 8192,
-    "max_tokens_count": 8192
+    "max_tokens_count": 4096
 }
