@@ -8,31 +8,30 @@
         "save_steps": 12,
         "logging_steps": 1,
         "learning_rate": 0.00006,
-        "num_train_epochs": 2,
+        "num_train_epochs": 3,
         "lr_scheduler_type": "cosine",
         "warmup_steps": 12,
         "bf16": true,
         "fp16": false,
-        "optim": "adamw_8bit",
+        "optim": "paged_adamw_8bit",
         "load_best_model_at_end": true,
         "save_total_limit": 1,
-        "seed": 1337,
-        "weight_decay": 0.01
+        "seed": 1337
     },
     "lora": {
-        "r": 64,
+        "r": 32,
         "lora_alpha": 16,
         "lora_dropout": 0.0,
         "bias": "none",
         "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         "modules_to_save": ["lm_head"],
-        "use_gradient_checkpointing": true,
-        "use_rslora": true
+        "use_gradient_checkpointing": "unsloth"
     },
     "load_in_8bit": false,
     "load_in_4bit": true,
     "only_target_loss": true,
     "templates_path": "internal_prompts/llama3.json",
     "model_name": "models/llama-3-8b",
-    "max_tokens_count": 8192
+    "max_tokens_count": 8192,
+    "max_seq_length": 8192
 }

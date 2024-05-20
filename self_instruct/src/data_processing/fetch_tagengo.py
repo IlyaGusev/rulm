@@ -22,8 +22,6 @@ def fetch_tagengo():
         load_dataset("lightblue/gpt4_conversations_multilingual", split="train")
     ):
         language = row["language"]
-        #if language not in ("German", "Spanish", "Italian", "Russian", "Polish"):
-        #    continue
         if language not in ("Russian", None):
             continue
         if language != "Russian" and random.random() > 0.1:

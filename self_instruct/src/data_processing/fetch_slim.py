@@ -10,7 +10,8 @@ def fetch(train_path, val_path, min_score: int = 9):
     records = []
     for row in load_dataset("IlyaGusev/saiga_scored", split="train"):
         score = row["opus_score"]
-        if score < min_score:
+        is_bad_by_regex = row["is_bad_by_regex"]
+        if score < min_score or is_bad_by_regex:
             continue
         records.append(row)
 
@@ -21,7 +22,7 @@ def fetch(train_path, val_path, min_score: int = 9):
     for r in records:
         s = str(r["messages"])
         h = mmh3.hash(s, signed=False)
-        if h % 100 < 95:
+        if h % 100 < 97:
             train_records.append(r)
         else:
             val_records.append(r)

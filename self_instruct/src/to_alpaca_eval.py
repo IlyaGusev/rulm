@@ -16,8 +16,15 @@ def to_alpaca_eval(
     for file_path in input_files:
         file_records = list(read_jsonl(file_path))
         generator = file_path.split("/")[-1].replace(".jsonl", "").replace("tasks_", "").replace("_answers", "")
+        generator = generator.replace("lmsys_clean_ru_multiturn_queries", "lmsys_clean_ru_queries")
         for r in file_records:
             r["generator"] = generator
+
+        for r in file_records:
+            instruction = r.get("instruction")
+            if not instruction:
+                instruction = "\n##@@##\n".join([m["role"] + ": " + m["content"] for m in r["prompt"] if m["role"] != "system"])
+            r["instruction"] = instruction
         records.extend(file_records)
     with open(output_path, "w") as w:
         json.dump([{

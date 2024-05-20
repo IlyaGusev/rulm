@@ -52,7 +52,9 @@ def train(config_path: str, train_path: str, val_path: str, output_dir: str):
         tokenizer,
         max_tokens_count=max_tokens_count,
         templates_path=config["templates_path"],
-        only_target_loss=config["only_target_loss"]
+        only_target_loss=config["only_target_loss"],
+        add_global_bos=config.get("add_global_bos", True),
+        add_global_eos=config.get("add_global_eos", True),
     )
 
     val_dataset = ChatDataset(
@@ -60,7 +62,9 @@ def train(config_path: str, train_path: str, val_path: str, output_dir: str):
         tokenizer,
         max_tokens_count=max_tokens_count,
         templates_path=config["templates_path"],
-        only_target_loss=config["only_target_loss"]
+        only_target_loss=config["only_target_loss"],
+        add_global_bos=config.get("add_global_bos", True),
+        add_global_eos=config.get("add_global_eos", True),
     )
     data_collator = DataCollatorForTokenClassification(tokenizer, pad_to_multiple_of=8)
 

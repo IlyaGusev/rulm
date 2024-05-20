@@ -17,7 +17,8 @@ def infer_saiga_vllm(
     top_p: float = 0.9,
     top_k: int = 30,
     max_tokens: int = 2048,
-    repetition_penalty: float = 1.1
+    repetition_penalty: float = 1.1,
+    disable_system_prompt: bool = False
 ):
     sampling_params = SamplingParams(
         temperature=temperature,
@@ -43,8 +44,11 @@ def infer_saiga_vllm(
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": query}
             ]
-        elif "messages" in r:
-            messages = r["messages"]
+        elif "messages" in r or "prompt" in r:
+            messages = r.get("messages", r.get("prompt"))
+            assert messages
+            if messages[0]["role"] != "system" and not disable_system_prompt:
+                messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
             for m in messages:
                 m["role"] = role_mapping.get(m["role"], m["role"])
             if messages[-1]["role"] == "assistant":
@@ -52,6 +56,7 @@ def infer_saiga_vllm(
         else:
             assert False, "Wrong input format!"
         prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        prompt = prompt.replace(tokenizer.bos_token, "")
         actual_records.append(r)
         prompts.append(prompt)
     outputs = llm.generate(prompts, sampling_params)

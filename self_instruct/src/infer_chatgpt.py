@@ -15,12 +15,12 @@ def encode_prompt(record, template_path):
 
 
 def infer_batch(batch, model_name, template_path, output_file):
-    prompts = [[{"role": "user", "content": encode_prompt(r, template_path)}] for r in batch]
+    prompts = [r["prompt"] for r in batch]
     results = openai_batch_completion(
         batch=prompts,
         model_name=model_name,
         decoding_args=OpenAIDecodingArguments(
-            max_tokens=3076
+            max_tokens=4096
         )
     )
     for r, prompt, result in zip(batch, prompts, results):
@@ -43,8 +43,6 @@ def main(
     batch = []
     with open(output_path, "w") as w:
         for record in tqdm(records):
-            if "input" not in record:
-                record["input"] = None
             batch.append(record)
             if len(batch) != request_batch_size:
                 continue
