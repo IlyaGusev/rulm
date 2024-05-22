@@ -1,0 +1,5 @@
+{
+    "dataset_name": "IlyaGusev/saiga_scored",
+    "min_score": 8,
+    "exclude_regex": true
+}
