@@ -1,0 +1,36 @@
+{
+    "trainer": {
+        "evaluation_strategy": "steps",
+        "per_device_train_batch_size": 1,
+        "per_device_eval_batch_size": 1,
+        "gradient_accumulation_steps": 128,
+        "eval_steps": 12,
+        "save_steps": 12,
+        "logging_steps": 1,
+        "learning_rate": 0.0005,
+        "num_train_epochs": 3,
+        "lr_scheduler_type": "cosine",
+        "warmup_steps": 12,
+        "bf16": true,
+        "fp16": false,
+        "optim": "paged_adamw_8bit",
+        "load_best_model_at_end": true,
+        "save_total_limit": 1,
+        "seed": 1337,
+        "gradient_checkpointing": true
+    },
+    "lora": {
+        "r": 32,
+        "lora_alpha": 16,
+        "lora_dropout": 0.0,
+        "bias": "none",
+        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+    },
+    "load_in_8bit": false,
+    "load_in_4bit": true,
+    "only_target_loss": true,
+    "templates_path": "internal_prompts/aya.json",
+    "model_name": "models/aya-23-8B",
+    "max_tokens_count": 6160,
+    "max_seq_length": 8192
+}

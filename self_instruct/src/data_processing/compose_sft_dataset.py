@@ -12,7 +12,8 @@ def compose_sft_dataset(config_path: str, train_path: str, val_path: str):
 
     records = []
     dataset_name = config.get("dataset_name", "IlyaGusev/saiga_scored")
-    for row in load_dataset(dataset_name, split="train"):
+    revision = config["dataset_revision"]
+    for row in load_dataset(dataset_name, split="train", revision=revision):
         is_bad_by_regex = row["is_bad_by_regex"]
         if config.get("exclude_regex", False) and is_bad_by_regex:
             continue
