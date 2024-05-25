@@ -12,7 +12,8 @@ def compose_sft_dataset(config_path: str, train_path: str, val_path: str):
 
     records = []
     dataset_name = config.get("dataset_name", "IlyaGusev/lmsys_clean_ru_preferences")
-    for row in load_dataset(dataset_name, split="train"):
+    revision = config["dataset_revision"]
+    for row in load_dataset(dataset_name, split="train", revision=revision):
         max_length_ratio = config.get("max_length_ratio", 2.08)
         if len(str(row["chosen"])) > len(str(row["rejected"])) * max_length_ratio:
             continue
