@@ -9,3 +9,4 @@ data/*_answer.json filter=lfs diff=lfs merge=lfs -text
 data/tasks.jsonl filter=lfs diff=lfs merge=lfs -text
 data/gpt4_evals/*.jsonl filter=lfs diff=lfs merge=lfs -text
 models/lid.176.bin filter=lfs diff=lfs merge=lfs -text
+data/saiga_bot_user_multiturn_prompts.jsonl filter=lfs diff=lfs merge=lfs -text
