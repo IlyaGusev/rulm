@@ -24,7 +24,9 @@ def process_annotations(input_path, output_path):
         prompt = instruction.split("\n##@@##\n")
         messages = []
         for m in prompt:
-            if m.startswith("user:"):
+            if m.startswith("system:"):
+                role = "system"
+            elif m.startswith("user:"):
                 role = "user"
             elif m.startswith("assistant:"):
                 role = "assistant"
@@ -33,8 +35,14 @@ def process_annotations(input_path, output_path):
             content = m[len(role) + 1:].strip()
             messages.append({"role": role, "content": content})
         assert len(messages) >= 2
-        model_1 = r["generator_1"].replace("lmsys_clean_ru_queries_", "")
-        model_2 = r["generator_2"].replace("lmsys_clean_ru_queries_", "")
+        model_1 = r["generator_1"].replace("saiga_bot_user_multiturn_prompts_", "")
+        model_2 = r["generator_2"].replace("saiga_bot_user_multiturn_prompts_", "")
+        mapping = {
+            "llama3_8b": "llama_3_8b",
+            "saiga_llama3_8b_v4": "saiga_llama3_8b",
+        }
+        model_1 = mapping.get(model_1, model_1)
+        model_2 = mapping.get(model_2, model_2)
         models = sorted([model_1, model_2])
         key = (instruction, models[0], models[1])
         if key in keys:
@@ -55,7 +63,7 @@ def process_annotations(input_path, output_path):
             "rejected": [{"role": "assistant", "content": rejected_output}],
             "chosen_model": winning_model,
             "rejected_model": losing_model,
-            "source": "lmsys_clean_ru_queries_multiturn"
+            "source": "saiga_bot_multiturn"
         })
     print(counts)
     with open(output_path, "w") as w:
