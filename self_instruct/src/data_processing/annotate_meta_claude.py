@@ -45,7 +45,9 @@ Rate complexity on a scale with 3 values: "easy", "medium", "hard".
 
 Conversation:
 ####
+####
 {conversation}
+####
 ####
 
 First provide an explanation of your decisions in English.
@@ -53,7 +55,11 @@ Return only a JSON with the following format: {{"topic_explanation": "...", "top
 """
 
 def to_conversation(r):
-    return "\n\n".join([f'{m["role"]}: {m["content"]}' for m in r["messages"]])
+    return "\n\n".join([f'{m["role"].upper()}: {m["content"]}' for m in r["messages"]])
+
+
+def to_key(r):
+    return "\n\n".join([m["content"] for m in r["messages"] if m["role"] == "user"][:3])
 
 
 def annotate_meta_claude(
@@ -67,11 +73,12 @@ def annotate_meta_claude(
     if os.path.exists(output_path):
         output_records = read_jsonl(output_path)
         for r in output_records:
-            existing_conversations.add(to_conversation(r))
+            existing_conversations.add(to_key(r))
     random.shuffle(records)
     for i, r in enumerate(records):
         conversation = to_conversation(r)
-        if conversation in existing_conversations:
+        key = to_key(r)
+        if key in existing_conversations:
             print(f"Skipping {i}")
             continue
         for _ in range(3):
