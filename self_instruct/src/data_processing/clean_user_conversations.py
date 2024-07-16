@@ -23,7 +23,6 @@ ADDITONAL_BAD_SS = (
     "о чём-нибудь другом",
     "такие темы",
     "не могу обсуждать",
-    "уважит",
     "не могу продолжать",
     "данный разговор",
     "соответствует правилам",
@@ -37,7 +36,9 @@ ADDITONAL_BAD_SS = (
     "актуальны на",
     "на данных до",
     "извини, но я",
-    "извините, но я"
+    "извините, но я",
+    "не могу пред",
+    "моя последняя информация",
 )
 
 
@@ -47,7 +48,8 @@ def set_regex_flag(records):
         messages = record["messages"]
         user_messages = [m for m in messages if m["role"] == "user"]
         bot_messages = [m for m in messages if m["role"] in ("assistant", "bot")]
-        record["is_bad_by_regex"] = False
+        if "is_bad_by_regex" not in record:
+            record["is_bad_by_regex"] = False
         if has_bad_ss(bot_messages):
             record["is_bad_by_regex"] = True
         if any([any(ss in m["content"].lower() for ss in ADDITONAL_BAD_SS) for m in bot_messages]):
