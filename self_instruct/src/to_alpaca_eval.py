@@ -23,7 +23,7 @@ def to_alpaca_eval(
         for r in file_records:
             instruction = r.get("instruction")
             if not instruction:
-                instruction = "\n##@@##\n".join([m["role"] + ": " + m["content"] for m in r["prompt"] if m["role"] != "system"])
+                instruction = "\n##@@##\n".join([m["role"] + ": " + m["content"] for m in r["prompt"]])
             r["instruction"] = instruction
         records.extend(file_records)
     with open(output_path, "w") as w:

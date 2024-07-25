@@ -8,13 +8,8 @@ from src.util.io import read_jsonl
 from src.util.openai import openai_batch_completion, OpenAIDecodingArguments
 
 
-def encode_prompt(record, template_path):
-    with open(template_path) as f:
-        template = Template(f.read())
-    return template.render(task=record).strip() + "\n"
 
-
-def infer_batch(batch, model_name, template_path, output_file):
+def infer_batch(batch, model_name, output_file):
     prompts = [r["prompt"] for r in batch]
     results = openai_batch_completion(
         batch=prompts,
@@ -34,7 +29,6 @@ def infer_batch(batch, model_name, template_path, output_file):
 def main(
     input_path,
     output_path,
-    template_path,
     model_name,
     request_batch_size=5
 ):
@@ -49,7 +43,6 @@ def main(
             infer_batch(
                 batch=batch,
                 model_name=model_name,
-                template_path=template_path,
                 output_file=w
             )
             batch = []
@@ -58,7 +51,6 @@ def main(
             infer_batch(
                 batch=batch,
                 model_name=model_name,
-                template_path=template_path,
                 output_file=w
             )
 

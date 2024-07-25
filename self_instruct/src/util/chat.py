@@ -24,10 +24,7 @@ class Conversation:
         self.user_role = user_role
         self.bot_role = bot_role
         self.suffix = suffix
-        self.messages = [{
-            "role": self.system_role,
-            "content": system_prompt
-        }]
+        self.messages = []
 
     def add_user_message(self, message):
         self.messages.append({
