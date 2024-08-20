@@ -15,7 +15,7 @@ openai
 sentencepiece
 fire
 datasketch == 1.5.9
-nltk == 3.8.1
+nltk == 3.9
 scikit-learn == 1.3.0
 pytest
 fasttext-wheel
